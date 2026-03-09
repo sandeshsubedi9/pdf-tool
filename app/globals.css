@@ -1,26 +1,171 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   DESIGN TOKENS – Brand Palette
+   #1E1702  dark olive (headings, nav bg)
+   #E5E3E4  warm light gray (page bg)
+   #8C886B  muted sage (secondary text, borders)
+   #047C58  teal green (CTAs, accent)
+   #342005  dark brown (footer bg)
+   ============================================================ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Brand Colors */
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-light: var(--brand-light);
+  --color-brand-sage: var(--brand-sage);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-brown: var(--brand-brown);
+  --color-brand-teal-lt: var(--brand-teal-lt);
+  --color-brand-white: var(--brand-white);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* Brand */
+  --brand-dark: #1E1702;
+  --brand-light: #E5E3E4;
+  --brand-sage: #8C886B;
+  --brand-teal: #047C58;
+  --brand-brown: #342005;
+  --brand-teal-lt: #dcf2ec;
+  --brand-white: #FAFAF9;
+
+  /* Semantic */
+  --background: var(--brand-white);
+  --foreground: var(--brand-dark);
+  --card: #ffffff;
+  --card-foreground: var(--brand-dark);
+  --primary: var(--brand-teal);
+  --primary-foreground: #ffffff;
+  --secondary: var(--brand-light);
+  --secondary-foreground: var(--brand-dark);
+  --muted: #F2F1EF;
+  --muted-foreground: var(--brand-sage);
+  --accent: #dcf2ec;
+  --accent-foreground: var(--brand-teal);
+  --border: #E0DED9;
+  --input: #E0DED9;
+  --ring: var(--brand-teal);
+  --destructive: oklch(0.577 0.245 27.325);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--brand-dark);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.brand-teal {
+  color: var(--brand-teal);
+}
+
+.bg-brand-teal {
+  background-color: var(--brand-teal);
+}
+
+.bg-brand-dark {
+  background-color: var(--brand-dark);
+}
+
+.bg-brand-brown {
+  background-color: var(--brand-brown);
+}
+
+.bg-brand-light {
+  background-color: var(--brand-light);
+}
+
+.bg-brand-teal-lt {
+  background-color: var(--brand-teal-lt);
+}
+
+.border-brand-sage {
+  border-color: var(--brand-sage);
+}
+
+.text-brand-sage {
+  color: var(--brand-sage);
+}
+
+.text-brand-teal {
+  color: var(--brand-teal);
+}
+
+.text-brand-brown {
+  color: var(--brand-brown);
+}
+
+.text-brand-dark {
+  color: var(--brand-dark);
+}
+
+/* Custom scrollbar utility */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E0DED9;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-sage);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }
