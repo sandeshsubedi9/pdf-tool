@@ -462,7 +462,9 @@ export function downloadBlob(blob: Blob, fileName: string) {
     const a = document.createElement("a");
     a.href = url;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
 
@@ -470,7 +472,9 @@ export function downloadDataUrl(dataUrl: string, fileName: string) {
     const a = document.createElement("a");
     a.href = dataUrl;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
 }
 
 export async function downloadZip(
@@ -644,3 +648,174 @@ export async function splitPdf(file: File, ranges: PdfRange[], mergeAll: boolean
         return pdfs;
     }
 }
+
+// ─── COMPRESS PDF ─────────────────────────────────────────────────────────────
+
+export type CompressQuality = "high" | "medium" | "low";
+
+export interface CompressResult {
+    blob: Blob;
+    originalSize: number;
+    compressedSize: number;
+    filename: string;
+}
+
+/**
+ * Compress a PDF via the Python microservice.
+ * @param file     The source PDF file
+ * @param quality  'high' | 'medium' | 'low'
+ */
+export async function compressPdf(file: File, quality: CompressQuality = "medium"): Promise<CompressResult> {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("quality", quality);
+
+    const response = await fetch("/api/compress-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "Compression failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const originalSize = parseInt(response.headers.get("X-Original-Size") || "0", 10);
+    const compressedSize = parseInt(response.headers.get("X-Compressed-Size") || "0", 10);
+    const filename =
+        response.headers.get("X-Original-Filename") ||
+        file.name.replace(/\.pdf$/i, "-compressed.pdf");
+
+    return { blob, originalSize, compressedSize, filename };
+}
+
+// ─── REPAIR PDF ───────────────────────────────────────────────────────────────
+
+export interface RepairResult {
+    blob: Blob;
+    filename: string;
+}
+
+/**
+ * Repair a damaged PDF via the Python microservice.
+ * @param file The source PDF file
+ */
+export async function repairPdf(file: File): Promise<RepairResult> {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+
+    const response = await fetch("/api/repair-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "Repair failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const filename =
+        response.headers.get("X-Original-Filename") ||
+        file.name.replace(/\.pdf$/i, "-repaired.pdf");
+
+    return { blob, filename };
+}
+
+// ─── PROTECT PDF ───────────────────────────────────────────────────────────────
+
+export interface ProtectResult {
+    blob: Blob;
+    filename: string;
+}
+
+/**
+ * Protect a PDF with a password via the Python microservice.
+ * @param file The source PDF file
+ * @param password The password to encrypt the PDF with
+ */
+export async function protectPdf(file: File, password: string): Promise<ProtectResult> {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("password", password);
+
+    const response = await fetch("/api/protect-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "Protection failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const filename =
+        response.headers.get("X-Original-Filename") ||
+        file.name.replace(/\.pdf$/i, "-protected.pdf");
+
+    return { blob, filename };
+}
+
+// ─── UNLOCK PDF ───────────────────────────────────────────────────────────────
+
+export interface UnlockResult {
+    blob: Blob;
+    filename: string;
+}
+
+/**
+ * Unlock a password-protected PDF via the Python microservice.
+ * @param file The source PDF file
+ * @param password The password to decrypt the PDF with
+ */
+export async function unlockPdf(file: File, password: string): Promise<UnlockResult> {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("password", password);
+
+    const response = await fetch("/api/unlock-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "Unlock failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const filename =
+        response.headers.get("X-Original-Filename") ||
+        file.name.replace(/\.pdf$/i, "-unlocked.pdf");
+
+    return { blob, filename };
+}
+
+
+

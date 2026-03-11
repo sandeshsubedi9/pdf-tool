@@ -2,7 +2,7 @@ import io
 import json
 import base64
 import logging
-from fastapi import FastAPI, File, Form, UploadFile, Query
+from fastapi import FastAPI, File, Form, UploadFile, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
@@ -18,6 +18,10 @@ from services.txt_service import convert_pdf_to_txt
 from services.word_to_pdf_service import convert_word_to_pdf
 from services.excel_to_pdf_service import convert_excel_to_pdf
 from services.pptx_to_pdf_service import convert_pptx_to_pdf
+from services.compress_service import compress_pdf
+from services.repair_service import repair_pdf
+from services.protect_service import protect_pdf
+from services.unlock_service import unlock_pdf
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -296,6 +300,110 @@ async def pdf_to_pdfa(
             "X-Original-Filename": output_filename,
         },
     )
+@app.post("/compress/pdf")
+async def compress_pdf_endpoint(
+    file: UploadFile = File(...),
+    quality: str = Form("medium"),
+):
+    """
+    Compress a PDF file.
+    quality: 'high' (aggressive), 'medium' (recommended), 'low' (light).
+    Returns PDF file with X-Original-Size and X-Compressed-Size response headers.
+    """
+    compressed_bytes, output_filename, original_size, compressed_size = await compress_pdf(file, quality)
+
+    logger.info(
+        f"Compressed '{file.filename}' ({original_size} → {compressed_size} bytes, "
+        f"{round((1 - compressed_size / original_size) * 100, 1)}% reduction)"
+    )
+
+    return StreamingResponse(
+        io.BytesIO(compressed_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{output_filename}"',
+            "X-Original-Filename": output_filename,
+            "X-Original-Size": str(original_size),
+            "X-Compressed-Size": str(compressed_size),
+        },
+    )
+
+@app.post("/repair/pdf")
+async def repair_pdf_endpoint(file: UploadFile = File(...)):
+    """
+    Repair a PDF file.
+    """
+    try:
+        repaired_bytes, output_filename = await repair_pdf(file)
+        
+        logger.info(f"Successfully repaired '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(repaired_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        from fastapi import HTTPException
+        logger.error(f"Error repairing PDF: {e}")
+        raise HTTPException(status_code=400, detail="The PDF is too severely damaged to be repaired.")
+
+@app.post("/protect/pdf")
+async def protect_pdf_endpoint(
+    file: UploadFile = File(...),
+    password: str = Form(...)
+):
+    """
+    Protect a PDF file by setting a password.
+    """
+    try:
+        protected_bytes, output_filename = await protect_pdf(file, password)
+        
+        logger.info(f"Successfully protected '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(protected_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        from fastapi import HTTPException
+        logger.error(f"Error protecting PDF: {e}")
+        raise HTTPException(status_code=500, detail="Failed to protect the PDF.")
+
+@app.post("/unlock/pdf")
+async def unlock_pdf_endpoint(
+    file: UploadFile = File(...),
+    password: str = Form(...)
+):
+    """
+    Unlock a password-protected PDF file.
+    """
+    try:
+        unlocked_bytes, output_filename = await unlock_pdf(file, password)
+        
+        logger.info(f"Successfully unlocked '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(unlocked_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error unlocking PDF: {e}")
+        raise HTTPException(status_code=500, detail="Failed to unlock the PDF.")
+
 @app.post("/convert/pdf-to-txt")
 async def pdf_to_txt(file: UploadFile = File(...)):
     """

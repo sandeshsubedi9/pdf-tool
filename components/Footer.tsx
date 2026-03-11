@@ -3,7 +3,7 @@ import React from "react";
 import { IconFileText, IconBrandTwitter, IconBrandLinkedin, IconBrandGithub } from "@tabler/icons-react";
 
 const LINKS = {
-    Tools: ["Merge PDF", "Split PDF", "Compress PDF", "PDF to Word", "PDF to JPG", "Sign PDF"],
+    Tools: ["Merge PDF", "Split PDF", "Compress PDF", "PDF to Word", "PDF to JPG", "Sign PDF", "Protect PDF", "Unlock PDF"],
     Convert: ["Word to PDF", "Excel to PDF", "JPG to PDF", "PowerPoint to PDF", "HTML to PDF", "ePub to PDF"],
     Company: ["About Us", "Blog", "Careers", "Privacy Policy", "Terms of Service", "Contact"],
 };

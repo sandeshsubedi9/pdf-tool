@@ -12,13 +12,10 @@ import {
     IconWriting,
     IconPencil,
     IconDroplet,
-    IconRotate,
     IconCrop,
     IconLayersSubtract,
     IconScan,
     IconEye,
-    IconFileX,
-    IconNumbers,
     IconPhoto,
     IconArrowRight,
     IconFileWord,
@@ -47,15 +44,11 @@ const SERVICES: Service[] = [
     { path: "/merge-pdf", title: "Merge PDF", description: "Combine multiple PDFs into one file in any order.", icon: IconArrowsJoin2, category: "Organise" },
     { path: "/split-pdf", title: "Split PDF", description: "Separate a PDF into multiple files by pages.", icon: IconScissors, category: "Organise" },
     { path: "/split-pdf?mode=extract", title: "Extract Pages", description: "Select and extract specific pages from your document.", icon: IconCrop, category: "Organise" },
-    { id: "rotate-pdf", title: "Rotate PDF", description: "Rotate pages of your PDF permanently.", icon: IconRotate, category: "Organise" },
-    { id: "crop-pdf", title: "Crop PDF", description: "Trim the margins or focus on part of any page.", icon: IconCrop, category: "Organise" },
-    { id: "organise-pdf", title: "Organise Pages", description: "Reorder, delete, or duplicate PDF pages.", icon: IconStack, category: "Organise" },
-    { id: "remove-pages", title: "Remove Pages", description: "Delete unwanted pages from your document.", icon: IconFileX, category: "Organise" },
-    { id: "page-numbers", title: "Page Numbers", description: "Add automatic page numbers to your PDF.", icon: IconNumbers, category: "Organise" },
+    { path: "/organise-pdf", title: "Organise Pages", description: "Reorder, rotate, delete or rearrange PDF pages visually.", icon: IconStack, category: "Organise" },
 
     // ── Optimise
-    { id: "compress-pdf", title: "Compress PDF", description: "Reduce file size while keeping the best quality.", icon: IconLayersSubtract, category: "Optimise" },
-    { id: "repair-pdf", title: "Repair PDF", description: "Recover corrupted or damaged PDF files.", icon: IconFileCheck, category: "Optimise" },
+    { path: "/compress-pdf", title: "Compress PDF", description: "Reduce file size while keeping the best quality.", icon: IconLayersSubtract, category: "Optimise" },
+    { path: "/repair-pdf", title: "Repair PDF", description: "Recover corrupted or damaged PDF files.", icon: IconFileCheck, category: "Optimise" },
     { id: "ocr-pdf", title: "OCR PDF", description: "Make scanned text searchable and selectable.", icon: IconScan, category: "Optimise" },
 
     // ── Convert FROM PDF
@@ -75,16 +68,16 @@ const SERVICES: Service[] = [
     { path: "/html-to-pdf", title: "HTML to PDF", description: "Convert a webpage URL into a PDF document.", icon: IconFileArrowRight, category: "Convert" },
 
     // ── Edit
-    { id: "edit-pdf", title: "Edit PDF", description: "Add text, images, shapes and annotations.", icon: IconPencil, category: "Edit" },
-    { id: "sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Edit" },
+    { path: "/edit-pdf", title: "Edit PDF", description: "Add text, images, shapes and annotations.", icon: IconPencil, category: "Edit" },
+    { path: "/sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Edit" },
     { id: "watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Edit" },
-    { id: "redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Edit" },
+    { path: "/redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Edit" },
     { id: "compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Edit" },
     { id: "translate-pdf", title: "Translate PDF", description: "Translate your PDF to another language.", icon: IconLanguage, category: "Edit" },
 
     // ── Security
-    { id: "protect-pdf", title: "Protect PDF", description: "Encrypt your PDF with a password.", icon: IconLock, category: "Security" },
-    { id: "unlock-pdf", title: "Unlock PDF", description: "Remove password protection from a PDF.", icon: IconLockOpen, category: "Security" },
+    { path: "/protect-pdf", title: "Protect PDF", description: "Encrypt your PDF with a password.", icon: IconLock, category: "Security" },
+    { path: "/unlock-pdf", title: "Unlock PDF", description: "Remove password protection from a PDF.", icon: IconLockOpen, category: "Security" },
 
     // ── Extras
     { id: "scan-to-pdf", title: "Scan to PDF", description: "Use your camera to scan a document to PDF.", icon: IconScan, category: "Extras" },
