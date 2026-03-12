@@ -28,6 +28,7 @@ import {
     IconFileCode,
     IconStack,
     IconEraser,
+    IconRotateClockwise2,
 } from "@tabler/icons-react";
 
 type Service = {
@@ -69,15 +70,16 @@ const SERVICES: Service[] = [
 
     // ── Edit
     { path: "/edit-pdf", title: "Edit PDF", description: "Add text, images, shapes and annotations.", icon: IconPencil, category: "Edit" },
-    { path: "/sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Edit" },
-    { id: "watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Edit" },
-    { path: "/redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Edit" },
-    { id: "compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Edit" },
+    { path: "/rotate-pdf", title: "Rotate PDF", description: "Rotate PDF pages individually or all together.", icon: IconRotateClockwise2, category: "Edit" },
     { id: "translate-pdf", title: "Translate PDF", description: "Translate your PDF to another language.", icon: IconLanguage, category: "Edit" },
 
     // ── Security
     { path: "/protect-pdf", title: "Protect PDF", description: "Encrypt your PDF with a password.", icon: IconLock, category: "Security" },
     { path: "/unlock-pdf", title: "Unlock PDF", description: "Remove password protection from a PDF.", icon: IconLockOpen, category: "Security" },
+    { path: "/sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Security" },
+    { id: "watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Security" },
+    { path: "/redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Security" },
+    { id: "compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Security" },
 
     // ── Extras
     { id: "scan-to-pdf", title: "Scan to PDF", description: "Use your camera to scan a document to PDF.", icon: IconScan, category: "Extras" },
@@ -88,13 +90,26 @@ const SERVICES: Service[] = [
 
 const CATEGORIES = ["All", "Organise", "Optimise", "Convert", "Edit", "Security", "Extras"];
 
-// Teal variants for the icon background (cycling through brand-friendly shades)
-const ICON_VARIANTS = [
-    { bg: "#e6f4ef", color: "#047C58" },
-    { bg: "#f0ede4", color: "#8C886B" },
-    { bg: "#ede9de", color: "#342005" },
-    { bg: "#e6f4ef", color: "#047C58" },
-];
+// Category-based pastel colour palette
+const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
+    "Organise":     { bg: "#f0edff", color: "#7c3aed" }, // violet
+    "Optimise":     { bg: "#fff8ed", color: "#d97706" }, // amber
+    "Convert":      { bg: "#e0f2fe", color: "#0369a1" }, // sky blue (match convert from)
+    "Convert-From": { bg: "#e0f2fe", color: "#0369a1" }, // sky blue  (PDF → X)
+    "Convert-To":   { bg: "#eef2ff", color: "#4338ca" }, // indigo    (X → PDF)
+    "Edit":         { bg: "#ecfdf5", color: "#059669" }, // emerald
+    "Security":     { bg: "#fdf2f8", color: "#be185d" }, // rose
+    "Extras":       { bg: "#f8fafc", color: "#64748b" }, // slate
+};
+
+function getVariant(service: Service) {
+    if (service.category === "Convert") {
+        return service.title.startsWith("PDF to")
+            ? CATEGORY_COLORS["Convert-From"]
+            : CATEGORY_COLORS["Convert-To"];
+    }
+    return CATEGORY_COLORS[service.category] ?? CATEGORY_COLORS["Extras"];
+}
 
 export default function ServicesGrid() {
     const [active, setActive] = useState("All");
@@ -127,25 +142,37 @@ export default function ServicesGrid() {
 
                 {/* Category filter tabs */}
                 <div className="flex flex-wrap justify-center gap-2 mb-10">
-                    {CATEGORIES.map((cat) => (
-                        <button
-                            key={cat}
-                            id={`filter-${cat.toLowerCase()}`}
-                            onClick={() => setActive(cat)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border cursor-pointer shadow-sm active:scale-[0.98] ${active === cat
-                                ? "bg-brand-teal text-white border-brand-teal shadow-md"
-                                : "bg-white text-brand-dark border-border hover:border-brand-sage"
+                    {CATEGORIES.map((cat) => {
+                        const isAll = cat === "All";
+                        const isActive = active === cat;
+                        const catColor = CATEGORY_COLORS[cat] || { bg: "#e6f4ef", color: "#047C58" }; // Default to teal
+                        return (
+                            <button
+                                key={cat}
+                                id={`filter-${cat.toLowerCase()}`}
+                                onClick={() => setActive(cat)}
+                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border cursor-pointer active:scale-[0.98] ${
+                                    isActive
+                                        ? "shadow-sm border-transparent"
+                                        : "bg-white text-brand-dark border-border hover:border-brand-sage shadow-sm"
                                 }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
+                                style={isActive ? { 
+                                    backgroundColor: isAll ? "#047C58" : catColor.bg, 
+                                    color: isAll ? "#fff" : catColor.color,
+                                    boxShadow: isAll ? "0 4px 14px 0 rgba(4,124,88,0.2)" : "none",
+                                    borderColor: isAll ? "#047C58" : catColor.color
+                                } : undefined}
+                            >
+                                {cat}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {filtered.map((service, i) => {
-                        const variant = ICON_VARIANTS[i % ICON_VARIANTS.length];
+                        const variant = getVariant(service);
                         const Icon = service.icon;
                         return (
                             <motion.a
