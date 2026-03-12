@@ -22,6 +22,7 @@ from services.compress_service import compress_pdf
 from services.repair_service import repair_pdf
 from services.protect_service import protect_pdf
 from services.unlock_service import unlock_pdf
+from services.page_number_service import add_page_numbers
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -422,3 +423,56 @@ async def pdf_to_txt(file: UploadFile = File(...)):
             "X-Original-Filename": output_filename,
         },
     )
+
+@app.post("/edit/add-page-numbers")
+async def add_page_numbers_endpoint(
+    file: UploadFile = File(...),
+    position: str = Form("BC"),
+    margin: float = Form(36.0),
+    first_number: int = Form(1),
+    from_page: int = Form(1),
+    to_page: int = Form(0),
+    text_template: str = Form("Page {n}"),
+    custom_text: str = Form(""),
+    font_name: str = Form("Arial"),
+    font_size: float = Form(12.0),
+    bold: str = Form("false"),
+    italic: str = Form("false"),
+    underline: str = Form("false"),
+    text_color: str = Form("#000000"),
+):
+    """
+    Stamp page numbers (or custom text) onto a PDF.
+    Handled by services/page_number_service.py
+    """
+    try:
+        numbered_bytes, output_filename = await add_page_numbers(
+            file=file,
+            position=position,
+            margin=margin,
+            first_number=first_number,
+            from_page=from_page,
+            to_page=to_page,
+            text_template=text_template,
+            custom_text=custom_text,
+            font_name=font_name,
+            font_size=font_size,
+            bold=(bold.lower() == "true"),
+            italic=(italic.lower() == "true"),
+            underline=(underline.lower() == "true"),
+            text_color=text_color,
+        )
+
+        logger.info(f"Added page numbers to '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(numbered_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error adding page numbers: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to add page numbers: {str(e)}")

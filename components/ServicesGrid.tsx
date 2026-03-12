@@ -29,6 +29,7 @@ import {
     IconStack,
     IconEraser,
     IconRotateClockwise2,
+    IconListNumbers,
 } from "@tabler/icons-react";
 
 type Service = {
@@ -71,6 +72,7 @@ const SERVICES: Service[] = [
     // ── Edit
     { path: "/edit-pdf", title: "Edit PDF", description: "Add text, images, shapes and annotations.", icon: IconPencil, category: "Edit" },
     { path: "/rotate-pdf", title: "Rotate PDF", description: "Rotate PDF pages individually or all together.", icon: IconRotateClockwise2, category: "Edit" },
+    { path: "/page-number-pdf", title: "Page Numbers", description: "Add page numbers to your PDF document easily.", icon: IconListNumbers, category: "Edit" },
     { id: "translate-pdf", title: "Translate PDF", description: "Translate your PDF to another language.", icon: IconLanguage, category: "Edit" },
 
     // ── Security

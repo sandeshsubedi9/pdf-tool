@@ -34,6 +34,7 @@ import {
     IconFiles,
     IconLayoutGrid,
     IconRotateClockwise2,
+    IconListNumbers,
 } from "@tabler/icons-react";
 
 // Pastel colour palette per category
@@ -107,6 +108,7 @@ const NAV_ITEMS = [
         children: [
             { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
             { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
+            { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
             { label: "Translate PDF", href: "#",           icon: IconLanguage,         ...ED },
         ],
     },
@@ -170,6 +172,7 @@ const NAV_ITEMS = [
                 items: [
                     { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
                     { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
+                    { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
                     { label: "Translate PDF", href: "#",           icon: IconLanguage,         ...ED },
                 ],
             },

@@ -201,34 +201,39 @@ export default function RotatePdfToolPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#F7F6F3]">
+        <div className="min-h-screen flex flex-col bg-[#F7F6F3] pt-[64px]">
             <Navbar />
 
             {/* Header Toolbar */}
-            <div className="bg-white border-b border-border sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-4">
+            <div className="bg-white border-b border-border sticky top-[64px] z-40 px-4 md:px-6 py-3 md:py-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0">
+                <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                     <button
                         onClick={() => router.push("/rotate-pdf")}
-                        className="p-2 -ml-2 hover:bg-brand-gray/50 rounded-full transition-colors text-brand-dark"
+                        className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-slate-100 transition-colors text-brand-dark cursor-pointer shrink-0"
                         title="Back"
                     >
                         <IconArrowLeft size={20} />
                     </button>
-                    <div>
-                        <h1 className="text-base font-bold text-brand-dark leading-tight flex items-center gap-2">
-                            <IconRotateClockwise2 size={18} className="text-[#059669]" /> Rotate PDF Pages
-                        </h1>
-                        <p className="text-xs text-brand-sage truncate max-w-[200px] md:max-w-md mt-0.5">
-                            {file?.name} • {pages.length} pages
-                        </p>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-50 text-[#059669] shrink-0">
+                            <IconRotateClockwise2 size={20} stroke={2} />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="text-sm md:text-base font-bold text-brand-dark leading-tight truncate">
+                                Rotate PDF Pages
+                            </h1>
+                            <p className="text-[10px] md:text-xs text-brand-sage truncate mt-0.5">
+                                {file?.name} • {pages.length} pages
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 shrink-0">
                     <button
                         onClick={() => rotateAll("cw")}
                         disabled={isProcessing}
-                        className="text-sm font-semibold flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-brand-dark hover:bg-gray-50 transition-colors"
+                        className="text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 border border-border rounded-lg text-brand-dark hover:bg-gray-50 transition-colors flex-1 md:flex-initial"
                         title="Rotate all pages clockwise"
                     >
                         <IconRotateClockwise size={16} /> All
@@ -237,7 +242,7 @@ export default function RotatePdfToolPage() {
                     <button
                         onClick={() => setShowResetConfirm(true)}
                         disabled={isProcessing}
-                        className="text-sm font-semibold flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                        className="text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex-1 md:flex-initial"
                     >
                         <IconRefresh size={16} /> Reset
                     </button>
@@ -245,7 +250,7 @@ export default function RotatePdfToolPage() {
                     <button
                         onClick={handleExport}
                         disabled={isProcessing}
-                        className="bg-[#059669] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-[#059669] text-white px-4 md:px-5 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-semibold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed flex-[1.5] md:flex-initial"
                     >
                         {isProcessing ? (
                             <>
@@ -339,7 +344,7 @@ function PageCard({
             transition={{ duration: 0.2 }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            className="relative flex flex-col items-center gap-2 group"
+            className="relative flex flex-col items-center gap-2 group select-none"
             style={{ width: 160 }}
         >
             {/* Thumbnail container */}
