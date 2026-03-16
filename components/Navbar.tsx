@@ -35,6 +35,8 @@ import {
     IconLayoutGrid,
     IconRotateClockwise2,
     IconListNumbers,
+    IconPhotoSearch,
+    IconFileMinus,
 } from "@tabler/icons-react";
 
 // Pastel colour palette per category
@@ -89,6 +91,7 @@ const NAV_ITEMS = [
         children: [
             { label: "Merge PDF",     href: "/merge-pdf",            icon: IconArrowsJoin2, ...OR },
             { label: "Split PDF",     href: "/split-pdf",            icon: IconScissors,    ...OR },
+            { label: "Remove Pages",  href: "/remove-pages",         icon: IconFileMinus,   ...OR },
             { label: "Extract Pages", href: "/split-pdf?mode=extract", icon: IconCrop,      ...OR },
             { label: "Organise Pages",href: "/organise-pdf",         icon: IconStack,       ...OR },
         ],
@@ -99,7 +102,7 @@ const NAV_ITEMS = [
         children: [
             { label: "Compress PDF", href: "/compress-pdf", icon: IconLayersSubtract, ...OP },
             { label: "Repair PDF",   href: "/repair-pdf",   icon: IconFileCheck,      ...OP },
-            { label: "OCR PDF",      href: "#",             icon: IconScan,           ...OP },
+            { label: "OCR PDF",      href: "/ocr-pdf",      icon: IconScan,           ...OP },
         ],
     },
     {
@@ -108,8 +111,9 @@ const NAV_ITEMS = [
         children: [
             { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
             { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
+            { label: "Crop PDF",      href: "/crop-pdf",   icon: IconCrop,             ...ED },
             { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
-            { label: "Translate PDF", href: "#",           icon: IconLanguage,         ...ED },
+            { label: "Translate PDF", href: "/translate-pdf",     icon: IconLanguage,         ...ED },
         ],
     },
     {
@@ -133,6 +137,7 @@ const NAV_ITEMS = [
                 items: [
                     { label: "Merge PDF",      href: "/merge-pdf",              icon: IconArrowsJoin2, ...OR },
                     { label: "Split PDF",      href: "/split-pdf",              icon: IconScissors,    ...OR },
+                    { label: "Remove Pages",   href: "/remove-pages",           icon: IconFileMinus,   ...OR },
                     { label: "Extract Pages",  href: "/split-pdf?mode=extract", icon: IconCrop,        ...OR },
                     { label: "Organise Pages", href: "/organise-pdf",           icon: IconStack,       ...OR },
                 ],
@@ -142,7 +147,7 @@ const NAV_ITEMS = [
                 items: [
                     { label: "Compress PDF", href: "/compress-pdf", icon: IconLayersSubtract, ...OP },
                     { label: "Repair PDF",   href: "/repair-pdf",   icon: IconFileCheck,      ...OP },
-                    { label: "OCR PDF",      href: "#",             icon: IconScan,           ...OP },
+                    { label: "OCR PDF",      href: "/ocr-pdf",      icon: IconScan,           ...OP },
                 ],
             },
             {
@@ -172,8 +177,9 @@ const NAV_ITEMS = [
                 items: [
                     { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
                     { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
+                    { label: "Crop PDF",      href: "/crop-pdf",   icon: IconCrop,             ...ED },
                     { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
-                    { label: "Translate PDF", href: "#",           icon: IconLanguage,         ...ED },
+                    { label: "Translate PDF", href: "/translate-pdf",     icon: IconLanguage,         ...ED },
                 ],
             },
             {
@@ -185,6 +191,14 @@ const NAV_ITEMS = [
                     { label: "Watermark",   href: "#",            icon: IconDroplet,  ...SE },
                     { label: "Redact PDF",  href: "/redact-pdf",  icon: IconEraser,   ...SE },
                     { label: "Compare PDF", href: "#",            icon: IconEye,      ...SE },
+                ],
+            },
+            {
+                title: "Extras",
+                bg: "#f1f5f9",
+                iconColor: "#64748b",
+                items: [
+                    { label: "Extract Images", href: "/extract-images", icon: IconPhotoSearch, bg: "#f1f5f9", iconColor: "#64748b" },
                 ],
             },
         ],

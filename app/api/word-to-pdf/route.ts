@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
@@ -13,7 +15,7 @@ export async function POST(req: NextRequest) {
         const backendFormData = new FormData();
         backendFormData.append("file", file, file.name);
 
-        const response = await fetch("http://127.0.0.1:8000/convert/word-to-pdf", {
+        const response = await fetch(`${PYTHON_SERVICE_URL}/convert/word-to-pdf`, {
             method: "POST",
             body: backendFormData,
         });

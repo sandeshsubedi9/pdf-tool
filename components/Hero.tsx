@@ -1,6 +1,8 @@
 "use client";
-import React from "react";
-import FileUploadDemo from "@/components/file-upload-demo";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FileUpload } from "@/components/ui/file-upload";
+import FileStore from "@/lib/file-store";
 import { IconArrowRight, IconShieldCheck, IconBolt, IconCloud } from "@tabler/icons-react";
 import { motion } from "motion/react";
 
@@ -11,6 +13,18 @@ const BADGES = [
 ];
 
 export default function Hero() {
+    const router = useRouter();
+    const [files, setFiles] = useState<File[]>([]);
+
+    const handleFileSelection = (newFiles: File[]) => {
+        if (newFiles.length === 0) return;
+        const file = newFiles[0];
+        setFiles([file]);
+        FileStore.clearFile("edit_pdf_main");
+        FileStore.setFile("edit_pdf_main", file);
+        router.push("/edit-pdf");
+    };
+
     return (
         <section
             id="hero"
@@ -136,7 +150,15 @@ export default function Hero() {
 
                             {/* Uploader */}
                             <div className="p-6">
-                                <FileUploadDemo />
+                                <FileUpload
+                                    accept={{ "application/pdf": [".pdf"] }}
+                                    multiple={false}
+                                    files={files}
+                                    setFiles={setFiles}
+                                    onChange={handleFileSelection}
+                                    title="Edit your PDF"
+                                    description="Drop PDF here or click to start editing"
+                                />
                             </div>
 
                         </div>

@@ -1,0 +1,28 @@
+services:
+  python-service:
+    build:
+      context: ./python-service
+      dockerfile: Dockerfile
+    container_name: pdf-python-service
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  nextjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdf-nextjs-app
+    ports:
+      - "3000:3000"
+    environment:
+      - PYTHON_SERVICE_URL=http://python-service:8000
+    depends_on:
+      python-service:
+        condition: service_started
+    restart: always

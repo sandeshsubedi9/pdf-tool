@@ -23,6 +23,9 @@ from services.repair_service import repair_pdf
 from services.protect_service import protect_pdf
 from services.unlock_service import unlock_pdf
 from services.page_number_service import add_page_numbers
+from services.crop_service import crop_pdf
+from services.translate_service import translate_pdf
+from services.ocr_service import ocr_pdf
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -476,3 +479,96 @@ async def add_page_numbers_endpoint(
     except Exception as e:
         logger.error(f"Error adding page numbers: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to add page numbers: {str(e)}")
+
+@app.post("/crop/pdf")
+async def crop_pdf_endpoint(
+    file: UploadFile = File(...),
+    crops: str = Form(...),
+):
+    """
+    Crop individual pages of a PDF.
+    crops: JSON string of crop instructions, e.g.:
+           [{"pageIndex": 0, "x": 5, "y": 5, "w": 90, "h": 90}]
+    x, y, w, h are percentages (0-100) of page dimensions.
+    """
+    try:
+        cropped_bytes, output_filename = await crop_pdf(file, crops)
+
+        logger.info(f"Cropped '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(cropped_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error cropping PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to crop PDF: {str(e)}")
+
+
+@app.post("/translate/pdf")
+async def translate_pdf_endpoint(
+    file: UploadFile = File(...),
+    target_lang: str = Form("en")
+):
+    """
+    Translates a PDF file to the specified target language while preserving layout.
+    """
+    try:
+        translated_bytes, output_filename = await translate_pdf(file, target_lang)
+
+        logger.info(f"Translated '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(translated_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error translating PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to translate PDF: {str(e)}")
+
+
+@app.post("/ocr/pdf")
+async def ocr_pdf_endpoint(
+    file: UploadFile = File(...),
+    language: str = Form("eng"),
+    force: str = Form("false"),
+):
+    """
+    Run OCR on a scanned / image-only PDF and return a searchable PDF.
+    language: Tesseract language code(s), e.g. 'eng', 'eng+fra'. Defaults to 'eng'.
+    force:    If 'true', re-OCR even if the PDF already has selectable text.
+    """
+    try:
+        result = await ocr_pdf(
+            file=file,
+            language=language,
+            force=(force.lower() == "true"),
+        )
+        ocr_bytes, output_filename, already_had_text = result
+
+        logger.info(f"OCR processed '{file.filename}' → '{output_filename}' (already_had_text={already_had_text})")
+
+        return StreamingResponse(
+            io.BytesIO(ocr_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+                "X-Already-Had-Text": "true" if already_had_text else "false",
+            },
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error running OCR on PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")

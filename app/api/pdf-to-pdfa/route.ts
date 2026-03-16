@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
@@ -10,7 +12,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
-        const microserviceUrl = "http://127.0.0.1:8000/convert/pdf-to-pdfa";
+        const microserviceUrl = `${PYTHON_SERVICE_URL}/convert/pdf-to-pdfa`;
 
         const proxyFormData = new FormData();
         proxyFormData.append("file", file);

@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
+import FileStore from "@/lib/file-store";
 
 // Dynamically import the editor to avoid SSR issues with pdfjs / canvas
 const PdfEditor = dynamic(() => import("@/components/PdfEditor"), {
@@ -18,6 +19,14 @@ const PdfEditor = dynamic(() => import("@/components/PdfEditor"), {
 
 export default function EditPdfPage() {
     const [file, setFile] = useState<File | null>(null);
+
+    useEffect(() => {
+        const storedFile = FileStore.getFile("edit_pdf_main");
+        if (storedFile) {
+            setFile(storedFile);
+            FileStore.clearFile("edit_pdf_main");
+        }
+    }, []);
 
     // If there is no file, PdfEditor handles rendering the ToolLayout uploader.
     // We conditionally render the wrapper background only when the editor is actually active.

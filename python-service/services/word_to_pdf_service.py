@@ -44,26 +44,48 @@ def _run_libreoffice(soffice: str, input_path: str, output_dir: str) -> None:
     """
     Run LibreOffice headlessly to convert a file to PDF.
     Blocks until conversion is complete.
+    We use a unique -env:UserInstallation for each call to avoid profile locking issues.
     """
+    user_profile = os.path.join(output_dir, "libreoffice_profile")
+    os.makedirs(user_profile, exist_ok=True)
+    
+    # On Windows, the path needs to be prefixed with file:/// for -env:UserInstallation
+    if sys.platform == "win32":
+        profile_path = "file:///" + user_profile.replace("\\", "/")
+    else:
+        profile_path = "file://" + user_profile
+
     cmd = [
         soffice,
         "--headless",
+        "--invisible",
         "--norestore",
+        "--nodefault",
         "--nofirststartwizard",
+        f"-env:UserInstallation={profile_path}",
         "--convert-to", "pdf",
         "--outdir", output_dir,
         input_path,
     ]
-    logger.info(f"Running LibreOffice: {' '.join(cmd)}")
+    
+    logger.info(f"Running LibreOffice with custom profile: {' '.join(cmd)}")
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        timeout=120,  # 2-minute hard timeout
+        timeout=150,  # 2.5-minute timeout
     )
+    
     if result.returncode != 0:
+        stdout = result.stdout.decode(errors="replace")
         stderr = result.stderr.decode(errors="replace")
-        raise RuntimeError(f"LibreOffice exited with code {result.returncode}: {stderr}")
+        logger.error(f"LibreOffice failed (code {result.returncode}).")
+        logger.error(f"STDOUT: {stdout}")
+        logger.error(f"STDERR: {stderr}")
+        raise RuntimeError(
+            f"LibreOffice conversion failed (code {result.returncode}). "
+            f"Make sure the input file is not corrupted and LibreOffice is correctly installed."
+        )
 
 
 async def convert_word_to_pdf(file: UploadFile) -> tuple[bytes, str]:

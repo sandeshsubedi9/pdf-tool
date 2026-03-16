@@ -63,9 +63,9 @@ export default function PageNumberToolPage() {
     // ── Settings state ───────────────────────────────────────────────────────
     const [position, setPosition] = useState<Position>("BC");
     const [margin, setMargin] = useState<MarginPreset>("recommended");
-    const [firstNumber, setFirstNumber] = useState(1);
-    const [fromPage, setFromPage] = useState(1);
-    const [toPage, setToPage] = useState(1);
+    const [firstNumber, setFirstNumber] = useState<number | "">(1);
+    const [fromPage, setFromPage] = useState<number | "">(1);
+    const [toPage, setToPage] = useState<number | "">(1);
     const [textTemplate, setTextTemplate] = useState("Page {n}");
     const [customText, setCustomText] = useState("");
     const [isCustomText, setIsCustomText] = useState(false);
@@ -153,9 +153,13 @@ export default function PageNumberToolPage() {
             formData.append("file", file, file.name);
             formData.append("position", position);
             formData.append("margin", MARGIN_VALUES[margin].toString());
-            formData.append("first_number", firstNumber.toString());
-            formData.append("from_page", fromPage.toString());
-            formData.append("to_page", toPage.toString());
+            const safeFirst = firstNumber === "" ? 1 : firstNumber;
+            const safeFrom = fromPage === "" ? 1 : fromPage;
+            const safeTo = toPage === "" ? totalPages : toPage;
+
+            formData.append("first_number", safeFirst.toString());
+            formData.append("from_page", Math.min(safeFrom, safeTo).toString());
+            formData.append("to_page", Math.max(safeFrom, safeTo).toString());
             formData.append("text_template", isCustomText ? "Page {n}" : textTemplate);
             formData.append("custom_text", isCustomText ? customText : "");
             formData.append("font_name", fontName);
@@ -352,14 +356,19 @@ export default function PageNumberToolPage() {
                                         value={fromPage}
                                         min={1}
                                         max={totalPages}
-                                        onChange={v => setFromPage(Math.min(v, toPage))}
+                                        onChange={(v) => {
+                                            setFromPage(v);
+                                            if (typeof v === "number" && typeof toPage === "number" && v > toPage) {
+                                                setToPage(v);
+                                            }
+                                        }}
                                     />
                                     <span className="text-[11px] text-brand-sage shrink-0">to</span>
                                     <NumberStepper
                                         value={toPage}
-                                        min={fromPage}
+                                        min={typeof fromPage === "number" ? fromPage : 1}
                                         max={totalPages}
-                                        onChange={v => setToPage(Math.max(v, fromPage))}
+                                        onChange={setToPage}
                                     />
                                 </div>
                             </div>
@@ -514,8 +523,8 @@ export default function PageNumberToolPage() {
                                 }}
                             >
                                 {isCustomText
-                                    ? (customText || "Page {n}").replace("{n}", String(firstNumber)).replace("{total}", String(totalPages))
-                                    : textTemplate.replace("{n}", String(firstNumber)).replace("{total}", String(totalPages))
+                                    ? (customText || "Page {n}").replace("{n}", String(firstNumber === "" ? 1 : firstNumber)).replace("{total}", String(totalPages))
+                                    : textTemplate.replace("{n}", String(firstNumber === "" ? 1 : firstNumber)).replace("{total}", String(totalPages))
                                 }
                             </div>
                             <p className="text-[10px] text-brand-sage text-center mt-1">Preview</p>
@@ -585,11 +594,22 @@ function NumberStepper({
     max,
     onChange,
 }: {
-    value: number;
+    value: number | "";
     min?: number;
     max?: number;
-    onChange: (v: number) => void;
+    onChange: (v: number | "") => void;
 }) {
+    const handleBlur = () => {
+        if (value === "") {
+            onChange(min);
+        } else {
+            let v = value;
+            if (min !== undefined && v < min) v = min;
+            if (max !== undefined && v > max) v = max;
+            onChange(v);
+        }
+    };
+
     return (
         <div className="flex items-center">
             <input
@@ -598,10 +618,13 @@ function NumberStepper({
                 min={min}
                 max={max}
                 onChange={e => {
-                    const v = parseInt(e.target.value) || min;
-                    const clamped = max ? Math.min(max, Math.max(min, v)) : Math.max(min, v);
-                    onChange(clamped);
+                    if (e.target.value === "") {
+                        onChange("");
+                    } else {
+                        onChange(parseInt(e.target.value, 10));
+                    }
                 }}
+                onBlur={handleBlur}
                 className="w-16 border border-border rounded-lg px-2 py-1 text-center text-sm font-medium text-brand-dark focus:outline-none focus:ring-1 focus:ring-[#059669]/30 bg-white"
             />
         </div>

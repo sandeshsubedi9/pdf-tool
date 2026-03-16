@@ -818,4 +818,53 @@ export async function unlockPdf(file: File, password: string): Promise<UnlockRes
 }
 
 
+// ─── OCR PDF ──────────────────────────────────────────────────────────────────
 
+export interface OcrResult {
+    blob: Blob;
+    filename: string;
+    alreadyHadText: boolean;
+}
+
+/**
+ * Run OCR on a scanned / image-only PDF via the Python microservice.
+ * Returns a searchable PDF with invisible selectable text overlaid on the original images.
+ *
+ * @param file     The source PDF file
+ * @param language Tesseract language code(s), e.g. "eng", "eng+fra"
+ * @param force    Re-OCR even if the file already has selectable text
+ */
+export async function ocrPdf(
+    file: File,
+    language = "eng",
+    force = false
+): Promise<OcrResult> {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("language", language);
+    formData.append("force", force ? "true" : "false");
+
+    const response = await fetch("/api/ocr-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "OCR failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const filename =
+        response.headers.get("X-Original-Filename") ||
+        file.name.replace(/\.pdf$/i, "-searchable.pdf");
+    const alreadyHadText = response.headers.get("X-Already-Had-Text") === "true";
+
+    return { blob, filename, alreadyHadText };
+}

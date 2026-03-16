@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   experimental: {
     // Increase the default body size limit for API routes (PDF uploads can be large)
     serverActions: {

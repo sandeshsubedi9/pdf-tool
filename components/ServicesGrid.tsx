@@ -30,6 +30,8 @@ import {
     IconEraser,
     IconRotateClockwise2,
     IconListNumbers,
+    IconPhotoSearch,
+    IconFileMinus,
 } from "@tabler/icons-react";
 
 type Service = {
@@ -45,13 +47,14 @@ const SERVICES: Service[] = [
     // ── Organise
     { path: "/merge-pdf", title: "Merge PDF", description: "Combine multiple PDFs into one file in any order.", icon: IconArrowsJoin2, category: "Organise" },
     { path: "/split-pdf", title: "Split PDF", description: "Separate a PDF into multiple files by pages.", icon: IconScissors, category: "Organise" },
+    { path: "/remove-pages", title: "Remove Pages", description: "Select and remove pages you don't need from your PDF document.", icon: IconFileMinus, category: "Organise" },
     { path: "/split-pdf?mode=extract", title: "Extract Pages", description: "Select and extract specific pages from your document.", icon: IconCrop, category: "Organise" },
     { path: "/organise-pdf", title: "Organise Pages", description: "Reorder, rotate, delete or rearrange PDF pages visually.", icon: IconStack, category: "Organise" },
 
     // ── Optimise
     { path: "/compress-pdf", title: "Compress PDF", description: "Reduce file size while keeping the best quality.", icon: IconLayersSubtract, category: "Optimise" },
     { path: "/repair-pdf", title: "Repair PDF", description: "Recover corrupted or damaged PDF files.", icon: IconFileCheck, category: "Optimise" },
-    { id: "ocr-pdf", title: "OCR PDF", description: "Make scanned text searchable and selectable.", icon: IconScan, category: "Optimise" },
+    { path: "/ocr-pdf", title: "OCR PDF", description: "Make scanned text searchable and selectable.", icon: IconScan, category: "Optimise" },
 
     // ── Convert FROM PDF
     { path: "/pdf-to-word", title: "PDF to Word", description: "Convert PDF files to editable Word documents.", icon: IconFileWord, category: "Convert" },
@@ -72,8 +75,9 @@ const SERVICES: Service[] = [
     // ── Edit
     { path: "/edit-pdf", title: "Edit PDF", description: "Add text, images, shapes and annotations.", icon: IconPencil, category: "Edit" },
     { path: "/rotate-pdf", title: "Rotate PDF", description: "Rotate PDF pages individually or all together.", icon: IconRotateClockwise2, category: "Edit" },
+    { path: "/crop-pdf", title: "Crop PDF", description: "Crop each page individually to remove unwanted margins.", icon: IconCrop, category: "Edit" },
     { path: "/page-number-pdf", title: "Page Numbers", description: "Add page numbers to your PDF document easily.", icon: IconListNumbers, category: "Edit" },
-    { id: "translate-pdf", title: "Translate PDF", description: "Translate your PDF to another language.", icon: IconLanguage, category: "Edit" },
+    { path: "/translate-pdf", title: "Translate PDF", description: "Translate your PDF to another language while preserving the original layout and formatting.", icon: IconLanguage, category: "Edit" },
 
     // ── Security
     { path: "/protect-pdf", title: "Protect PDF", description: "Encrypt your PDF with a password.", icon: IconLock, category: "Security" },
@@ -85,7 +89,7 @@ const SERVICES: Service[] = [
 
     // ── Extras
     { id: "scan-to-pdf", title: "Scan to PDF", description: "Use your camera to scan a document to PDF.", icon: IconScan, category: "Extras" },
-    { id: "extract-images", title: "Extract Images", description: "Pull all images out of a PDF document.", icon: IconPhoto, category: "Extras" },
+    { path: "/extract-images", title: "Extract Images", description: "Pull all images out of a PDF document.", icon: IconPhotoSearch, category: "Extras" },
     { id: "search-pdf", title: "Search PDF", description: "Find and highlight text across your PDF.", icon: IconSearch, category: "Extras" },
     { id: "flatten-pdf", title: "Flatten PDF", description: "Merge form fields and annotations into the page.", icon: IconFiles, category: "Extras" },
 ];
