@@ -32,7 +32,7 @@ export default function ExtractImagesPage() {
                     setFiles={(f) => {
                         setFiles(f);
                         // Auto-proceed as soon as a file is chosen
-                        if (f.length > 0) {
+                        if (Array.isArray(f) && f.length > 0) {
                             FileStore.setFile("current_pdf", f[0]);
                             router.push("/pdf-to-jpg/extract");
                         }

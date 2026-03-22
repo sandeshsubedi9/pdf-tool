@@ -83,7 +83,7 @@ const SERVICES: Service[] = [
     { path: "/protect-pdf", title: "Protect PDF", description: "Encrypt your PDF with a password.", icon: IconLock, category: "Security" },
     { path: "/unlock-pdf", title: "Unlock PDF", description: "Remove password protection from a PDF.", icon: IconLockOpen, category: "Security" },
     { path: "/sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Security" },
-    { id: "watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Security" },
+    { path: "/watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Security" },
     { path: "/redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Security" },
     { id: "compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Security" },
 

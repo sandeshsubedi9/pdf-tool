@@ -5,7 +5,14 @@ import { IconFileText, IconBrandTwitter, IconBrandLinkedin, IconBrandGithub } fr
 const LINKS = {
     Tools: ["Merge PDF", "Split PDF", "Compress PDF", "PDF to Word", "PDF to JPG", "Sign PDF", "Protect PDF", "Unlock PDF"],
     Convert: ["Word to PDF", "Excel to PDF", "JPG to PDF", "PowerPoint to PDF", "HTML to PDF", "ePub to PDF"],
-    Company: ["About Us", "Blog", "Careers", "Privacy Policy", "Terms of Service", "Contact"],
+    Company: [
+        { label: "About Us", href: "#" },
+        { label: "Blog", href: "#" },
+        { label: "Careers", href: "#" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Terms of Service", href: "/terms" },
+        { label: "Contact", href: "#" }
+    ],
 };
 
 export default function Footer() {
@@ -58,17 +65,21 @@ export default function Footer() {
                                 {heading}
                             </p>
                             <ul className="flex flex-col gap-2.5">
-                                {items.map((item) => (
-                                    <li key={item}>
-                                        <a
-                                            href="#"
-                                            className="text-sm hover:text-white transition-colors"
-                                            style={{ color: "#A09888" }}
-                                        >
-                                            {item}
-                                        </a>
-                                    </li>
-                                ))}
+                                {items.map((item) => {
+                                    const label = typeof item === "string" ? item : item.label;
+                                    const href = typeof item === "string" ? "#" : item.href;
+                                    return (
+                                        <li key={label}>
+                                            <a
+                                                href={href}
+                                                className="text-sm hover:text-white transition-colors"
+                                                style={{ color: "#A09888" }}
+                                            >
+                                                {label}
+                                            </a>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     ))}

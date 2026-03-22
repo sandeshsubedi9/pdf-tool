@@ -18,22 +18,24 @@ import {
     IconChevronRight,
     IconChevronDown,
     IconFileTypePdf,
+    IconArrowLeft,
 } from "@tabler/icons-react";
-import { htmlToPdf } from "@/lib/pdf-utils";
+import { urlToPdf, downloadBlob } from "@/lib/pdf-utils";
 import { FileUpload } from "@/components/ui/file-upload";
 import { motion, AnimatePresence } from "motion/react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 type Tab = "url" | "file" | "code";
 type Stage = "input" | "preview" | "success";
 
-// ─── Constants & Custom Select ───────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 const SCREEN_SIZES = [
-    { label: "Your screen (1536px)", value: "1536" },
+    { label: "Your screen", value: "your-screen" },
     { label: "Desktop HD (1920px)", value: "1920" },
     { label: "Desktop (1440px)", value: "1440" },
+    { label: "Laptop (1280px)", value: "1280" },
     { label: "Tablet (768px)", value: "768" },
-    { label: "Mobile (320px)", value: "320" },
+    { label: "iPhone/Mobile (430px)", value: "430" },
 ];
 
 const PAGE_SIZES = [
@@ -52,6 +54,7 @@ const MARGIN_OPTIONS = [
     { label: "Large", value: "large", sub: "1\"" },
 ];
 
+// ─── Custom Select ────────────────────────────────────────────────────────────
 function CustomSelect<T extends string>({
     options,
     value,
@@ -98,10 +101,7 @@ function CustomSelect<T extends string>({
                             <button
                                 key={opt.value}
                                 onClick={() => { onChange(opt.value); setOpen(false); }}
-                                className={`w-full text-left px-3 py-2.5 text-sm transition-colors cursor-pointer ${value === opt.value
-                                    ? "bg-[#F97316]/10 text-[#F97316] font-semibold"
-                                    : "text-brand-dark hover:bg-slate-50"
-                                    }`}
+                                className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${value === opt.value ? "bg-[#F97316]/10 text-[#c2410c] font-semibold" : "text-brand-dark hover:bg-gray-50"}`}
                             >
                                 {opt.label}
                             </button>
@@ -113,8 +113,7 @@ function CustomSelect<T extends string>({
     );
 }
 
-
-// ─── Tab Button ─────────────────────────────────────────────────────────────
+// ─── Tab Button ───────────────────────────────────────────────────────────────
 function TabBtn({
     active,
     onClick,
@@ -140,43 +139,34 @@ function TabBtn({
     );
 }
 
-// ─── Preview Panel ───────────────────────────────────────────────────────────
-function HtmlPreview({ html, title, screenSize }: { html: string; title: string; screenSize: string }) {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    const w = parseInt(screenSize) || 1536;
-
+// ─── PDF Preview Panel ────────────────────────────────────────────────────────
+function PdfPreview({ pdfUrl }: { pdfUrl: string }) {
     return (
-        <div className="flex flex-col gap-3 flex-1 h-[400px] lg:h-auto min-h-[400px]">
-            {/* Note: The preview container scales out visually to present the width while fitting on screen */}
-            <div className="w-full bg-[#f1f1f1] overflow-auto p-4 border border-border flex items-start justify-center flex-1 inset-shadow-sm rounded-xl">
-                <div
-                    className="bg-white shadow-xl border border-slate-200 transition-all duration-300 origin-top shrink-0 relative"
-                    style={{
-                        width: `${w}px`,
-                        height: "fit-content",
-                        minHeight: "100%",
-                        // Simple CSS scale to fit max 100% of container width could be applied here if needed
-                        // For now giving it exact simulated width pixels.
-                    }}
-                >
-                    {/* Overlay to block iframe pointer events while scaling/interacting might be useful, but native works */}
-                    <iframe
-                        ref={iframeRef}
-                        srcDoc={html}
-                        title="HTML Preview"
-                        sandbox="allow-same-origin"
-                        className="w-full h-[800px] lg:h-full border-none bg-white min-h-[400px]"
-                    />
-                </div>
-            </div>
+        <div className="flex flex-col gap-3 flex-1 min-h-[500px]">
+            <iframe
+                src={pdfUrl}
+                title="PDF Preview"
+                className="w-full flex-1 border-none rounded-xl bg-gray-100 min-h-[500px]"
+            />
             <p className="text-xs text-brand-sage text-center bg-gray-50 py-1.5 rounded-lg border border-border">
-                Simulated screen width: <strong className="text-brand-dark">{w}px</strong>. Scripts are disabled for security.
+                This is the exact PDF that will be downloaded.
             </p>
         </div>
     );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── Generating Placeholder ───────────────────────────────────────────────────
+function GeneratingPlaceholder() {
+    return (
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[500px] bg-gray-50 rounded-xl border border-dashed border-border gap-4">
+            <IconLoader2 size={36} className="animate-spin text-[#F97316]" />
+            <p className="text-sm font-semibold text-brand-sage">Generating preview PDF…</p>
+            <p className="text-xs text-brand-sage opacity-70">This may take a few moments</p>
+        </div>
+    );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function HtmlToPdfPage() {
     const [activeTab, setActiveTab] = useState<Tab>("url");
     const [stage, setStage] = useState<Stage>("input");
@@ -194,11 +184,14 @@ export default function HtmlToPdfPage() {
     // Shared preview / process state
     const [previewHtml, setPreviewHtml] = useState("");
     const [previewTitle, setPreviewTitle] = useState("");
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [isConverting, setIsConverting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Options Sidebar state
-    const [screenSize, setScreenSize] = useState<string>("1536");
+    const [screenSize, setScreenSize] = useState<string>("your-screen");
+    const [actualScreenWidth, setActualScreenWidth] = useState<number>(1280);
     const [pageSize, setPageSize] = useState<string>("a4");
     const [oneLongPage, setOneLongPage] = useState(false);
     const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
@@ -206,14 +199,49 @@ export default function HtmlToPdfPage() {
     const [hideCookie, setHideCookie] = useState(true);
     const [blockAd, setBlockAd] = useState(false);
 
-    // Tracking if options changed to highlight button
+    // Tracking if options changed
     const [settingsChanged, setSettingsChanged] = useState(false);
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // Detect real screen width for 'your-screen' option
+    useEffect(() => {
+        setActualScreenWidth(window.innerWidth);
+    }, []);
+
+    // Compute the actual viewport width to send to Playwright
+    const resolvedViewportWidth = screenSize === "your-screen"
+        ? actualScreenWidth
+        : parseInt(screenSize) || 1280;
+
+    // Build dynamic 'Your screen' label
+    const dynamicScreenSizes = SCREEN_SIZES.map(s =>
+        s.value === "your-screen"
+            ? { ...s, label: `Your screen (${actualScreenWidth}px)` }
+            : s
+    );
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Prevent accidental page reloads/navigation
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (stage !== "input") {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [stage]);
+
     const resetAll = () => {
+        if (stage !== "input") {
+            const confirmed = window.confirm("Are you sure you want to go back? Any unsaved changes will be lost.");
+            if (!confirmed) return;
+        }
         setStage("input");
         setPreviewHtml("");
         setPreviewTitle("");
+        if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+        setPreviewPdfUrl(null);
         setError(null);
         setUrlInput("");
         setHtmlFiles([]);
@@ -221,31 +249,39 @@ export default function HtmlToPdfPage() {
         setSettingsChanged(false);
     };
 
-    // ── URL: Fetch & Preview ─────────────────────────────────────────────────
+    // ── URL: Fetch → Generate preview PDF ─────────────────────────────────────
     const handleFetchUrl = async () => {
         if (!urlInput.trim()) return;
         setIsFetchingUrl(true);
+        setIsGeneratingPreview(true);
         setError(null);
+        if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+        setPreviewPdfUrl(null);
         try {
-            const res = await fetch("/api/fetch-url", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: urlInput.trim() }),
+            const pdfBlob = await urlToPdf({
+                url: urlInput.trim(),
+                pageSize,
+                orientation,
+                margin,
+                oneLongPage,
+                hideCookie,
+                blockAd,
+                viewportWidth: resolvedViewportWidth,
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to fetch URL.");
-            setPreviewHtml(data.html);
-            setPreviewTitle(data.title || urlInput.trim());
+            const blobUrl = URL.createObjectURL(pdfBlob);
+            setPreviewPdfUrl(blobUrl);
+            setPreviewTitle(urlInput.trim().replace(/^https?:\/\//, "").split("/")[0]);
             setStage("preview");
             setSettingsChanged(false);
         } catch (err: any) {
-            setError(err.message || "Failed to fetch URL.");
+            setError(err.message || "Failed to fetch and convert URL.");
         } finally {
             setIsFetchingUrl(false);
+            setIsGeneratingPreview(false);
         }
     };
 
-    // ── File: Read & Preview ─────────────────────────────────────────────────
+    // ── File: Read → Generate preview PDF ─────────────────────────────────────
     const handleFileRead = useCallback((file: File) => {
         if (!file.name.endsWith(".html") && !file.name.endsWith(".htm")) {
             setError("Please upload an HTML file (.html or .htm).");
@@ -253,58 +289,110 @@ export default function HtmlToPdfPage() {
         }
         setError(null);
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             const text = e.target?.result as string;
             setPreviewHtml(text);
             setPreviewTitle(file.name.replace(/\.(html|htm)$/i, ""));
+            setPreviewPdfUrl(null);
+            try {
+                const pdfBlob = await urlToPdf({
+                    html: text,
+                    pageSize,
+                    orientation,
+                    margin,
+                    oneLongPage,
+                    hideCookie,
+                    blockAd,
+                    viewportWidth: resolvedViewportWidth,
+                });
+                setPreviewPdfUrl(URL.createObjectURL(pdfBlob));
+            } catch {
+                // preview generation failed - no-preview fallback
+            } finally {
+                setIsGeneratingPreview(false);
+            }
             setStage("preview");
             setSettingsChanged(false);
         };
+        setIsGeneratingPreview(true);
         reader.readAsText(file);
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageSize, orientation, margin, oneLongPage, hideCookie, blockAd, resolvedViewportWidth]);
 
-    // ── Code: Preview ────────────────────────────────────────────────────────
-    const handleCodePreview = () => {
+    // ── Code: Generate preview PDF ────────────────────────────────────────────
+    const handleCodePreview = async () => {
         if (!codeInput.trim()) return;
         setError(null);
         setPreviewHtml(codeInput);
         setPreviewTitle("custom-html");
+        setIsGeneratingPreview(true);
+        setPreviewPdfUrl(null);
+        try {
+            const pdfBlob = await urlToPdf({
+                html: codeInput,
+                pageSize,
+                orientation,
+                margin,
+                oneLongPage,
+                hideCookie,
+                blockAd,
+                viewportWidth: resolvedViewportWidth,
+            });
+            setPreviewPdfUrl(URL.createObjectURL(pdfBlob));
+        } catch {
+            // preview failed
+        } finally {
+            setIsGeneratingPreview(false);
+        }
         setStage("preview");
         setSettingsChanged(false);
     };
 
-    // ── Convert to PDF ───────────────────────────────────────────────────────
+    // ── Download (already-generated PDF blob) ─────────────────────────────────
     const handleConvert = async () => {
-        if (!previewHtml.trim()) return;
+        if (!previewHtml.trim() && !urlInput.trim()) return;
         setIsConverting(true);
         setError(null);
-        setSettingsChanged(false); // Reset highlight
+
         try {
-            await htmlToPdf(previewHtml, previewTitle || "document");
+            let pdfBlob: Blob;
+
+            // Logic: if preview already exists AND settings haven't changed since preview was made,
+            // then we can instantly download the existing preview blob.
+            if (previewPdfUrl && !settingsChanged) {
+                const response = await fetch(previewPdfUrl);
+                pdfBlob = await response.blob();
+            } else {
+                // Settings HAVE changed or preview doesn't exist, must generate fresh PDF
+                pdfBlob = await urlToPdf({
+                    url: activeTab === "url" ? urlInput.trim() : undefined,
+                    html: activeTab !== "url" ? previewHtml : undefined,
+                    pageSize,
+                    orientation,
+                    margin,
+                    oneLongPage,
+                    hideCookie,
+                    blockAd,
+                    viewportWidth: resolvedViewportWidth,
+                });
+
+                // Update preview as well while we are at it
+                if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+                setPreviewPdfUrl(URL.createObjectURL(pdfBlob));
+            }
+
+            downloadBlob(pdfBlob, `${previewTitle || "document"}.pdf`);
             setStage("success");
+            setSettingsChanged(false);
         } catch (err: any) {
-            setError(err.message || "Failed to convert HTML to PDF.");
+            setError(err.message || "Failed to download PDF.");
         } finally {
             setIsConverting(false);
         }
     };
 
-    // ── Download HTML ────────────────────────────────────────────────────────
-    const handleDownloadHtml = () => {
-        const blob = new Blob([previewHtml], { type: "text/html" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${previewTitle || "document"}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    // Helper to log changes to the form
-    const triggerSettingChange = () => setSettingsChanged(true);
-
     // ─────────────────────────────────────────────────────────────────────────
-    // Render: Preview and Success full page structure
+    // Render: Preview and Success
     // ─────────────────────────────────────────────────────────────────────────
     if (stage === "preview" || stage === "success") {
         return (
@@ -312,14 +400,15 @@ export default function HtmlToPdfPage() {
                 <Navbar />
 
                 <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+
                     {/* ── SUCCESS STATE ── */}
                     {stage === "success" && (
                         <div className="bg-white rounded-2xl shadow-sm border border-border p-8 flex flex-col items-center justify-center text-center max-w-2xl mx-auto mt-12 animate-in fade-in zoom-in duration-300">
                             <span className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
                                 <IconCheck size={32} stroke={2} />
                             </span>
-                            <h2 className="text-xl font-bold text-brand-dark">PDF Generated!</h2>
-                            <p className="text-brand-sage mt-2 text-sm">Your PDF is downloading to your device.</p>
+                            <h2 className="text-xl font-bold text-brand-dark">PDF Downloaded!</h2>
+                            <p className="text-brand-sage mt-2 text-sm">Your PDF has been saved to your device.</p>
                             <div className="flex gap-3 mt-6 flex-wrap justify-center">
                                 <button
                                     onClick={() => setStage("preview")}
@@ -337,12 +426,12 @@ export default function HtmlToPdfPage() {
                         </div>
                     )}
 
-                    {/* ── PREVIEW STATE (Two column layout) ── */}
+                    {/* ── PREVIEW STATE ── */}
                     {stage === "preview" && (
                         <div className="flex flex-col lg:flex-row gap-6">
 
-                            {/* Left: Preview Html */}
-                            <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-border p-5 flex flex-col gap-5">
+                            {/* Left: PDF Preview */}
+                            <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-border p-5 flex flex-col gap-4">
                                 {/* Header */}
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
@@ -351,29 +440,29 @@ export default function HtmlToPdfPage() {
                                             {previewTitle}
                                         </span>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={handleDownloadHtml}
-                                            className="flex items-center gap-1.5 text-xs text-brand-sage hover:text-brand-dark transition-colors cursor-pointer px-2"
-                                        >
-                                            <IconDownload size={14} />
-                                            <span className="hidden sm:inline">Download HTML</span>
-                                        </button>
-                                        <button
-                                            onClick={resetAll}
-                                            className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer px-2"
-                                        >
-                                            <IconRefresh size={14} />
-                                            Restart
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={resetAll}
+                                        className="flex items-center gap-1.5 text-xs text-brand-sage hover:text-red-500 transition-colors cursor-pointer px-2"
+                                    >
+                                        <IconArrowLeft size={14} />
+                                        Go Back
+                                    </button>
                                 </div>
 
-                                {/* Preview Component */}
-                                <HtmlPreview html={previewHtml} title={previewTitle} screenSize={screenSize} />
+                                {/* PDF Preview Area */}
+                                {isGeneratingPreview ? (
+                                    <GeneratingPlaceholder />
+                                ) : previewPdfUrl ? (
+                                    <PdfPreview pdfUrl={previewPdfUrl} />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center flex-1 min-h-[500px] bg-gray-50 rounded-xl border border-dashed border-border gap-3">
+                                        <IconAlertCircle size={28} className="text-brand-sage" />
+                                        <p className="text-sm text-brand-sage">Preview unavailable. Click "Download PDF" to generate.</p>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Right: Sidebar Options */}
+                            {/* Right: Options Sidebar */}
                             <div className="w-full lg:w-72 xl:w-80 shrink-0">
                                 <div className="bg-white rounded-2xl border border-border shadow-sm p-5 flex flex-col gap-5 sticky top-24">
                                     <h2 className="text-sm font-bold text-brand-dark flex items-center gap-2">
@@ -381,36 +470,42 @@ export default function HtmlToPdfPage() {
                                         Convert Options
                                     </h2>
 
-                                    {/* If from URL, allow updating the URL inline */}
+                                    {/* URL input (URL tab only) */}
                                     {activeTab === "url" && (
-                                        <div className="flex flex-col gap-1.5">
+                                        <div className="flex flex-col gap-2">
                                             <label className="text-xs font-bold text-brand-sage uppercase tracking-widest mb-0.5">Website URL</label>
                                             <div className="flex gap-2">
                                                 <input
                                                     type="url"
                                                     value={urlInput}
-                                                    onChange={(e) => { setUrlInput(e.target.value); triggerSettingChange(); }}
+                                                    onChange={(e) => { setUrlInput(e.target.value); setSettingsChanged(true); }}
                                                     onKeyDown={(e) => e.key === "Enter" && handleFetchUrl()}
                                                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#F97316]/40 focus:border-[#F97316]"
                                                 />
                                                 <button
                                                     onClick={handleFetchUrl}
-                                                    disabled={isFetchingUrl || !urlInput.trim()}
+                                                    disabled={isFetchingUrl || isGeneratingPreview || !urlInput.trim()}
                                                     className="px-3 py-2 bg-[#F97316] text-white rounded-xl hover:bg-[#c2410c] transition-colors flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-50"
-                                                    title="Fetch URL again"
+                                                    title="Re-generate PDF"
                                                 >
-                                                    <IconRefresh size={16} className={isFetchingUrl ? "animate-spin" : ""} />
+                                                    <IconRefresh size={16} className={isFetchingUrl || isGeneratingPreview ? "animate-spin" : ""} />
                                                 </button>
                                             </div>
+                                            {(isFetchingUrl || isGeneratingPreview) && (
+                                                <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100 text-[10px] text-blue-700 animate-pulse mt-1">
+                                                    <IconLoader2 size={10} className="animate-spin shrink-0" />
+                                                    <span>Regenerating, this may take a few moments.</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
                                     {/* Screen Size */}
                                     <CustomSelect
                                         label="Screen Size"
-                                        options={SCREEN_SIZES}
+                                        options={dynamicScreenSizes}
                                         value={screenSize}
-                                        onChange={(v) => { setScreenSize(v); triggerSettingChange(); }}
+                                        onChange={(v) => { setScreenSize(v); setSettingsChanged(true); }}
                                     />
 
                                     <div className="h-px w-full bg-slate-100" />
@@ -421,16 +516,16 @@ export default function HtmlToPdfPage() {
                                             label="Page Size"
                                             options={PAGE_SIZES}
                                             value={pageSize}
-                                            onChange={(v) => { setPageSize(v); triggerSettingChange(); }}
+                                            onChange={(v) => { setPageSize(v); setSettingsChanged(true); }}
                                         />
                                         <label className="flex items-center gap-2 mt-1 cursor-pointer">
                                             <div
                                                 className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${oneLongPage ? "bg-green-500 border-green-500" : "bg-white border-slate-300"}`}
-                                                onClick={() => { setOneLongPage(!oneLongPage); triggerSettingChange(); }}
+                                                onClick={() => { setOneLongPage(!oneLongPage); setSettingsChanged(true); }}
                                             >
                                                 {oneLongPage && <IconCheck size={14} className="text-white" stroke={3} />}
                                             </div>
-                                            <span className="text-sm font-medium text-brand-dark select-none min-w-0" onClick={() => { setOneLongPage(!oneLongPage); triggerSettingChange(); }}>
+                                            <span className="text-sm font-medium text-brand-dark select-none min-w-0" onClick={() => { setOneLongPage(!oneLongPage); setSettingsChanged(true); }}>
                                                 One long page
                                             </span>
                                         </label>
@@ -443,7 +538,7 @@ export default function HtmlToPdfPage() {
                                             {(["portrait", "landscape"] as const).map((o) => (
                                                 <button
                                                     key={o}
-                                                    onClick={() => { setOrientation(o); triggerSettingChange(); }}
+                                                    onClick={() => { setOrientation(o); setSettingsChanged(true); }}
                                                     className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${orientation === o
                                                         ? "border-[#F97316] bg-[#F97316]/10 text-[#c2410c]"
                                                         : "border-slate-200 text-brand-sage hover:border-slate-300"
@@ -463,7 +558,7 @@ export default function HtmlToPdfPage() {
                                             {MARGIN_OPTIONS.map((m) => (
                                                 <button
                                                     key={m.value}
-                                                    onClick={() => { setMargin(m.value); triggerSettingChange(); }}
+                                                    onClick={() => { setMargin(m.value); setSettingsChanged(true); }}
                                                     className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${margin === m.value
                                                         ? "border-[#F97316] bg-[#F97316]/10 text-[#c2410c]"
                                                         : "border-slate-200 text-brand-sage hover:border-slate-300"
@@ -484,32 +579,28 @@ export default function HtmlToPdfPage() {
 
                                     <div className="h-px w-full bg-slate-100" />
 
-                                    {/* Extra Options (Cookie/AdBlock) */}
+                                    {/* Extra toggles */}
                                     <div className="flex flex-col gap-3">
                                         <label className="flex flex-row items-center gap-3 cursor-pointer">
                                             <div
                                                 className={`relative rounded-full transition-colors duration-200 border-2 mt-0.5 ${hideCookie ? "bg-[#F97316] border-[#F97316]" : "bg-slate-200 border-slate-200"}`}
-                                                onClick={() => { setHideCookie(!hideCookie); triggerSettingChange(); }}
+                                                onClick={() => { setHideCookie(!hideCookie); setSettingsChanged(true); }}
                                                 style={{ height: "22px", width: "40px", flexShrink: 0 }}
                                             >
-                                                <span className={`absolute top-[1px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${hideCookie ? "translate-x-4" : "translate-x-0.5"}`} />
+                                                <span className={`absolute top-px w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${hideCookie ? "translate-x-4" : "translate-x-0.5"}`} />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-brand-dark">Hide cookie dialog</span>
-                                            </div>
+                                            <span className="text-sm font-semibold text-brand-dark">Hide cookie dialog</span>
                                         </label>
 
                                         <label className="flex flex-row items-center gap-3 cursor-pointer">
                                             <div
                                                 className={`relative rounded-full transition-colors duration-200 border-2 mt-0.5 ${blockAd ? "bg-[#F97316] border-[#F97316]" : "bg-slate-200 border-slate-200"}`}
-                                                onClick={() => { setBlockAd(!blockAd); triggerSettingChange(); }}
+                                                onClick={() => { setBlockAd(!blockAd); setSettingsChanged(true); }}
                                                 style={{ height: "22px", width: "40px", flexShrink: 0 }}
                                             >
-                                                <span className={`absolute top-[1px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${blockAd ? "translate-x-4" : "translate-x-0.5"}`} />
+                                                <span className={`absolute top-px w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${blockAd ? "translate-x-4" : "translate-x-0.5"}`} />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-brand-dark">Try to block ads</span>
-                                            </div>
+                                            <span className="text-sm font-semibold text-brand-dark">Try to block ads</span>
                                         </label>
                                     </div>
 
@@ -521,24 +612,27 @@ export default function HtmlToPdfPage() {
                                         </div>
                                     )}
 
-                                    {/* Convert Button */}
+                                    {/* Download PDF Button */}
                                     <button
                                         onClick={handleConvert}
-                                        disabled={isConverting}
-                                        className={`w-full mt-2 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md text-sm cursor-pointer ${isConverting
+                                        disabled={isConverting || isGeneratingPreview}
+                                        className={`w-full mt-2 py-3.5 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md text-sm cursor-pointer ${isConverting || isGeneratingPreview
                                             ? "bg-[#F97316] opacity-60 cursor-wait shadow-none"
                                             : "bg-[#F97316] hover:bg-[#c2410c]"
                                             }`}
                                     >
                                         {isConverting ? (
-                                            <>
-                                                <IconLoader2 size={18} className="animate-spin" />
-                                                Generating PDF…
-                                            </>
+                                            <span className="flex flex-col items-center">
+                                                <span className="flex items-center gap-2">
+                                                    <IconLoader2 size={18} className="animate-spin" />
+                                                    {settingsChanged ? "Regenerating & Downloading..." : "Downloading..."}
+                                                </span>
+                                                <span className="text-[10px] font-normal opacity-70">This may take a few moments</span>
+                                            </span>
                                         ) : (
                                             <>
-                                                <IconFileTypePdf size={18} />
-                                                Convert to PDF
+                                                <IconDownload size={18} />
+                                                {settingsChanged ? "Download without Preview" : "Download PDF"}
                                             </>
                                         )}
                                     </button>
@@ -549,7 +643,7 @@ export default function HtmlToPdfPage() {
                     )}
                 </main>
 
-                {/* Floating "Click to Preview" Button */}
+                {/* Floating "Regenerate Preview" button when settings changed */}
                 <AnimatePresence>
                     {stage === "preview" && settingsChanged && (
                         <motion.button
@@ -559,25 +653,33 @@ export default function HtmlToPdfPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => {
-                                // If url changed, we fetch again. Otherwise just update preview.
                                 if (activeTab === "url" && urlInput.trim()) {
                                     handleFetchUrl();
+                                } else if (activeTab === "code" && codeInput.trim()) {
+                                    handleCodePreview();
                                 } else {
                                     setSettingsChanged(false);
                                 }
                             }}
                             className="fixed bottom-8 right-8 z-50 flex items-center gap-2 px-6 py-4 bg-[#1E1E1E] hover:bg-black text-white rounded-full font-bold shadow-2xl shadow-black/40 transition-colors cursor-pointer"
                         >
-                            {isFetchingUrl ? (
-                                <IconLoader2 size={20} className="animate-spin" />
+                            {isFetchingUrl || isGeneratingPreview ? (
+                                <>
+                                    <IconLoader2 size={20} className="animate-spin" />
+                                    <span className="flex flex-col items-start">
+                                        <span>Generating…</span>
+                                        <span className="text-xs font-normal opacity-70">Don&apos;t close this tab</span>
+                                    </span>
+                                </>
                             ) : (
-                                <IconRefresh size={20} />
+                                <>
+                                    <IconRefresh size={20} />
+                                    Regenerate Preview
+                                </>
                             )}
-                            Click to Preview
                         </motion.button>
                     )}
                 </AnimatePresence>
-
             </div>
         );
     }
@@ -628,11 +730,10 @@ export default function HtmlToPdfPage() {
                                             Enter a webpage URL
                                         </label>
                                         <p className="text-xs text-brand-sage">
-                                            We'll fetch the page's HTML on our server to avoid CORS restrictions.
+                                            We'll render the page in a real browser and convert it to a PDF.
                                         </p>
                                     </div>
 
-                                    {/* URL input row */}
                                     <div className="flex gap-2">
                                         <div className="flex-1 relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-sage">
@@ -667,7 +768,14 @@ export default function HtmlToPdfPage() {
                                         </button>
                                     </div>
 
-                                    {/* Info box */}
+                                    {/* Loading hint */}
+                                    {(isFetchingUrl || isGeneratingPreview) && (
+                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700 animate-pulse">
+                                            <IconLoader2 size={13} className="animate-spin shrink-0" />
+                                            <span>Generating your PDF preview, this may take a few moments. Don&apos;t close this tab.</span>
+                                        </div>
+                                    )}
+
                                     <div className="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-700">
                                         <IconAlertCircle size={15} className="shrink-0 mt-0.5" />
                                         <span>
@@ -686,11 +794,10 @@ export default function HtmlToPdfPage() {
                                             Upload an HTML file
                                         </label>
                                         <p className="text-xs text-brand-sage">
-                                            Accepts .html and .htm files. The file is processed locally in your browser.
+                                            Accepts .html and .htm files.
                                         </p>
                                     </div>
 
-                                    {/* Drop zone */}
                                     <FileUpload
                                         accept={{ "text/html": [".html", ".htm"] }}
                                         multiple={false}
@@ -701,12 +808,25 @@ export default function HtmlToPdfPage() {
                                     {htmlFiles.length > 0 && (
                                         <button
                                             onClick={() => handleFileRead(htmlFiles[0])}
-                                            className="flex items-center gap-2 w-full justify-center py-3 rounded-xl bg-[#F97316] text-white font-semibold text-sm hover:bg-[#c2410c] transition-all cursor-pointer shadow-md"
+                                            disabled={isGeneratingPreview}
+                                            className={`flex items-center gap-2 w-full justify-center py-3 rounded-xl bg-[#F97316] text-white font-semibold text-sm hover:bg-[#c2410c] transition-all cursor-pointer shadow-md ${isGeneratingPreview ? "opacity-60 cursor-wait" : ""}`}
                                         >
-                                            <IconEye size={16} />
-                                            Preview HTML
-                                            <IconChevronRight size={15} />
+                                            {isGeneratingPreview ? (
+                                                <IconLoader2 size={16} className="animate-spin" />
+                                            ) : (
+                                                <IconEye size={16} />
+                                            )}
+                                            {isGeneratingPreview ? "Processing..." : "Preview HTML"}
+                                            {!isGeneratingPreview && <IconChevronRight size={15} />}
                                         </button>
+                                    )}
+
+                                    {/* Loading hint */}
+                                    {isGeneratingPreview && (
+                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700 animate-pulse">
+                                            <IconLoader2 size={13} className="animate-spin shrink-0" />
+                                            <span>Generating your PDF preview, this may take a few moments. Don&apos;t close this tab.</span>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -724,7 +844,6 @@ export default function HtmlToPdfPage() {
                                     </div>
 
                                     <div className="relative">
-                                        {/* Code editor header */}
                                         <div className="flex items-center gap-2 px-3 py-2 bg-[#1E1702] rounded-t-xl border border-border border-b-0">
                                             <div className="flex gap-1.5">
                                                 <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -753,16 +872,30 @@ export default function HtmlToPdfPage() {
 
                                     <button
                                         onClick={handleCodePreview}
-                                        disabled={!codeInput.trim()}
+                                        disabled={!codeInput.trim() || isGeneratingPreview}
                                         className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-white text-sm transition-all shadow-md ${!codeInput.trim()
                                             ? "bg-[#F97316]/30 cursor-not-allowed"
-                                            : "bg-[#F97316] hover:bg-[#c2410c] cursor-pointer"
+                                            : isGeneratingPreview
+                                                ? "bg-[#F97316] opacity-60 cursor-wait"
+                                                : "bg-[#F97316] hover:bg-[#c2410c] cursor-pointer"
                                             }`}
                                     >
-                                        <IconEye size={16} />
-                                        Preview HTML
-                                        <IconChevronRight size={15} />
+                                        {isGeneratingPreview ? (
+                                            <IconLoader2 size={16} className="animate-spin" />
+                                        ) : (
+                                            <IconEye size={16} />
+                                        )}
+                                        {isGeneratingPreview ? "Processing..." : "Preview HTML"}
+                                        {!isGeneratingPreview && <IconChevronRight size={15} />}
                                     </button>
+
+                                    {/* Loading hint */}
+                                    {isGeneratingPreview && (
+                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700 animate-pulse">
+                                            <IconLoader2 size={13} className="animate-spin shrink-0" />
+                                            <span>Generating your PDF preview, this may take a few moments. Don&apos;t close this tab.</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -776,7 +909,6 @@ export default function HtmlToPdfPage() {
                         </div>
                     </div>
                 )}
-
 
             </div>
         </ToolLayout>

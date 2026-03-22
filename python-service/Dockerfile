@@ -1,5 +1,5 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# Use official Playwright Python image (Stable Noble/Ubuntu 24.04 from March 2026)
+FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     zlib1g-dev \
     gcc \
+    g++ \
     python3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -25,6 +26,7 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code

@@ -455,6 +455,51 @@ export async function htmlToPdf(htmlContent: string, fileName = "output"): Promi
     pdf.save(`${fileName}.pdf`);
 }
 
+/**
+ * Generate a high-fidelity PDF from a URL or raw HTML via Playwright on the Python server.
+ */
+export async function urlToPdf(options: {
+    url?: string;
+    html?: string;
+    pageSize?: string;
+    orientation?: string;
+    margin?: string;
+    oneLongPage?: boolean;
+    hideCookie?: boolean;
+    blockAd?: boolean;
+    viewportWidth?: number;
+    fileName?: string;
+}): Promise<Blob> {
+    const formData = new FormData();
+    if (options.url) formData.append("url", options.url);
+    if (options.html) formData.append("html", options.html);
+    formData.append("page_size", options.pageSize || "a4");
+    formData.append("orientation", options.orientation || "portrait");
+    formData.append("margin", options.margin || "none");
+    formData.append("one_long_page", options.oneLongPage ? "true" : "false");
+    formData.append("hide_cookie", options.hideCookie ? "true" : "false");
+    formData.append("block_ad", options.blockAd ? "true" : "false");
+    if (options.viewportWidth) formData.append("viewport_width", String(options.viewportWidth));
+
+    const response = await fetch("/api/convert-url-to-pdf", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        let message = "URL-to-PDF conversion failed.";
+        try {
+            const body = await response.json();
+            message = body.error || message;
+        } catch {
+            message = (await response.text()) || message;
+        }
+        throw new Error(message);
+    }
+
+    return await response.blob();
+}
+
 // ─── DOWNLOAD HELPERS ────────────────────────────────────────────────────────
 
 export function downloadBlob(blob: Blob, fileName: string) {

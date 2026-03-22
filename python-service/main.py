@@ -23,9 +23,11 @@ from services.repair_service import repair_pdf
 from services.protect_service import protect_pdf
 from services.unlock_service import unlock_pdf
 from services.page_number_service import add_page_numbers
+from services.watermark_service import add_watermark
 from services.crop_service import crop_pdf
 from services.translate_service import translate_pdf
 from services.ocr_service import ocr_pdf
+from services.url_to_pdf_service import convert_url_to_pdf, get_rendered_html
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -40,12 +42,8 @@ app = FastAPI(
 # Allow requests from the Next.js dev server and production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow web dev + mobile app (Expo tunnel)
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -480,7 +478,67 @@ async def add_page_numbers_endpoint(
         logger.error(f"Error adding page numbers: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to add page numbers: {str(e)}")
 
-@app.post("/crop/pdf")
+
+@app.post("/edit/add-watermark")
+async def add_watermark_endpoint(
+    file: UploadFile = File(...),
+    watermark_type: str = Form("text"),
+    # Text
+    text: str = Form("CONFIDENTIAL"),
+    font_name: str = Form("Arial"),
+    font_size: float = Form(48.0),
+    bold: str = Form("false"),
+    italic: str = Form("false"),
+    underline: str = Form("false"),
+    text_color: str = Form("#000000"),
+    # Image
+    image_data: str = Form(""),
+    image_width_pct: float = Form(30.0),
+    # Shared
+    position: str = Form("MC"),
+    opacity: float = Form(0.5),
+    rotation: float = Form(0.0),
+    layer: str = Form("over"),
+    page_range: str = Form("all"),
+):
+    """
+    Stamp a text or image watermark onto a PDF.
+    Handled by services/watermark_service.py
+    """
+    try:
+        watermarked_bytes, output_filename = await add_watermark(
+            file=file,
+            watermark_type=watermark_type,
+            text=text,
+            font_name=font_name,
+            font_size=font_size,
+            bold=(bold.lower() == "true"),
+            italic=(italic.lower() == "true"),
+            underline=(underline.lower() == "true"),
+            text_color=text_color,
+            image_data=image_data,
+            image_width_pct=image_width_pct,
+            position=position,
+            opacity=opacity,
+            rotation=rotation,
+            layer=layer,
+            page_range=page_range,
+        )
+
+        logger.info(f"Added watermark to '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(watermarked_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error adding watermark: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to add watermark: {str(e)}")
+
 async def crop_pdf_endpoint(
     file: UploadFile = File(...),
     crops: str = Form(...),
@@ -572,3 +630,67 @@ async def ocr_pdf_endpoint(
     except Exception as e:
         logger.error(f"Error running OCR on PDF: {e}")
         raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
+
+
+@app.post("/convert/url-to-pdf")
+async def url_to_pdf_endpoint(
+    url: str = Form(None),
+    html: str = Form(None),
+    page_size: str = Form("a4"),
+    orientation: str = Form("portrait"),
+    margin: str = Form("none"),
+    one_long_page: str = Form("false"),
+    hide_cookie: str = Form("true"),
+    block_ad: str = Form("false"),
+    viewport_width: str = Form("1280"),
+):
+    """
+    Generate a PDF from a URL or raw HTML string using Playwright.
+    """
+    try:
+        pdf_bytes, output_filename = await convert_url_to_pdf(
+            url=url or "",
+            html=html or "",
+            page_size=page_size,
+            orientation=orientation,
+            margin=margin,
+            one_long_page=(one_long_page.lower() == "true"),
+            hide_cookie=(hide_cookie.lower() == "true"),
+            block_ad=(block_ad.lower() == "true"),
+            viewport_width=int(viewport_width) if viewport_width and viewport_width.isdigit() else 1280
+        )
+
+        logger.info(f"Generated PDF from {'URL: ' + url if url else 'raw HTML'} → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except ValueError as ve:
+        logger.error(f"Validation error in URL-to-PDF: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Unexpected error in URL-to-PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
+
+@app.post("/convert/url-to-html")
+async def url_to_html_endpoint(
+    url: str = Form(...),
+):
+    """
+    Fetch the fully rendered HTML of a URL using Playwright.
+    """
+    try:
+        html, title = await get_rendered_html(url)
+        return JSONResponse(content={"html": html, "title": title, "url": url})
+    except ValueError as ve:
+        logger.error(f"Validation error in URL-to-HTML: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Unexpected error in URL-to-HTML: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch rendered HTML: {str(e)}")
