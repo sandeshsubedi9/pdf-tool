@@ -17,6 +17,8 @@ import {
 import { compressPdf, CompressQuality, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ const PRESETS: Preset[] = [
 
 export default function CompressPdfConvertPage() {
     const router = useRouter();
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
     const hasInitialized = useRef(false);
 
     const [file, setFile] = useState<File | null>(null);
@@ -135,7 +138,7 @@ export default function CompressPdfConvertPage() {
         };
     }, [router]);
 
-    const handleCompress = async () => {
+    const handleCompress = () => execute(async () => {
         if (!file) return;
         setIsCompressing(true);
         const toastId = toast.loading("Compressing your PDF…");
@@ -163,7 +166,7 @@ export default function CompressPdfConvertPage() {
         } finally {
             setIsCompressing(false);
         }
-    };
+    });
 
     const handleDownload = () => {
         if (!result) return;
@@ -269,6 +272,12 @@ export default function CompressPdfConvertPage() {
     // ── Main editor layout ──
     return (
         <div className="h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
+            {/* Rate limit modal — shown automatically when enforceLimit() returns allowed=false */}
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <Navbar />
 
             {/* Dot grid */}

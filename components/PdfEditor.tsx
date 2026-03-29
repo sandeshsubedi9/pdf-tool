@@ -47,10 +47,10 @@ interface TextAnnotation {
     page: number; // 1-indexed
     x: number;   // % of page width
     y: number;   // % of page height
-    w: number;   // px
-    h: number;   // px
+    w: number;   // % of page width
+    h: number;   // % of page height
     text: string;
-    fontSize: number;
+    fontSize: number;   // rendered px at scale=1.5
     fontFamily: string;
     color: string;
     bold: boolean;
@@ -59,6 +59,15 @@ interface TextAnnotation {
     align: "left" | "center" | "right";
     editing: boolean;
     isNew?: boolean;
+    // Existing content tracking
+    isExisting?: boolean;
+    origX0?: number; origY0?: number; origX1?: number; origY1?: number;
+    originalText?: string;
+    // pdf.js exact transform matrix [a,b,c,d,tx,ty] (PDF coordinate space)
+    pdfTransform?: number[];
+    // pdf page dimensions at extraction scale (used for coordinate conversion)
+    pdfPageWidth?: number;
+    pdfPageHeight?: number;
 }
 
 interface ImageAnnotation {
@@ -70,6 +79,9 @@ interface ImageAnnotation {
     w: number; // px
     h: number; // px
     dataUrl: string;
+    // Existing content tracking
+    isExisting?: boolean;
+    origX0?: number; origY0?: number; origX1?: number; origY1?: number;
 }
 
 interface DrawAnnotation {
@@ -281,6 +293,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [extractedOriginals, setExtractedOriginals] = useState<Map<string, any>>(new Map());
+    const [originalFile, setOriginalFile] = useState<File | null>(null);
 
     const [zoom, setZoom] = useState(1.0);
     const [showZoomMenu, setShowZoomMenu] = useState(false);
@@ -318,16 +333,19 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     useEffect(() => {
         if (!file) return;
-        setIsLoading(true);
-        setPages([]);
-        setAnnotations([]);
-        setSelectedId(null);
-        setCurrentPage(1);
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const ab = e.target!.result as ArrayBuffer;
+        async function loadPdfAndExtract() {
+            setIsLoading(true);
+            setIsExtracting(true);
+            setPages([]);
+            setAnnotations([]);
+            setSelectedId(null);
+            setCurrentPage(1);
+            setOriginalFile(file);
+
+            const ab = await file.arrayBuffer();
             setPdfArrayBuffer(ab.slice(0));
+
             try {
                 const pdfjsLib = await import("pdfjs-dist");
                 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -338,24 +356,196 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 setNumPages(doc.numPages);
 
                 const results: PageData[] = [];
+                const newAnnotations: Annotation[] = [];
+                const origMap = new Map<string, any>();
+
+                // ── Font name → friendly name fallback map ──────────────────
+                function mapFont(rawFontName: string): { family: string; bold: boolean; italic: boolean } {
+                    // Strip common PDF font name prefixes like "BCDEE+"
+                    const clean = rawFontName.replace(/^[A-Z]{6}\+/, "");
+                    const bold = /bold|heavy|black/i.test(clean);
+                    const italic = /italic|oblique/i.test(clean);
+                    let family = "Helvetica";
+                    if (/times|minion|palatino|garamond|bookman|schoolbook|roman/i.test(clean)) family = "Times New Roman";
+                    else if (/courier|monospace|typewriter/i.test(clean)) family = "Courier New";
+                    else if (/arial/i.test(clean)) family = "Arial";
+                    else if (/calibri/i.test(clean)) family = "Calibri";
+                    else if (/georgia/i.test(clean)) family = "Georgia";
+                    else if (/verdana/i.test(clean)) family = "Verdana";
+                    else if (/trebuchet/i.test(clean)) family = "Trebuchet MS";
+                    else if (/impact/i.test(clean)) family = "Impact";
+                    return { family, bold, italic };
+                }
+
                 for (let i = 1; i <= doc.numPages; i++) {
                     const page = await doc.getPage(i);
-                    const vp = page.getViewport({ scale: 1.5 });
+                    const SCALE = 1.5;
+                    const vp = page.getViewport({ scale: SCALE });
                     const canvas = document.createElement("canvas");
                     canvas.width = vp.width;
                     canvas.height = vp.height;
                     const ctx = canvas.getContext("2d")!;
+
+                    // ── PHASE 1: Intercept fillText/strokeText so text is
+                    //    never drawn on the canvas. Everything else (images,
+                    //    watermarks, backgrounds, lines) renders normally.
+                    const origFillText = ctx.fillText.bind(ctx);
+                    const origStrokeText = ctx.strokeText.bind(ctx);
+                    (ctx as any).fillText = () => {};
+                    (ctx as any).strokeText = () => {};
+
                     await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
-                    results.push({ dataUrl: canvas.toDataURL("image/jpeg", 0.92), width: vp.width, height: vp.height });
+
+                    // Restore after render (good practice)
+                    (ctx as any).fillText = origFillText;
+                    (ctx as any).strokeText = origStrokeText;
+
+                    results.push({ dataUrl: canvas.toDataURL("image/png"), width: vp.width, height: vp.height });
+
+                    // ── PHASE 2: Get exact text positions from pdf.js
+                    //    transform matrix. No backend guessing needed.
+                    const textContent = await page.getTextContent();
+
+                    // Group spans into lines by proximity of Y coordinate
+                    // so that we create one editable block per visual line
+                    const spans = textContent.items.filter((it: any) => it.str && it.str.trim());
+
+                    // Build lines by clustering spans with same baseline (transform[5])
+                    const lineMap = new Map<string, any[]>();
+                    for (const span of spans as any[]) {
+                        const [a, b, c, d, tx, ty] = span.transform;
+                        // round ty to nearest 1pt to group same-line spans
+                        const lineKey = `${Math.round(ty)}`;
+                        if (!lineMap.has(lineKey)) lineMap.set(lineKey, []);
+                        lineMap.get(lineKey)!.push(span);
+                    }
+
+                    let lineIdx = 0;
+                    for (const [, lineSpans] of lineMap) {
+                        // Sort spans left→right by tx
+                        lineSpans.sort((a: any, b: any) => a.transform[4] - b.transform[4]);
+
+                        // Use the first span's transform for position
+                        const first = lineSpans[0];
+                        const [a, b, c, d, tx, ty] = first.transform;
+
+                        // Font size = magnitude of the vertical scale component
+                        const fontSize = Math.sqrt(c * c + d * d);
+                        const fontInfo = mapFont(first.fontName || "");
+
+                        // Convert PDF coordinates (bottom-left origin) to
+                        // canvas coordinates (top-left origin) at SCALE
+                        const canvasX = tx * SCALE;
+                        // PDF Y is from bottom; canvas Y is from top
+                        const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE;
+
+                        // Measure total width of the line
+                        let lineWidth = 0;
+                        let lineText = "";
+                        for (const span of lineSpans) {
+                            lineText += span.str;
+                            lineWidth += span.width;
+                        }
+
+                        const lineWidthPx = lineWidth * SCALE;
+                        const lineHeightPx = fontSize * SCALE * 1.35; // natural line height
+
+                        // Try to extract color from span (pdf.js provides it as rgb array)
+                        let color = "#000000";
+                        if (first.color && Array.isArray(first.color)) {
+                            const [r, g, b_] = first.color;
+                            color = `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b_ * 255).toString(16).padStart(2, "0")}`;
+                        }
+
+                        const ann: TextAnnotation = {
+                            id: `pjs_${i}_${lineIdx}`,
+                            type: "text",
+                            page: i,
+                            // Store position as % of canvas size
+                            x: (canvasX / vp.width) * 100,
+                            y: (canvasY / vp.height) * 100,
+                            w: (lineWidthPx / vp.width) * 100,
+                            h: (lineHeightPx / vp.height) * 100,
+                            text: lineText,
+                            fontSize: fontSize * SCALE,  // px at current scale
+                            fontFamily: fontInfo.family,
+                            color,
+                            bold: fontInfo.bold,
+                            italic: fontInfo.italic,
+                            underline: false,
+                            align: "left",
+                            editing: false,
+                            isExisting: true,
+                            // Store original PDF transform for backend save
+                            pdfTransform: first.transform,
+                            pdfPageWidth: vp.width / SCALE,
+                            pdfPageHeight: vp.height / SCALE,
+                            originalText: lineText,
+                            origX0: tx,
+                            origY0: ty,
+                            origX1: tx + lineWidth,
+                            origY1: ty + fontSize,
+                        };
+                        newAnnotations.push(ann);
+                        origMap.set(ann.id, { ...ann });
+                        lineIdx++;
+                    }
+
+                    // ── PHASE 3: Images still come from backend (pdf.js
+                    //    doesn't easily give image coordinates)
                 }
+
+                // ── Fetch images from backend (fire-and-forget after pages show) ──
                 setPages(results);
+                setAnnotations(prev => [...prev, ...newAnnotations]);
+                setExtractedOriginals(origMap);
+                setIsLoading(false);
+                setIsExtracting(true); // reuse banner for image extraction
+
+                try {
+                    const formData = new FormData();
+                    formData.append("file", file, file.name);
+                    const res = await fetch("/api/edit-pdf/extract", { method: "POST", body: formData });
+                    if (res.ok) {
+                        const imgData = await res.json();
+                        const imgAnnotations: ImageAnnotation[] = [];
+                        for (const pageData of imgData.pages || []) {
+                            for (const img of pageData.images || []) {
+                                const ann: ImageAnnotation = {
+                                    id: img.id,
+                                    type: "image",
+                                    page: pageData.page_number,
+                                    x: img.x_pct,
+                                    y: img.y_pct,
+                                    w: img.w_pct,
+                                    h: img.h_pct,
+                                    dataUrl: img.dataUrl,
+                                    isExisting: true,
+                                    origX0: img.orig_x0,
+                                    origY0: img.orig_y0,
+                                    origX1: img.orig_x1,
+                                    origY1: img.orig_y1,
+                                };
+                                imgAnnotations.push(ann);
+                                origMap.set(img.id, { ...img });
+                            }
+                        }
+                        setAnnotations(prev => [...prev, ...imgAnnotations]);
+                        setExtractedOriginals(new Map(origMap));
+                    }
+                } catch (imgErr) {
+                    console.warn("Image extraction unavailable:", imgErr);
+                }
+
             } catch (err) {
                 console.error("PDF load error:", err);
-            } finally {
                 setIsLoading(false);
+            } finally {
+                setIsExtracting(false);
             }
-        };
-        reader.readAsArrayBuffer(file);
+        }
+
+        loadPdfAndExtract();
     }, [file]);
 
     // ─── Sync page jump input ────────────────────────────────────────────────
@@ -467,63 +657,185 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     // ─── Save PDF ─────────────────────────────────────────────────────────────
     async function savePdf() {
-        if (!pdfArrayBuffer || !file) return;
+        if (!file) return;
         setIsSaving(true);
         try {
-            const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-            const pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
-            const pdfPages = pdfDoc.getPages();
+            // Classify annotations into modified, deleted, and added
+            const modified: any[] = [];
+            const deleted: any[] = [];
+            const added: any[] = [];
 
-            const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-            const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-            const helveticaBoldOblique = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
+            // Find existing items that were deleted (they were in extractedOriginals but no longer in annotations)
+            const currentExistingIds = new Set(
+                annotations.filter(a => (a as any).isExisting).map(a => a.id)
+            );
+            extractedOriginals.forEach((orig, id) => {
+                if (!currentExistingIds.has(id)) {
+                    deleted.push({
+                        page: orig.page_number || annotations.find(a => a.id === id)?.page || 1,
+                        orig_x0: orig.orig_x0,
+                        orig_y0: orig.orig_y0,
+                        orig_x1: orig.orig_x1,
+                        orig_y1: orig.orig_y1,
+                    });
+                }
+            });
 
             for (const ann of annotations) {
-                const pdfPage = pdfPages[ann.page - 1];
-                if (!pdfPage) continue;
-                const { width: pw, height: ph } = pdfPage.getSize();
+                if (ann.type === "draw") continue; // draws handled separately
 
-                if (ann.type === "text") {
+                const isExisting = (ann as any).isExisting;
+
+                if (isExisting && (ann.type === "text" || ann.type === "image")) {
+                    const orig = extractedOriginals.get(ann.id);
+                    if (!orig) continue;
+
+                    // Check if anything changed
                     const ta = ann as TextAnnotation;
-                    const xPt = (ta.x / 100) * pw;
-                    const yPt = ph - ((ta.y / 100) * ph) - ta.fontSize;
-                    let font = helvetica;
-                    if (ta.bold && ta.italic) font = helveticaBoldOblique;
-                    else if (ta.bold) font = helveticaBold;
-                    else if (ta.italic) font = helveticaOblique;
-                    const hexToRgb = (hex: string) => {
-                        const r = parseInt(hex.slice(1, 3), 16) / 255;
-                        const g = parseInt(hex.slice(3, 5), 16) / 255;
-                        const b = parseInt(hex.slice(5, 7), 16) / 255;
-                        return rgb(r, g, b);
-                    };
-                    pdfPage.drawText(ta.text, { x: xPt, y: yPt, size: ta.fontSize, font, color: hexToRgb(ta.color) });
-                } else if (ann.type === "image") {
                     const ia = ann as ImageAnnotation;
-                    // ia.w and ia.h are now percentages of page dimensions
-                    const xPt = (ia.x / 100) * pw;
-                    const wPt = (ia.w / 100) * pw;
-                    const hPt = (ia.h / 100) * ph;
-                    const yPt = ph - ((ia.y / 100) * ph) - hPt;
-                    const base64 = ia.dataUrl.split(",")[1];
-                    const imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-                    const embeddedImg = ia.dataUrl.startsWith("data:image/png")
-                        ? await pdfDoc.embedPng(imgBytes)
-                        : await pdfDoc.embedJpg(imgBytes);
-                    pdfPage.drawImage(embeddedImg, { x: xPt, y: yPt, width: wPt, height: hPt });
+                    const textChanged = ann.type === "text" && ta.text !== ta.originalText;
+                    const posChanged = ann.type === "text"
+                        ? (Math.abs(ta.x - orig.x_pct) > 0.1 || Math.abs(ta.y - orig.y_pct) > 0.1)
+                        : (Math.abs(ia.x - orig.x_pct) > 0.1 || Math.abs(ia.y - orig.y_pct) > 0.1);
+                    const sizeChanged = ann.type === "text"
+                        ? (Math.abs(ta.w - orig.w_pct) > 0.1 || Math.abs(ta.h - orig.h_pct) > 0.1)
+                        : (Math.abs(ia.w - orig.w_pct) > 0.1 || Math.abs(ia.h - orig.h_pct) > 0.1);
+
+                    if (textChanged || posChanged || sizeChanged) {
+                        const editItem: any = {
+                            type: ann.type,
+                            page: ann.page,
+                            orig_x0: orig.orig_x0,
+                            orig_y0: orig.orig_y0,
+                            orig_x1: orig.orig_x1,
+                            orig_y1: orig.orig_y1,
+                            x_pct: ann.type === "text" ? ta.x : ia.x,
+                            y_pct: ann.type === "text" ? ta.y : ia.y,
+                            w_pct: ann.type === "text" ? ta.w : ia.w,
+                            h_pct: ann.type === "text" ? ta.h : ia.h,
+                        };
+                        if (ann.type === "text") {
+                            editItem.text = ta.text;
+                            editItem.fontSize = ta.fontSize;
+                            editItem.fontFamily = ta.fontFamily;
+                            editItem.color = ta.color;
+                            editItem.bold = ta.bold;
+                            editItem.italic = ta.italic;
+                        } else {
+                            editItem.dataUrl = ia.dataUrl;
+                        }
+                        modified.push(editItem);
+                    }
+                    // If nothing changed, skip — leave original as-is
+                } else if (!isExisting && (ann.type === "text" || ann.type === "image")) {
+                    // New annotation
+                    const ta = ann as TextAnnotation;
+                    const ia = ann as ImageAnnotation;
+                    const addItem: any = {
+                        type: ann.type,
+                        page: ann.page,
+                        x_pct: ann.type === "text" ? ta.x : ia.x,
+                        y_pct: ann.type === "text" ? ta.y : ia.y,
+                        w_pct: ann.type === "text" ? ta.w : ia.w,
+                        h_pct: ann.type === "text" ? ta.h : ia.h,
+                    };
+                    if (ann.type === "text") {
+                        addItem.text = ta.text;
+                        addItem.fontSize = ta.fontSize;
+                        addItem.fontFamily = ta.fontFamily;
+                        addItem.color = ta.color;
+                        addItem.bold = ta.bold;
+                        addItem.italic = ta.italic;
+                    } else {
+                        addItem.dataUrl = ia.dataUrl;
+                    }
+                    added.push(addItem);
                 }
             }
 
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes as any], { type: "application/pdf" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `edited_${file.name}`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+            const hasExistingEdits = modified.length > 0 || deleted.length > 0;
+            const fileToUse = originalFile || file;
+
+            if (hasExistingEdits) {
+                // Use Python backend for whiteout + redraw
+                const editsPayload = JSON.stringify({ modified, deleted, added });
+                const formData = new FormData();
+                formData.append("file", fileToUse, fileToUse.name);
+                formData.append("edits", editsPayload);
+
+                const res = await fetch("/api/edit-pdf/apply", { method: "POST", body: formData });
+                if (!res.ok) {
+                    const errBody = await res.json().catch(() => ({}));
+                    throw new Error(errBody.error || "Failed to apply edits");
+                }
+
+                const blob = await res.blob();
+                const outName = res.headers.get("X-Original-Filename") || `edited_${fileToUse.name}`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = outName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+            } else if (added.length > 0 && pdfArrayBuffer) {
+                // Only new annotations — use pdf-lib (original approach, faster)
+                const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+                const pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
+                const pdfPages = pdfDoc.getPages();
+                const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+                const helveticaBoldOblique = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
+
+                for (const ann of annotations) {
+                    if ((ann as any).isExisting) continue;
+                    const pdfPage = pdfPages[ann.page - 1];
+                    if (!pdfPage) continue;
+                    const { width: pw, height: ph } = pdfPage.getSize();
+
+                    if (ann.type === "text") {
+                        const ta = ann as TextAnnotation;
+                        const xPt = (ta.x / 100) * pw;
+                        const yPt = ph - ((ta.y / 100) * ph) - ta.fontSize;
+                        let font = helvetica;
+                        if (ta.bold && ta.italic) font = helveticaBoldOblique;
+                        else if (ta.bold) font = helveticaBold;
+                        else if (ta.italic) font = helveticaOblique;
+                        const hexToRgb = (hex: string) => {
+                            const r = parseInt(hex.slice(1, 3), 16) / 255;
+                            const g = parseInt(hex.slice(3, 5), 16) / 255;
+                            const b = parseInt(hex.slice(5, 7), 16) / 255;
+                            return rgb(r, g, b);
+                        };
+                        pdfPage.drawText(ta.text, { x: xPt, y: yPt, size: ta.fontSize, font, color: hexToRgb(ta.color) });
+                    } else if (ann.type === "image") {
+                        const ia = ann as ImageAnnotation;
+                        const xPt = (ia.x / 100) * pw;
+                        const wPt = (ia.w / 100) * pw;
+                        const hPt = (ia.h / 100) * ph;
+                        const yPt = ph - ((ia.y / 100) * ph) - hPt;
+                        const base64 = ia.dataUrl.split(",")[1];
+                        const imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                        const embeddedImg = ia.dataUrl.startsWith("data:image/png")
+                            ? await pdfDoc.embedPng(imgBytes)
+                            : await pdfDoc.embedJpg(imgBytes);
+                        pdfPage.drawImage(embeddedImg, { x: xPt, y: yPt, width: wPt, height: hPt });
+                    }
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes as any], { type: "application/pdf" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `edited_${file.name}`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+            } else {
+                alert("No changes to save.");
+            }
         } catch (err) {
             console.error("Save Error:", err);
             alert("Failed to save PDF.");
@@ -580,6 +892,14 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 setShowFontList(false);
             }}
         >
+            {/* Extracting content banner */}
+            {isExtracting && (
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 z-50 shrink-0">
+                    <IconLoader2 size={14} className="animate-spin text-emerald-600" />
+                    <span className="text-xs font-semibold text-emerald-700">Extracting existing content for editing…</span>
+                </div>
+            )}
+
             {/* ── SECONDARY NAVBAR ── */}
             <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
 
@@ -872,8 +1192,22 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     target.style.height = scrollH + "px";
                                                                                 }
                                                                             }}
-                                                                            className="w-full h-full outline-none resize-none p-0 bg-transparent leading-snug overflow-hidden"
-                                                                            style={{ fontSize: `${ta.fontSize * zoom}px`, fontFamily: ta.fontFamily, color: ta.color, fontWeight: ta.bold ? "bold" : "normal", fontStyle: ta.italic ? "italic" : "normal", textDecoration: ta.underline ? "underline" : "none", textAlign: ta.align, lineHeight: 1.3 }}
+                                                                            className="w-full h-full outline-none resize-none p-0 bg-transparent overflow-hidden"
+                                                                            style={{
+                                                                                // For existing text: fontSize was saved at canvas pixels (SCALE=1.5).
+                                                                                // Scale it by (current display width / original canvas width).
+                                                                                fontSize: ta.isExisting
+                                                                                    ? `${ta.fontSize * (pagePxW / pg.width)}px`
+                                                                                    : `${ta.fontSize * zoom}px`,
+                                                                                fontFamily: ta.fontFamily,
+                                                                                color: ta.color,
+                                                                                fontWeight: ta.bold ? "bold" : "normal",
+                                                                                fontStyle: ta.italic ? "italic" : "normal",
+                                                                                textDecoration: ta.underline ? "underline" : "none",
+                                                                                textAlign: ta.align,
+                                                                                lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                whiteSpace: "pre-wrap",
+                                                                            }}
                                                                             value={ta.text}
                                                                             onChange={e => {
                                                                                 updateAnnotation(ta.id, { text: e.target.value } as any);
@@ -884,8 +1218,24 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         />
                                                                     ) : (
                                                                         <div
-                                                                            className="w-full h-full p-0 whitespace-pre-wrap wrap-break-word overflow-hidden"
-                                                                            style={{ fontSize: `${ta.fontSize * zoom}px`, fontFamily: ta.fontFamily, color: ta.color, fontWeight: ta.bold ? "bold" : "normal", fontStyle: ta.italic ? "italic" : "normal", textDecoration: ta.underline ? "underline" : "none", textAlign: ta.align, cursor: tool === "select" ? "move" : "default", lineHeight: 1.3 }}
+                                                                            className="w-full h-full p-0 overflow-hidden"
+                                                                            style={{
+                                                                                // Same scaling logic as above
+                                                                                fontSize: ta.isExisting
+                                                                                    ? `${ta.fontSize * (pagePxW / pg.width)}px`
+                                                                                    : `${ta.fontSize * zoom}px`,
+                                                                                fontFamily: ta.fontFamily,
+                                                                                color: ta.color,
+                                                                                fontWeight: ta.bold ? "bold" : "normal",
+                                                                                fontStyle: ta.italic ? "italic" : "normal",
+                                                                                textDecoration: ta.underline ? "underline" : "none",
+                                                                                textAlign: ta.align,
+                                                                                cursor: tool === "select" ? "move" : "default",
+                                                                                // lineHeight:1 ensures no CSS leading creeps in for extracted lines
+                                                                                lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                whiteSpace: ta.isExisting ? "nowrap" : "pre-wrap",
+                                                                                overflow: "visible",
+                                                                            }}
                                                                         >
                                                                             {ta.text}
                                                                         </div>

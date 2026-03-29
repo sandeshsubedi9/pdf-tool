@@ -11,6 +11,7 @@ from services.word_service import convert_pdf_to_word
 from services.excel_service import convert_pdf_to_excel
 from services.pptx_service import convert_pdf_to_pptx
 from services.image_service import convert_pdf_to_images
+from services.images_to_pdf_service import convert_images_to_pdf
 from services.extract_images_service import extract_images_from_pdf
 from services.epub_service import convert_pdf_to_epub
 from services.pdfa_service import convert_pdf_to_pdfa
@@ -28,6 +29,7 @@ from services.crop_service import crop_pdf
 from services.translate_service import translate_pdf
 from services.ocr_service import ocr_pdf
 from services.url_to_pdf_service import convert_url_to_pdf, get_rendered_html
+from services.edit_pdf_service import extract_pdf_content, apply_pdf_edits
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -694,3 +696,87 @@ async def url_to_html_endpoint(
     except Exception as e:
         logger.error(f"Unexpected error in URL-to-HTML: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch rendered HTML: {str(e)}")
+
+
+from typing import List
+
+@app.post("/convert/images-to-pdf")
+async def images_to_pdf_endpoint(
+    files: List[UploadFile] = File(...),
+    page_size: str = Form("fit"),
+    orientation: str = Form("portrait"),
+    margin: str = Form("none"),
+    merge_all: str = Form("true"),
+):
+    """
+    Convert a list of images to a single PDF or multiple PDFs.
+    """
+    try:
+        file_tuples = []
+        for f in files:
+            content = await f.read()
+            file_tuples.append((f.filename, content))
+        
+        pdf_bytes, output_filename, mime_type = await convert_images_to_pdf(
+            files=file_tuples,
+            page_size=page_size,
+            orientation=orientation,
+            margin=margin,
+            merge_all=(merge_all.lower() == "true")
+        )
+
+        logger.info(f"Generated PDF from {len(files)} images → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type=mime_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in IMAGES-to-PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
+
+@app.post("/edit/extract-content")
+async def extract_content_endpoint(file: UploadFile = File(...)):
+    """
+    Extract text blocks and images from a PDF with their positions.
+    Returns JSON that the frontend can use to create editable overlays.
+    """
+    try:
+        result = await extract_pdf_content(file)
+        logger.info(f"Extracted content from '{file.filename}': {result['total_pages']} pages")
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"Error extracting PDF content: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to extract content: {str(e)}")
+
+
+@app.post("/edit/apply-edits")
+async def apply_edits_endpoint(
+    file: UploadFile = File(...),
+    edits: str = Form(...),
+):
+    """
+    Apply edits to a PDF: whiteout deleted/modified areas, draw new/modified content.
+    edits: JSON string with { modified: [...], deleted: [...], added: [...] }
+    """
+    try:
+        edited_bytes, output_filename = await apply_pdf_edits(file, edits)
+
+        logger.info(f"Applied edits to '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(edited_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error applying PDF edits: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to apply edits: {str(e)}")

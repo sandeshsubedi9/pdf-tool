@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "@/components/AuthProvider";
+import { FingerprintProvider } from "@/components/FingerprintProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -15,8 +18,6 @@ export const metadata: Metadata = {
   keywords: "PDF editor, merge PDF, split PDF, compress PDF, convert PDF, PDF tools",
 };
 
-import { Toaster } from "react-hot-toast";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,35 +26,46 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: "#ffffff",
-              color: "#1a1a1a",
-              borderRadius: "12px",
-              padding: "12px 20px",
-              fontSize: "14px",
-              fontWeight: "500",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
-              border: "1px solid #e5e7eb",
-            },
-            success: {
-              iconTheme: {
-                primary: "#047C58",
-                secondary: "#ffffff",
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: "#dc2626",
-                secondary: "#ffffff",
-              },
-            },
-          }}
-        />
+        {/*
+          FingerprintProvider runs silently on every page load:
+          1. Calls FingerprintJS to get a stable device ID
+          2. POSTs it to /api/init-session → sets a secure HttpOnly cookie
+          3. Exposes enforceLimit() and status via useRateLimit() hook
+        */}
+        <AuthProvider>
+          <FingerprintProvider>
+            {children}
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                style: {
+                  background: "#ffffff",
+                  color: "#1a1a1a",
+                  borderRadius: "12px",
+                  padding: "12px 20px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
+                  border: "1px solid #e5e7eb",
+                },
+                success: {
+                  iconTheme: {
+                    primary: "#047C58",
+                    secondary: "#ffffff",
+                  },
+                },
+                error: {
+                  iconTheme: {
+                    primary: "#dc2626",
+                    secondary: "#ffffff",
+                  },
+                },
+              }}
+            />
+          </FingerprintProvider>
+        </AuthProvider>
       </body>
     </html>
   );
 }
+
