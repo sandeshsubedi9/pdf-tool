@@ -98,14 +98,14 @@ const CATEGORIES = ["All", "Organise", "Optimise", "Convert", "Edit", "Security"
 
 // Category-based pastel colour palette
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-    "Organise":     { bg: "#f0edff", color: "#7c3aed" }, // violet
-    "Optimise":     { bg: "#fff8ed", color: "#d97706" }, // amber
-    "Convert":      { bg: "#e0f2fe", color: "#0369a1" }, // sky blue (match convert from)
+    "Organise": { bg: "#f0edff", color: "#7c3aed" }, // violet
+    "Optimise": { bg: "#fff8ed", color: "#d97706" }, // amber
+    "Convert": { bg: "#e0f2fe", color: "#0369a1" }, // sky blue (match convert from)
     "Convert-From": { bg: "#e0f2fe", color: "#0369a1" }, // sky blue  (PDF → X)
-    "Convert-To":   { bg: "#eef2ff", color: "#4338ca" }, // indigo    (X → PDF)
-    "Edit":         { bg: "#ecfdf5", color: "#059669" }, // emerald
-    "Security":     { bg: "#fdf2f8", color: "#be185d" }, // rose
-    "Extras":       { bg: "#f8fafc", color: "#64748b" }, // slate
+    "Convert-To": { bg: "#eef2ff", color: "#4338ca" }, // indigo    (X → PDF)
+    "Edit": { bg: "#ecfdf5", color: "#059669" }, // emerald
+    "Security": { bg: "#fdf2f8", color: "#be185d" }, // rose
+    "Extras": { bg: "#f8fafc", color: "#64748b" }, // slate
 };
 
 function getVariant(service: Service) {
@@ -141,7 +141,7 @@ export default function ServicesGrid() {
                         Everything you need to work with PDFs
                     </h2>
                     <p className="mt-3 text-brand-sage text-lg max-w-xl mx-auto">
-                        All tools are 100% free and require no sign-up. Pick a tool and get
+                        All tools are free and require no sign-up. Pick a tool and get
                         started in seconds.
                     </p>
                 </motion.div>
@@ -157,13 +157,12 @@ export default function ServicesGrid() {
                                 key={cat}
                                 id={`filter-${cat.toLowerCase()}`}
                                 onClick={() => setActive(cat)}
-                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border cursor-pointer active:scale-[0.98] ${
-                                    isActive
+                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border cursor-pointer active:scale-[0.98] ${isActive
                                         ? "shadow-sm border-transparent"
                                         : "bg-white text-brand-dark border-border hover:border-brand-sage shadow-sm"
-                                }`}
-                                style={isActive ? { 
-                                    backgroundColor: isAll ? "#047C58" : catColor.bg, 
+                                    }`}
+                                style={isActive ? {
+                                    backgroundColor: isAll ? "#047C58" : catColor.bg,
                                     color: isAll ? "#fff" : catColor.color,
                                     boxShadow: isAll ? "0 4px 14px 0 rgba(4,124,88,0.2)" : "none",
                                     borderColor: isAll ? "#047C58" : catColor.color

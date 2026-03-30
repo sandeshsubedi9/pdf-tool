@@ -58,29 +58,33 @@ interface Verification {
 export default function AdminVerificationsPage() {
   const router = useRouter();
 
-  const [verifications, setVerifications] = useState<Verification[]>([]);
+  const [allVerifications, setAllVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState<Verification | null>(null);
   const [adminNote, setAdminNote] = useState("");
   const [processing, setProcessing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  const ITEMS_PER_PAGE = 7;
+
   // Logout function
   const handleLogout = async () => {
-    // Clear cookie (a robust way is via API, or simply by pushing to an API that drops it, but here we can just clear it if we made it accessible, though HttpOnly prevents JS clear. For now redirecting to login is fine, or an /api/admin/logout route)
-    // Create an immediate frontend redirect:
-    document.cookie = "admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch (e) {
+      console.error(e);
+    }
     router.push("/admin/login");
+    router.refresh();
   };
 
   const fetchVerifications = useCallback(async () => {
     setLoading(true);
     try {
-      const url = filter === "all"
-        ? "/api/admin/verifications"
-        : `/api/admin/verifications?status=${filter}`;
-      const res = await fetch(url);
+      // Always fetch all items so we can correctly count tabs
+      const res = await fetch("/api/admin/verifications");
       
       if (res.status === 401 || res.status === 403) {
         // Not logged in or invalid token
@@ -90,13 +94,13 @@ export default function AdminVerificationsPage() {
       
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setVerifications(data.verifications);
+      setAllVerifications(data.verifications);
     } catch {
       toast.error("Failed to load verification requests.");
     } finally {
       setLoading(false);
     }
-  }, [filter, router]);
+  }, [router]);
 
   useEffect(() => {
     fetchVerifications();
@@ -129,7 +133,7 @@ export default function AdminVerificationsPage() {
     }
   };
 
-  if (loading && verifications.length === 0) {
+  if (loading && allVerifications.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <IconLoader2 size={36} className="animate-spin text-brand-teal" />
@@ -137,12 +141,16 @@ export default function AdminVerificationsPage() {
     );
   }
 
-  const counts = {
-    all: verifications.length,
-    pending: verifications.filter(v => v.status === "pending").length,
-    approved: verifications.filter(v => v.status === "approved").length,
-    rejected: verifications.filter(v => v.status === "rejected").length,
-  };
+  // Derive logic for tabs and pagination
+  const filteredVerifications = filter === "all" 
+    ? allVerifications 
+    : allVerifications.filter(v => v.status === filter);
+    
+  const totalPages = Math.ceil(filteredVerifications.length / ITEMS_PER_PAGE) || 1;
+  const displayVerifications = filteredVerifications.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -178,10 +186,12 @@ export default function AdminVerificationsPage() {
 
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {(["pending", "all", "approved", "rejected"] as const).map((f) => (
+          {(["pending", "all", "approved", "rejected"] as const).map((f) => {
+            const count = f === "all" ? allVerifications.length : allVerifications.filter(v => v.status === f).length;
+            return (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setCurrentPage(1); }}
               className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all capitalize ${
                 filter === f
                   ? "bg-brand-dark text-white border-brand-dark"
@@ -192,10 +202,10 @@ export default function AdminVerificationsPage() {
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
                 filter === f ? "bg-white/20 text-white" : "bg-slate-100 text-brand-sage"
               }`}>
-                {f === "all" ? verifications.length : verifications.filter(v => v.status === f).length}
+                {count}
               </span>
             </button>
-          ))}
+          )})}
         </div>
 
         {/* Table */}
@@ -204,7 +214,7 @@ export default function AdminVerificationsPage() {
             <div className="flex items-center justify-center py-20">
               <IconLoader2 size={32} className="animate-spin text-brand-teal" />
             </div>
-          ) : verifications.length === 0 ? (
+          ) : displayVerifications.length === 0 ? (
             <div className="text-center py-20">
               <IconFileDescription size={48} className="mx-auto text-slate-300 mb-4" />
               <p className="text-brand-sage font-medium">No verification requests found.</p>
@@ -223,7 +233,7 @@ export default function AdminVerificationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {verifications.map((v) => {
+                  {displayVerifications.map((v) => {
                     const sc = STATUS_CONFIG[v.status];
                     return (
                       <tr key={v._id} className="hover:bg-slate-50/60 transition-colors group">
@@ -265,6 +275,31 @@ export default function AdminVerificationsPage() {
                   })}
                 </tbody>
               </table>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
+                  <div className="text-sm text-brand-sage">
+                    Showing <span className="font-semibold text-brand-dark">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-semibold text-brand-dark">{Math.min(currentPage * ITEMS_PER_PAGE, filteredVerifications.length)}</span> of <span className="font-semibold text-brand-dark">{filteredVerifications.length}</span> results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -273,13 +308,13 @@ export default function AdminVerificationsPage() {
       {/* Review Modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+            {/* Modal Header (Sticky) */}
+            <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-6 py-5 border-b border-slate-100 rounded-t-2xl">
               <h2 className="text-lg font-bold text-brand-dark">Review Verification</h2>
               <button
                 onClick={() => { setSelected(null); setAdminNote(""); }}
-                className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-brand-sage"
+                className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-brand-sage bg-slate-50 border border-slate-100"
               >
                 <IconX size={20} />
               </button>

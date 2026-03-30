@@ -96,7 +96,6 @@ export async function sendAdminVerificationRequestEmail(opts: {
 }) {
   const adminEmail = process.env.EMAIL_SERVER_USER || from;
   const docLabel = DOCUMENT_TYPE_LABELS[opts.documentType] || opts.documentType;
-  const reviewUrl = `${process.env.NEXTAUTH_URL}/admin/verifications`;
 
   const mailOptions = {
     from: `"PDFTool Admin" <${from}>`,
@@ -127,12 +126,6 @@ export async function sendAdminVerificationRequestEmail(opts: {
               <td style="padding: 8px 0; color: #1e293b;">${docLabel}</td>
             </tr>
           </table>
-
-          <div style="margin-top: 28px; text-align: center;">
-            <a href="${reviewUrl}" style="display: inline-block; background: #f97316; color: #fff; font-weight: 700; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 15px;">
-              Review in Admin Dashboard →
-            </a>
-          </div>
         </div>
         <div style="background: #f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0;">
           <p style="font-size: 12px; color: #94a3b8; margin: 0;">© ${new Date().getFullYear()} PDFTool. This is an automated admin notification.</p>
@@ -170,10 +163,10 @@ export async function sendStudentVerificationDecisionEmail(opts: {
 
   const bodyContent = opts.approved
     ? `<p style="color:#374151;font-size:15px;">Great news, <strong>${opts.userName}</strong>! Your student identity document has been reviewed and verified. You now have <strong style="color:#047857;">Unlimited Free Conversions</strong> on PDFTool.</p>
-       <p style="color:#374151;font-size:15px;">Head back to PDFTool and enjoy all tools without any limits.</p>`
+       <p style="color:#374151;font-size:15px;">You can now head back to PDFTool and enjoy all tools without any limits.</p>`
     : `<p style="color:#374151;font-size:15px;">Hi <strong>${opts.userName}</strong>, we reviewed your student identity document but were unable to verify it at this time.</p>
        ${opts.adminNote ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;margin:16px 0;"><p style="margin:0;font-size:14px;color:#92400e;"><strong>Reason:</strong> ${opts.adminNote}</p></div>` : ""}
-       <p style="color:#374151;font-size:15px;">You can re-submit with a clearer or different document from your Settings page.</p>`;
+       <p style="color:#374151;font-size:15px;">You can re-submit with a clearer or different document at any time from your Account Settings.</p>`;
 
   const mailOptions = {
     from: `"PDFTool" <${from}>`,
@@ -187,11 +180,6 @@ export async function sendStudentVerificationDecisionEmail(opts: {
         <div style="padding: 28px 32px;">
           <div style="margin-bottom: 20px;">${statusBadge}</div>
           ${bodyContent}
-          <div style="margin-top: 28px; text-align: center;">
-            <a href="${process.env.NEXTAUTH_URL}/settings" style="display:inline-block;background:#0f172a;color:#fff;font-weight:700;padding:13px 30px;border-radius:8px;text-decoration:none;font-size:14px;">
-              Go to Settings
-            </a>
-          </div>
         </div>
         <div style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
           <p style="font-size:12px;color:#94a3b8;margin:0;">© ${new Date().getFullYear()} PDFTool. All rights reserved.</p>

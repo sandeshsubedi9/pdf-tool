@@ -77,7 +77,7 @@ export default function Hero() {
                         {/* Sub-copy */}
                         <p className="text-lg text-brand-sage leading-relaxed max-w-md">
                             Merge, split, compress, convert, edit, sign and do much more with
-                            your PDF files. Completely free, no software to install.
+                            your PDF files. Free, fast and no software to install.
                         </p>
 
                         {/* Trust badges */}
@@ -169,8 +169,8 @@ export default function Hero() {
                             PDF Tools
                         </div>
                         <div className="absolute -top-4 -right-4 hidden lg:flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-[0_4px_20px_rgba(30,23,2,0.12)] border border-border text-xs font-semibold text-brand-dark">
-                            <span className="text-brand-teal text-base font-bold">100%</span>
-                            Free Forever
+                            <span className="text-brand-teal text-base font-bold">No Sign-up</span>
+                            Required
                         </div>
                     </motion.div>
                 </div>
