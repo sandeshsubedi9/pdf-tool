@@ -66,10 +66,10 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0, 0, 0, 0.6)",
-          backdropFilter: "blur(8px)",
+          background: "rgba(10, 10, 15, 0.4)",
+          backdropFilter: "blur(12px)",
           zIndex: 9998,
-          animation: "fadeIn 0.2s ease",
+          animation: "fadeIn 0.3s ease",
         }}
       />
 
@@ -85,13 +85,13 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
           transform: "translate(-50%, -50%)",
           zIndex: 9999,
           width: "min(460px, 90vw)",
-          background: "linear-gradient(145deg, #0f0f13 0%, #1a1a24 100%)",
-          borderRadius: "24px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
-          padding: "40px 36px",
+          background: "#ffffff",
+          borderRadius: "28px",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 40px 100px -20px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.02)",
+          padding: "48px 40px",
           textAlign: "center",
-          animation: "slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          animation: "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           fontFamily: "var(--font-inter), Inter, system-ui, sans-serif",
         }}
       >
@@ -99,31 +99,31 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
         <div style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "6px",
-          background: "rgba(251, 146, 60, 0.12)",
-          border: "1px solid rgba(251, 146, 60, 0.3)",
-          padding: "6px 14px",
+          gap: "8px",
+          background: "rgba(249, 115, 22, 0.08)",
+          border: "1px solid rgba(249, 115, 22, 0.15)",
+          padding: "8px 16px",
           borderRadius: "999px",
-          marginBottom: "24px",
+          marginBottom: "32px",
         }}>
           <span style={{ fontSize: "14px" }}>⚡</span>
-          <span style={{ color: "#fb923c", fontWeight: 600, fontSize: "12px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <span style={{ color: "#ea580c", fontWeight: 700, fontSize: "12px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
             Usage Limit Reached
           </span>
         </div>
 
         {/* Countdown ring */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
-          <div style={{ position: "relative", width: 100, height: 100 }}>
-            <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "32px" }}>
+          <div style={{ position: "relative", width: 110, height: 110 }}>
+            <svg width="110" height="110" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
               {/* Track */}
-              <circle cx="50" cy="50" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+              <circle cx="50" cy="50" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="7" />
               {/* Progress */}
               <circle
                 cx="50" cy="50" r={radius}
                 fill="none"
                 stroke="url(#rlGrad)"
-                strokeWidth="6"
+                strokeWidth="7"
                 strokeLinecap="round"
                 strokeDasharray={circumference}
                 strokeDashoffset={dashOffset}
@@ -142,62 +142,64 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
             }}>
-              <span style={{ color: "#ffffff", fontWeight: 700, fontSize: "18px", letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ color: "#0f172a", fontWeight: 800, fontSize: "20px", letterSpacing: "-1px", fontVariantNumeric: "tabular-nums" }}>
                 {formatted}
               </span>
-              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "10px", marginTop: "2px" }}>remaining</span>
+              <span style={{ color: "#64748b", fontSize: "10px", fontWeight: 600, marginTop: "2px", textTransform: "uppercase", letterSpacing: "0.02em" }}>left</span>
             </div>
           </div>
         </div>
 
         {/* Title */}
         <h2 id="rl-title" style={{
-          color: "#ffffff",
-          fontSize: "22px",
-          fontWeight: 700,
-          margin: "0 0 10px",
-          letterSpacing: "-0.5px",
+          color: "#0f172a",
+          fontSize: "26px",
+          fontWeight: 800,
+          margin: "0 0 12px",
+          letterSpacing: "-0.8px",
+          lineHeight: 1.2,
         }}>
-          You&apos;ve used your free conversions
+          Free usage exhausted
         </h2>
 
         {/* Description */}
         <p style={{
-          color: "rgba(255,255,255,0.5)",
-          fontSize: "14px",
+          color: "#475569",
+          fontSize: "15px",
           lineHeight: 1.6,
-          marginBottom: "28px",
+          marginBottom: "36px",
+          padding: "0 10px",
         }}>
-          Our free tier includes <strong style={{ color: "rgba(255,255,255,0.75)" }}>3 conversions per hour</strong> to keep the service fast for everyone.
-          Your limit resets in{" "}
-          <strong style={{ color: "#fb923c" }}>{minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`}</strong>.
+          To ensure high speed for everyone, we limit free tier to <strong style={{ color: "#0f172a" }}>3 files per hour</strong>.
+          Resets in <strong style={{ color: "#f97316" }}>{minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`}</strong>.
         </p>
 
         {/* Divider */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: "24px" }} />
+        <div style={{ height: 1, background: "#f1f5f9", marginBottom: "32px" }} />
 
         {/* CTA buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {/* Primary: Sign up (placeholder — wire to your auth later) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {/* Primary: Sign up */}
           <button
             id="rl-signup-btn"
-            onClick={() => alert("Auth system coming soon!")}
+            onClick={() => window.location.href = "/signup"}
             style={{
-              background: "linear-gradient(135deg, #f97316 0%, #ef4444 100%)",
+              background: "#0f172a",
               color: "#fff",
               border: "none",
-              borderRadius: "12px",
-              padding: "14px 24px",
+              borderRadius: "16px",
+              padding: "16px 28px",
               fontSize: "15px",
               fontWeight: 700,
               cursor: "pointer",
               letterSpacing: "-0.2px",
-              transition: "opacity 0.15s, transform 0.15s",
+              transition: "transform 0.2s, background 0.2s",
+              boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.2)",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.background = "#1e293b"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.background = "#0f172a"; }}
           >
-            🎓 Get unlimited free access with .edu email
+            🎓 Get unlimited access with .edu email
           </button>
 
           {/* Secondary: Wait */}
@@ -205,26 +207,26 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
             id="rl-wait-btn"
             onClick={onClose}
             style={{
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.6)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "12px",
-              padding: "13px 24px",
+              background: "#f8fafc",
+              color: "#64748b",
+              border: "1px solid #e2e8f0",
+              borderRadius: "16px",
+              padding: "15px 28px",
               fontSize: "14px",
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
-              transition: "background 0.15s, color 0.15s",
+              transition: "background 0.2s, color 0.2s, border-color 0.2s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.85)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.color = "#64748b"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
           >
             I&apos;ll wait {formatted}
           </button>
         </div>
 
         {/* Footer note */}
-        <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "12px", marginTop: "20px", lineHeight: 1.5 }}>
-          Using a university or school email? You get <em>unlimited free access</em> — forever.
+        <p style={{ color: "#94a3b8", fontSize: "12px", marginTop: "28px", lineHeight: 1.5, fontWeight: 500 }}>
+          Using a university or school email? You get <span style={{ color: "#64748b", fontWeight: 700 }}>unlimited free access</span> forever.
         </p>
       </div>
 
@@ -234,7 +236,7 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
           to { opacity: 1; }
         }
         @keyframes slideUp {
-          from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); }
+          from { opacity: 0; transform: translate(-50%, calc(-50% + 40px)); }
           to { opacity: 1; transform: translate(-50%, -50%); }
         }
       `}</style>

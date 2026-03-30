@@ -33,6 +33,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -849,12 +851,14 @@ export default function SignPdfSignPage() {
     const [currentPage, setCurrentPage] = useState(0);
     const [pageJump, setPageJump] = useState("1"); // Added pageJump state
     const [isLoading, setIsLoading] = useState(true);
-    const [sidebarTab, setSidebarTab] = useState<"simple" | "digital">("simple");
+    const [sidebarTab, setSidebarTab] = useState<"fields" | "digital">("fields");
     const [showModal, setShowModal] = useState(false);
     const [editingSignature, setEditingSignature] = useState<SavedSignature | null>(null);
     const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([]);
     const [placedSignatures, setPlacedSignatures] = useState<PlacedSignature[]>([]);
     const [isExporting, setIsExporting] = useState(false);
+
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
 
     // Load file
     useEffect(() => {
@@ -1101,18 +1105,20 @@ export default function SignPdfSignPage() {
             return;
         }
         setIsExporting(true);
-        const toastId = toast.loading("Embedding signatures into PDF…");
-        try {
-            const bytes = await embedSignaturesIntoPdf(file, placedSignatures, pages);
-            const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
-            const fname = file.name.replace(/\.pdf$/i, "_signed.pdf");
-            downloadBlob(blob, fname);
-            toast.success("PDF signed and downloaded!", { id: toastId });
-        } catch (err: any) {
-            toast.error(err?.message || "Export failed", { id: toastId });
-        } finally {
-            setIsExporting(false);
-        }
+        execute(async () => {
+            const toastId = toast.loading("Embedding signatures into PDF…");
+            try {
+                const bytes = await embedSignaturesIntoPdf(file, placedSignatures, pages);
+                const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
+                const fname = file.name.replace(/\.pdf$/i, "_signed.pdf");
+                downloadBlob(blob, fname);
+                toast.success("PDF signed and downloaded!", { id: toastId });
+            } catch (err: any) {
+                toast.error(err?.message || "Export failed", { id: toastId });
+            } finally {
+                setIsExporting(false);
+            }
+        });
     };
 
     // Loading screen
@@ -1303,11 +1309,11 @@ export default function SignPdfSignPage() {
                         </h3>
                     </div>
 
-                    {/* Tabs: Simple / Digital */}
+                    {/* Tabs: Fields / Digital */}
                     <div className="flex border-b border-[#E0DED9] bg-[#fcfbf9]">
                         <button
-                            onClick={() => setSidebarTab("simple")}
-                            className={`flex-1 py-3.5 text-[13px] font-bold text-center transition-all cursor-pointer border-b-2 ${sidebarTab === "simple" ? "border-[#047C58] text-[#047C58] bg-white" : "border-transparent text-brand-sage hover:text-brand-dark"}`}
+                            onClick={() => setSidebarTab("fields")}
+                            className={`flex-1 py-3.5 text-[13px] font-bold text-center transition-all cursor-pointer border-b-2 ${sidebarTab === "fields" ? "border-[#047C58] text-[#047C58] bg-white" : "border-transparent text-brand-sage hover:text-brand-dark"}`}
                         >
                             Simple Signature
                         </button>
@@ -1319,7 +1325,7 @@ export default function SignPdfSignPage() {
                         </button>
                     </div>
 
-                    {sidebarTab === "simple" && (
+                    {sidebarTab === "fields" && (
                         <div className="flex-1 flex flex-col min-h-0">
                             {/* Legal Warning Banner inside tab */}
                             <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex gap-2">
@@ -1516,6 +1522,11 @@ export default function SignPdfSignPage() {
                     />
                 )
             }
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div >
     );
 }

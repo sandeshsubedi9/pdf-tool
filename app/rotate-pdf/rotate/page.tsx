@@ -15,6 +15,8 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 interface PageItem {
     id: string;
@@ -26,6 +28,7 @@ interface PageItem {
 export default function RotatePdfToolPage() {
     const router = useRouter();
     const hasInitialized = useRef(false);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     const [file, setFile] = useState<File | null>(null);
     const [pages, setPages] = useState<PageItem[]>([]);
@@ -118,7 +121,7 @@ export default function RotatePdfToolPage() {
         setShowResetConfirm(false);
     }, []);
 
-    const handleExport = async () => {
+    const handleExport = () => execute(async () => {
         if (!file || pages.length === 0) return;
 
         setIsProcessing(true);
@@ -153,7 +156,7 @@ export default function RotatePdfToolPage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    });
 
     if (isLoading && pages.length === 0) {
         return (
@@ -202,6 +205,11 @@ export default function RotatePdfToolPage() {
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F7F6F3] pt-[64px]">
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <Navbar />
 
             {/* Header Toolbar */}

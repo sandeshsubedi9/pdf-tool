@@ -26,6 +26,8 @@ import {
 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -435,6 +437,7 @@ export default function CropPdfEditorPage() {
     const [pageJump, setPageJump] = useState("1");
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     const [crops, setCrops] = useState<CropRect[]>([]);
     const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
@@ -631,7 +634,7 @@ export default function CropPdfEditorPage() {
     };
 
     // ── Export ─────────────────────────────────────────────────────────────────
-    const handleExport = async () => {
+    const handleExport = () => execute(async () => {
         if (!file) return;
         if (crops.length === 0) {
             toast.error("Draw a crop box on at least one page first.");
@@ -664,7 +667,7 @@ export default function CropPdfEditorPage() {
         } finally {
             setIsExporting(false);
         }
-    };
+    });
 
     // ── Zoom ──────────────────────────────────────────────────────────────────
     const zoomIn = () => {
@@ -699,6 +702,11 @@ export default function CropPdfEditorPage() {
             style={{ background: "#fdfdfb" }}
             onClick={() => { setSelectedCropId(null); if (showZoomMenu) setShowZoomMenu(false); }}
         >
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <Navbar />
 
             {/* ── Toolbar ── */}

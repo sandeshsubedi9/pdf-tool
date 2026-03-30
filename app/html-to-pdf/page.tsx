@@ -23,6 +23,8 @@ import {
 import { urlToPdf, downloadBlob } from "@/lib/pdf-utils";
 import { FileUpload } from "@/components/ui/file-upload";
 import { motion, AnimatePresence } from "motion/react";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Tab = "url" | "file" | "code";
@@ -188,6 +190,7 @@ export default function HtmlToPdfPage() {
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [isConverting, setIsConverting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // Options Sidebar state
     const [screenSize, setScreenSize] = useState<string>("your-screen");
@@ -349,7 +352,7 @@ export default function HtmlToPdfPage() {
     };
 
     // ── Download (already-generated PDF blob) ─────────────────────────────────
-    const handleConvert = async () => {
+    const handleConvert = () => execute(async () => {
         if (!previewHtml.trim() && !urlInput.trim()) return;
         setIsConverting(true);
         setError(null);
@@ -389,7 +392,7 @@ export default function HtmlToPdfPage() {
         } finally {
             setIsConverting(false);
         }
-    };
+    });
 
     // ─────────────────────────────────────────────────────────────────────────
     // Render: Preview and Success
@@ -397,6 +400,11 @@ export default function HtmlToPdfPage() {
     if (stage === "preview" || stage === "success") {
         return (
             <div className="min-h-screen flex flex-col bg-[#F8F9FA]">
+                <RateLimitModal
+                    open={!!limitResult && !limitResult.allowed}
+                    resetAt={limitResult?.resetAt ?? 0}
+                    onClose={clearLimitResult}
+                />
                 <Navbar />
 
                 <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
@@ -694,6 +702,11 @@ export default function HtmlToPdfPage() {
             icon={<IconWorld size={28} stroke={1.5} />}
             accentColor="#F97316"
         >
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <div className="flex flex-col gap-4">
 
                 {/* ── INPUT STATE ── */}

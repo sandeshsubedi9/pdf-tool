@@ -19,6 +19,8 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Position = "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR";
@@ -396,6 +398,8 @@ export default function WatermarkApplyPage() {
     const [pageRange, setPageRange] = useState("all");
     const [rangeError, setRangeError] = useState<string | null>(null);
 
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
+
     // Page range real-time validation
     useEffect(() => {
         if (totalPages > 0) {
@@ -476,49 +480,51 @@ export default function WatermarkApplyPage() {
         setIsProcessing(true);
         setError(null);
 
-        try {
-            const formData = new FormData();
-            formData.append("file", file, file.name);
-            formData.append("watermark_type", tab);
+        execute(async () => {
+            try {
+                const formData = new FormData();
+                formData.append("file", file, file.name);
+                formData.append("watermark_type", tab);
 
-            // Text params
-            formData.append("text", text || "WATERMARK");
-            formData.append("font_name", fontName);
-            formData.append("font_size", fontSize.toString());
-            formData.append("bold", bold.toString());
-            formData.append("italic", italic.toString());
-            formData.append("underline", underline.toString());
-            formData.append("text_color", textColor);
+                // Text params
+                formData.append("text", text || "WATERMARK");
+                formData.append("font_name", fontName);
+                formData.append("font_size", fontSize.toString());
+                formData.append("bold", bold.toString());
+                formData.append("italic", italic.toString());
+                formData.append("underline", underline.toString());
+                formData.append("text_color", textColor);
 
-            // Image params
-            if (tab === "image" && imageFile) {
-                const b64 = await fileToBase64(imageFile);
-                formData.append("image_data", b64);
-                formData.append("image_width_pct", imageWidthPct.toString());
+                // Image params
+                if (tab === "image" && imageFile) {
+                    const b64 = await fileToBase64(imageFile);
+                    formData.append("image_data", b64);
+                    formData.append("image_width_pct", imageWidthPct.toString());
+                }
+
+                // Shared
+                formData.append("position", selectedPositions.join(","));
+                formData.append("opacity", opacity.toString());
+                formData.append("rotation", rotation.toString());
+                formData.append("layer", "over");
+                formData.append("page_range", pageRange.trim() || "all");
+
+                const res = await fetch("/api/watermark-pdf", { method: "POST", body: formData });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || "Watermarking failed.");
+                }
+
+                const blob = await res.blob();
+                const outName = res.headers.get("X-Original-Filename") || file.name.replace(/\.pdf$/i, "_watermarked.pdf");
+                downloadBlob(blob, outName);
+                setSuccess(true);
+            } catch (err: any) {
+                setError(err?.message || "An unexpected error occurred.");
+            } finally {
+                setIsProcessing(false);
             }
-
-            // Shared
-            formData.append("position", selectedPositions.join(","));
-            formData.append("opacity", opacity.toString());
-            formData.append("rotation", rotation.toString());
-            formData.append("layer", "over");
-            formData.append("page_range", pageRange.trim() || "all");
-
-            const res = await fetch("/api/watermark-pdf", { method: "POST", body: formData });
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.error || "Watermarking failed.");
-            }
-
-            const blob = await res.blob();
-            const outName = res.headers.get("X-Original-Filename") || file.name.replace(/\.pdf$/i, "_watermarked.pdf");
-            downloadBlob(blob, outName);
-            setSuccess(true);
-        } catch (err: any) {
-            setError(err?.message || "An unexpected error occurred.");
-        } finally {
-            setIsProcessing(false);
-        }
+        });
     };
 
     // ── Loading screen ────────────────────────────────────────────────────────

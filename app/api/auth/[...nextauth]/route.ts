@@ -81,7 +81,8 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             token.isStudent = !!dbUser.isStudent;
             token.studentEmail = dbUser.studentEmail;
-            token.id = dbUser._id.toString(); 
+            token.id = dbUser._id.toString();
+            token.verificationStatus = dbUser.verificationStatus || "none";
           }
         } catch (e) {
           console.error("JWT Session Callback Error:", e);
@@ -95,6 +96,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).isStudent = token.isStudent;
         (session.user as any).studentEmail = token.studentEmail;
+        (session.user as any).verificationStatus = token.verificationStatus || "none";
       }
       return session;
     },

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   // --- 3. Run the rate-limit check (increments counter) -----------
-  const result = checkRateLimit(key, tier);
+  const result = await checkRateLimit(key, tier);
 
   // Convenience header values
   const resetAtSeconds = Math.ceil(result.resetAt / 1000);

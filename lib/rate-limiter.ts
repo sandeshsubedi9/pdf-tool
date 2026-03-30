@@ -1,45 +1,23 @@
+import connectToDatabase from "@/lib/db";
+import { RateLimit } from "@/lib/models/RateLimit";
+
 /**
  * ============================================================
- *  RATE LIMITER — lib/rate-limiter.ts
+ *  RATE LIMITER (MongoDB Edition) — lib/rate-limiter.ts
  * ============================================================
- *  Sliding Window algorithm. O(1) memory per tracked key.
- *
- *  This implementation uses an in-memory Map (works in dev and
- *  serverless with a single instance).  To scale to Redis:
- *
- *  1. npm install ioredis
- *  2. Replace the Map calls with:
- *     const redis = new Redis(process.env.REDIS_URL!)
- *     await redis.incr(key)
- *     await redis.expire(key, windowSeconds)
- *     await redis.ttl(key)
- *     await redis.get(key)
- *
- *  The public API surface (checkRateLimit / getRemainingUsage)
- *  stays identical — no other file needs to change.
+ *  Uses MongoDB to permanently track usage limits.
+ *  Fast, robust, survives server restarts cleanly, and
+ *  eliminates the need to pay for a 3rd party Redis host.
  * ============================================================
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number; // Unix ms timestamp when this window resets
-}
-
-// In-memory store — survives the NodeJS process lifetime.
-// On Vercel/serverless each cold-start gets a fresh store,
-// which is acceptable for a "3 per hour" soft limit.
-const store = new Map<string, RateLimitEntry>();
-
-// ---- Config ------------------------------------------------
 export const LIMITS = {
-  anonymous: { max: 3, windowMs: 60 * 60 * 1000 }, // 3 per hour
-  registered: { max: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour (future)
-  premium: { max: Infinity, windowMs: 0 }, // unlimited
+  anonymous: { max: 3, windowMs: 60 * 60 * 1000 },   // 3 per hour
+  registered: { max: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
+  premium: { max: Infinity, windowMs: 0 },          // unlimited
 } as const;
 
 export type UserTier = keyof typeof LIMITS;
-
-// ---- Public API --------------------------------------------
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -49,75 +27,79 @@ export interface RateLimitResult {
 }
 
 /**
- * Check and increment the counter for a given key.
+ * Check and increment the counter for a given key in MongoDB.
  * Call this BEFORE processing a PDF operation.
- *
- * @param key   Unique identifier (e.g. "fp:abc123" or "uid:user456")
- * @param tier  User tier — controls which limit band to use
  */
-export function checkRateLimit(key: string, tier: UserTier = "anonymous"): RateLimitResult {
+export async function checkRateLimit(key: string, tier: UserTier = "anonymous"): Promise<RateLimitResult> {
   const cfg = LIMITS[tier];
 
-  // Premium users are never limited
+  // Premium users instantly bypass DB checks exactly
   if (tier === "premium") {
     return { allowed: true, remaining: Infinity, resetAt: 0, limit: Infinity };
   }
 
+  await connectToDatabase();
   const now = Date.now();
-  const existing = store.get(key);
+  const existing = await RateLimit.findOne({ key });
 
-  // Window has expired — reset the counter
-  if (!existing || now >= existing.resetAt) {
-    const entry: RateLimitEntry = {
-      count: 1,
-      resetAt: now + cfg.windowMs,
-    };
-    store.set(key, entry);
+  // 1. No record, or the 1-hour window expired
+  if (!existing || now >= existing.resetAt.getTime()) {
+    const resetDate = new Date(now + cfg.windowMs);
+    
+    if (existing) {
+      existing.count = 1;
+      existing.resetAt = resetDate;
+      await existing.save();
+    } else {
+      await RateLimit.create({ key, count: 1, resetAt: resetDate });
+    }
+
     return {
       allowed: true,
       remaining: cfg.max - 1,
-      resetAt: entry.resetAt,
+      resetAt: resetDate.getTime(),
       limit: cfg.max,
     };
   }
 
-  // Within window — check the current count
+  // 2. Window is still active — Check count limit
   if (existing.count >= cfg.max) {
     return {
       allowed: false,
       remaining: 0,
-      resetAt: existing.resetAt,
+      resetAt: existing.resetAt.getTime(),
       limit: cfg.max,
     };
   }
 
-  // Allowed — increment
+  // 3. Allowed — Increment count
   existing.count += 1;
-  store.set(key, existing);
+  await existing.save();
 
   return {
     allowed: true,
     remaining: cfg.max - existing.count,
-    resetAt: existing.resetAt,
+    resetAt: existing.resetAt.getTime(),
     limit: cfg.max,
   };
 }
 
 /**
  * Peek at the current usage without incrementing.
- * Used to show the "X uses remaining" badge on the UI.
+ * Used to conditionally render the "X uses remaining" UI badge.
  */
-export function getRemainingUsage(key: string, tier: UserTier = "anonymous"): RateLimitResult {
+export async function getRemainingUsage(key: string, tier: UserTier = "anonymous"): Promise<RateLimitResult> {
   const cfg = LIMITS[tier];
 
   if (tier === "premium") {
     return { allowed: true, remaining: Infinity, resetAt: 0, limit: Infinity };
   }
 
+  await connectToDatabase();
   const now = Date.now();
-  const existing = store.get(key);
+  const existing = await RateLimit.findOne({ key });
 
-  if (!existing || now >= existing.resetAt) {
+  if (!existing || now >= existing.resetAt.getTime()) {
     return { allowed: true, remaining: cfg.max, resetAt: now + cfg.windowMs, limit: cfg.max };
   }
 
@@ -125,22 +107,7 @@ export function getRemainingUsage(key: string, tier: UserTier = "anonymous"): Ra
   return {
     allowed: remaining > 0,
     remaining,
-    resetAt: existing.resetAt,
+    resetAt: existing.resetAt.getTime(),
     limit: cfg.max,
   };
-}
-
-/** Periodic cleanup to prevent unbounded memory growth (run every hour). */
-export function pruneExpiredEntries(): void {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (now >= entry.resetAt) {
-      store.delete(key);
-    }
-  }
-}
-
-// Auto-prune every hour in long-running environments (Next.js dev server).
-if (typeof setInterval !== "undefined") {
-  setInterval(pruneExpiredEntries, 60 * 60 * 1000);
 }

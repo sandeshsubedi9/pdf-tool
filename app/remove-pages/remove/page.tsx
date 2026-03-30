@@ -13,6 +13,8 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function parsePageRanges(input: string, maxPage: number): Set<number> {
@@ -103,6 +105,8 @@ export default function RemovePagesToolPage() {
     const [removedPages, setRemovedPages] = useState<Set<number>>(new Set());
     const [inputValue, setInputValue] = useState("");
     const [inputError, setInputError] = useState<string | null>(null);
+
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
 
     // ── Load file from FileStore ─────────────────────────────────────────────
     useEffect(() => {
@@ -196,32 +200,34 @@ export default function RemovePagesToolPage() {
         setIsProcessing(true);
         setGlobalError(null);
 
-        try {
-            const { PDFDocument } = await import("pdf-lib");
-            
-            const ab = await file.arrayBuffer();
-            const sourceDoc = await PDFDocument.load(ab);
-            const pdfDoc = await PDFDocument.create();
+        execute(async () => {
+            try {
+                const { PDFDocument } = await import("pdf-lib");
+                
+                const ab = await file.arrayBuffer();
+                const sourceDoc = await PDFDocument.load(ab);
+                const pdfDoc = await PDFDocument.create();
 
-            for (let i = 1; i <= pages.length; i++) {
-                if (!removedPages.has(i)) {
-                    const [copiedPage] = await pdfDoc.copyPages(sourceDoc, [i - 1]);
-                    pdfDoc.addPage(copiedPage);
+                for (let i = 1; i <= pages.length; i++) {
+                    if (!removedPages.has(i)) {
+                        const [copiedPage] = await pdfDoc.copyPages(sourceDoc, [i - 1]);
+                        pdfDoc.addPage(copiedPage);
+                    }
                 }
-            }
 
-            const bytes = await pdfDoc.save();
-            const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
-            
-            const originalName = file.name.replace(/\.[^/.]+$/, "");
-            downloadBlob(blob, `${originalName}_removed.pdf`);
-            
-            setSuccess(true);
-        } catch (err: any) {
-            setGlobalError(err?.message || "Export failed. Please try again.");
-        } finally {
-            setIsProcessing(false);
-        }
+                const bytes = await pdfDoc.save();
+                const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
+                
+                const originalName = file.name.replace(/\.[^/.]+$/, "");
+                downloadBlob(blob, `${originalName}_removed.pdf`);
+                
+                setSuccess(true);
+            } catch (err: any) {
+                setGlobalError(err?.message || "Export failed. Please try again.");
+            } finally {
+                setIsProcessing(false);
+            }
+        });
     };
 
     // ── Render States ────────────────────────────────────────────────────────
@@ -386,6 +392,11 @@ export default function RemovePagesToolPage() {
                     </div>
                 </aside>
             </div>
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div>
     );
 }

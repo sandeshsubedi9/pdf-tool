@@ -18,10 +18,13 @@ import {
 import { protectPdf, ProtectResult, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 export default function ProtectPdfActionPage() {
     const router = useRouter();
     const hasInitialized = useRef(false);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     const [file, setFile] = useState<File | null>(null);
     const [pageCount, setPageCount] = useState<number | null>(null);
@@ -61,7 +64,7 @@ export default function ProtectPdfActionPage() {
         });
     }, [router]);
 
-    const handleProtect = async () => {
+    const handleProtect = () => execute(async () => {
         if (!file) return;
         if (!password) {
             toast.error("Please enter a password.");
@@ -80,12 +83,10 @@ export default function ProtectPdfActionPage() {
             setResult(res);
             setStatus("success");
             toast.success("PDF protected successfully!", { id: toastId });
-        } catch (err: any) {
-            setStatus("error");
-            const raw = err?.message || "Unknown error";
-            toast.error(raw, { id: toastId, duration: 6000 });
+        } finally {
+            setStatus((prev) => prev === "protecting" ? "idle" : prev);
         }
-    };
+    });
 
     const handleDownload = () => {
         if (!result) return;
@@ -113,6 +114,11 @@ export default function ProtectPdfActionPage() {
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <Navbar />
 
             {/* Dot grid */}

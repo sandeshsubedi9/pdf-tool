@@ -14,6 +14,8 @@ import {
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 const LANGUAGES = [
     { label: "Arabic", code: "ar" },
@@ -56,6 +58,8 @@ export default function TranslatePdfToolPage() {
     const [langOpen, setLangOpen] = useState(false);
     const [pageCount, setPageCount] = useState<number | null>(null);
 
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
+
     // Load file from FileStore and get page count
     useEffect(() => {
         if (hasInitialized.current) return;
@@ -95,50 +99,52 @@ export default function TranslatePdfToolPage() {
         if (!file) return;
         setIsProcessing(true);
 
-        const toastId = toast.loading("Processing translation...");
+        execute(async () => {
+            const toastId = toast.loading("Processing translation...");
 
-        try {
-            const formData = new FormData();
-            formData.append("file", file, file.name);
-            formData.append("target_lang", targetLang.code);
+            try {
+                const formData = new FormData();
+                formData.append("file", file, file.name);
+                formData.append("target_lang", targetLang.code);
 
-            const res = await fetch("/api/translate-pdf", {
-                method: "POST",
-                body: formData,
-            });
+                const res = await fetch("/api/translate-pdf", {
+                    method: "POST",
+                    body: formData,
+                });
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                const technicalError = errorData.error || errorData.detail || "Unknown error";
-                console.error("Backend Error Details:", technicalError);
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    const technicalError = errorData.error || errorData.detail || "Unknown error";
+                    console.error("Backend Error Details:", technicalError);
 
-                let userMessage = "Something went wrong during translation. Please try again.";
-                if (technicalError.includes("Layout Extraction")) {
-                    userMessage = "We couldn't process this PDF's layout. It might be too complex.";
-                } else if (technicalError.includes("Cloud Translation")) {
-                    userMessage = "The translation service is currently busy. Please try again in a moment.";
-                } else if (technicalError.includes("LibreOffice") || technicalError.includes("PDF Generation")) {
-                    userMessage = "We encountered an issue rebuilding your PDF. Please try a different file.";
+                    let userMessage = "Something went wrong during translation. Please try again.";
+                    if (technicalError.includes("Layout Extraction")) {
+                        userMessage = "We couldn't process this PDF's layout. It might be too complex.";
+                    } else if (technicalError.includes("Cloud Translation")) {
+                        userMessage = "The translation service is currently busy. Please try again in a moment.";
+                    } else if (technicalError.includes("LibreOffice") || technicalError.includes("PDF Generation")) {
+                        userMessage = "We encountered an issue rebuilding your PDF. Please try a different file.";
+                    }
+
+                    toast.error(userMessage, { id: toastId });
+                    return;
                 }
 
-                toast.error(userMessage, { id: toastId });
-                return;
+                const blob = await res.blob();
+                const outName =
+                    res.headers.get("X-Original-Filename") ||
+                    file.name.replace(/\.pdf$/i, `_${targetLang.code}.pdf`);
+
+                downloadBlob(blob, outName);
+                setSuccess(true);
+                toast.success("Translation complete!", { id: toastId });
+            } catch (err: any) {
+                console.error("Translation Error Trace:", err);
+                toast.error("A network error occurred. Please check your connection.", { id: toastId });
+            } finally {
+                setIsProcessing(false);
             }
-
-            const blob = await res.blob();
-            const outName =
-                res.headers.get("X-Original-Filename") ||
-                file.name.replace(/\.pdf$/i, `_${targetLang.code}.pdf`);
-
-            downloadBlob(blob, outName);
-            setSuccess(true);
-            toast.success("Translation complete!", { id: toastId });
-        } catch (err: any) {
-            console.error("Translation Error Trace:", err);
-            toast.error("A network error occurred. Please check your connection.", { id: toastId });
-        } finally {
-            setIsProcessing(false);
-        }
+        });
     };
 
     if (success) {
@@ -290,6 +296,11 @@ export default function TranslatePdfToolPage() {
                     </div>
                 </div>
             </main>
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div>
     );
 }

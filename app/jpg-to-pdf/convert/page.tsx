@@ -16,6 +16,8 @@ import {
 } from "@tabler/icons-react";
 import { imagesToPdf, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -301,6 +303,7 @@ export default function ImageToPdfConvertPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     const [isLoading, setIsLoading] = useState(true);  // true until we finish reading FileStore
 
@@ -363,7 +366,7 @@ export default function ImageToPdfConvertPage() {
         });
     };
 
-    const handleConvert = async () => {
+    const handleConvert = () => execute(async () => {
         if (images.length === 0) return;
         setIsProcessing(true);
         setError(null);
@@ -414,7 +417,7 @@ export default function ImageToPdfConvertPage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    });
 
     // ── Loading screen (while reading FileStore on mount) ──
     if (isLoading) {
@@ -465,6 +468,11 @@ export default function ImageToPdfConvertPage() {
 
     return (
         <div className="h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <Navbar />
 
             {/* Dot background */}

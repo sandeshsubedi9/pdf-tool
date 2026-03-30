@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const result = getRemainingUsage(key, tier);
+  const result = await getRemainingUsage(key, tier);
 
   const resetInSeconds = Math.max(
     0,

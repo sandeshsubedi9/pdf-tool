@@ -10,6 +10,8 @@ import {
 } from "@tabler/icons-react";
 import { pdfToEpub, downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // EPUB brand color — a warm purple-indigo evoking reading/books
 const EPUB_COLOR = "#5B4FCF";
@@ -18,8 +20,9 @@ export default function PdfToEpubPage() {
     const [files, setFiles] = useState<File[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
-    const handleConvert = async () => {
+    const handleConvert = () => execute(async () => {
         if (files.length === 0) return;
         setIsProcessing(true);
         setSuccess(false);
@@ -47,7 +50,7 @@ export default function PdfToEpubPage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    });
 
     return (
         <ToolLayout
@@ -56,6 +59,11 @@ export default function PdfToEpubPage() {
             icon={<IconBook size={28} stroke={1.5} />}
             accentColor={EPUB_COLOR}
         >
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
                 {!success ? (
                     <>

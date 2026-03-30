@@ -12,6 +12,8 @@ import {
 import { pdfToPdfa, downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
 import { motion } from "motion/react";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 type Level = "1b" | "2b" | "3b";
 
@@ -89,6 +91,8 @@ export default function PdfToPdfaPage() {
     const [success, setSuccess] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<Level>("1b");
 
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
+
     const selectedInfo = LEVELS.find((l) => l.value === selectedLevel)!;
 
     const handleConvert = async () => {
@@ -96,22 +100,24 @@ export default function PdfToPdfaPage() {
         setIsProcessing(true);
         setSuccess(false);
 
-        const toastId = toast.loading(`Converting to PDF/A-${selectedLevel.toUpperCase()}...`);
+        execute(async () => {
+            const toastId = toast.loading(`Converting to PDF/A-${selectedLevel.toUpperCase()}...`);
 
-        try {
-            const blob = await pdfToPdfa(files[0], selectedLevel);
-            const newName = files[0].name.replace(/\.pdf$/i, "_pdfa.pdf");
-            downloadBlob(blob, newName);
-            setSuccess(true);
-            toast.success(`Converted to PDF/A-${selectedLevel.toUpperCase()} successfully!`, { id: toastId });
-        } catch (err: any) {
-            const isDev = process.env.NODE_ENV === "development";
-            if (isDev) console.error(err);
-            const rawMsg = err?.message || "Unknown error";
-            toast.error(isDev ? `Error: ${rawMsg}` : "Failed to convert to PDF/A.", { id: toastId });
-        } finally {
-            setIsProcessing(false);
-        }
+            try {
+                const blob = await pdfToPdfa(files[0], selectedLevel);
+                const newName = files[0].name.replace(/\.pdf$/i, "_pdfa.pdf");
+                downloadBlob(blob, newName);
+                setSuccess(true);
+                toast.success(`Converted to PDF/A-${selectedLevel.toUpperCase()} successfully!`, { id: toastId });
+            } catch (err: any) {
+                const isDev = process.env.NODE_ENV === "development";
+                if (isDev) console.error(err);
+                const rawMsg = err?.message || "Unknown error";
+                toast.error(isDev ? `Error: ${rawMsg}` : "Failed to convert to PDF/A.", { id: toastId });
+            } finally {
+                setIsProcessing(false);
+            }
+        });
     };
 
     return (
@@ -297,7 +303,11 @@ export default function PdfToPdfaPage() {
                     </motion.div>
                 </div>
             </main>
-
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div>
     );
 }

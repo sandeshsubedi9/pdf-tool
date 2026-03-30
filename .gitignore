@@ -44,3 +44,7 @@ next-env.d.ts
 python-service/venv/
 python-service/__pycache__/
 python-service/**/*.pyc
+
+# User uploads (student verification documents — do not commit)
+/storage/verifications/*
+!/storage/verifications/.gitkeep

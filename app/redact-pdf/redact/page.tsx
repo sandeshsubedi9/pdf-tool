@@ -28,6 +28,8 @@ import {
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -523,6 +525,8 @@ export default function RedactPdfPage() {
     const [showZoomMenu, setShowZoomMenu] = useState(false);
     const [showWholePageModal, setShowWholePageModal] = useState(false);
 
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
+
     // Drawing state
     const drawing = useRef(false);
     const drawStart = useRef<{ x: number; y: number } | null>(null);
@@ -699,32 +703,34 @@ export default function RedactPdfPage() {
             return;
         }
         setIsExporting(true);
-        const toastId = toast.loading("Applying redactions to PDF…");
-        try {
-            const bytes = await embedRedactionsToPdf(file, redactions, pages);
-            // Construct Blob correctly from Uint8Array (not via unknown cast)
-            const blob = new Blob([bytes as any], { type: "application/pdf" });
-            const fname = file.name.replace(/\.pdf$/i, "_redacted.pdf");
+        execute(async () => {
+            const toastId = toast.loading("Applying redactions to PDF…");
+            try {
+                const bytes = await embedRedactionsToPdf(file, redactions, pages);
+                // Construct Blob correctly from Uint8Array (not via unknown cast)
+                const blob = new Blob([bytes as any], { type: "application/pdf" });
+                const fname = file.name.replace(/\.pdf$/i, "_redacted.pdf");
 
-            // Inline download with delayed URL revoke so browser starts download first
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            a.download = fname;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 200);
+                // Inline download with delayed URL revoke so browser starts download first
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+                a.download = fname;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 200);
 
-            toast.success("Redacted PDF downloaded!", { id: toastId });
-        } catch (err: any) {
-            toast.error(err?.message || "Export failed", { id: toastId });
-        } finally {
-            setIsExporting(false);
-        }
+                toast.success("Redacted PDF downloaded!", { id: toastId });
+            } catch (err: any) {
+                toast.error(err?.message || "Export failed", { id: toastId });
+            } finally {
+                setIsExporting(false);
+            }
+        });
     };
 
     // ── Zoom helpers ──────────────────────────────────────────────────────────
@@ -1233,6 +1239,11 @@ export default function RedactPdfPage() {
                     onApply={applyWholePageRedactions}
                 />
             )}
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div>
     );
 }

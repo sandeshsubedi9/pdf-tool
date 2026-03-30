@@ -22,8 +22,8 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
     
-    // Generate a secure 6-digit code or hex token
-    const token = crypto.randomBytes(32).toString("hex");
+    // Generate a secure 6-character alphanumeric code
+    const token = crypto.randomBytes(4).toString("hex").substring(0, 6).toUpperCase();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour token life
     
     // Update the currently logged-in user with the pending verification
@@ -35,12 +35,8 @@ export async function POST(req: Request) {
       }
     );
 
-    // Build the confirmation link
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const confirmLink = `${baseUrl}/api/student/confirm?token=${token}&email=${encodeURIComponent(session.user.email)}&student=${encodeURIComponent(studentEmail)}`;
-
-    // Send the email
-    await sendVerificationEmail(studentEmail, token.substring(0,6).toUpperCase(), confirmLink);
+    // Send the email with just the 6-character OTP
+    await sendVerificationEmail(studentEmail, token);
 
     return NextResponse.json({ success: true, message: "Verification email sent!" });
   } catch (error) {

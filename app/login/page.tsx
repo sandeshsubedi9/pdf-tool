@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import toast from "react-hot-toast";
-import { IconFileText, IconBrandGoogleFilled, IconLoader2 } from "@tabler/icons-react";
+import { IconFileText, IconBrandGoogleFilled, IconLoader2, IconEye, IconEyeOff } from "@tabler/icons-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,16 +92,31 @@ export default function LoginPage() {
           <div>
             <div className="flex items-center justify-between mb-1.5 ml-1 mr-1">
               <label className="block text-sm font-semibold text-brand-dark">Password</label>
-              <a href="#" className="text-xs font-medium text-brand-teal hover:underline text-brand-teal">Forgot password?</a>
+              <Link 
+                href={`/forgot-password?email=${encodeURIComponent(email)}`}
+                className="text-xs font-medium text-brand-teal hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal transition-all text-brand-dark"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal transition-all text-brand-dark"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-sage hover:text-brand-dark transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <IconEyeOff size={20} stroke={2} /> : <IconEye size={20} stroke={2} />}
+              </button>
+            </div>
           </div>
 
           <button

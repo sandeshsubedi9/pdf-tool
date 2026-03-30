@@ -16,6 +16,8 @@ import {
 import { repairPdf, RepairResult, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 export default function RepairPdfConvertPage() {
     const router = useRouter();
@@ -25,6 +27,8 @@ export default function RepairPdfConvertPage() {
     const [pageCount, setPageCount] = useState<number | null>(null);
     const [status, setStatus] = useState<"idle" | "repairing" | "success" | "error">("idle");
     const [result, setResult] = useState<RepairResult | null>(null);
+
+    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
 
     // Load file
     useEffect(() => {
@@ -58,18 +62,20 @@ export default function RepairPdfConvertPage() {
     const handleRepair = async () => {
         if (!file) return;
         setStatus("repairing");
-        const toastId = toast.loading("Analyzing and repairing PDF structure…");
-
-        try {
-            const res = await repairPdf(file);
-            setResult(res);
-            setStatus("success");
-            toast.success("Repair successful!", { id: toastId });
-        } catch (err: any) {
-            setStatus("error");
-            const raw = err?.message || "Unknown error";
-            toast.error(raw, { id: toastId, duration: 6000 });
-        }
+        
+        execute(async () => {
+            const toastId = toast.loading("Analyzing and repairing PDF structure…");
+            try {
+                const res = await repairPdf(file);
+                setResult(res);
+                setStatus("success");
+                toast.success("Repair successful!", { id: toastId });
+            } catch (err: any) {
+                setStatus("error");
+                const raw = err?.message || "Unknown error";
+                toast.error(raw, { id: toastId, duration: 6000 });
+            }
+        });
     };
 
     const handleDownload = () => {
@@ -222,6 +228,11 @@ export default function RepairPdfConvertPage() {
                     )}
                 </motion.div>
             </main>
+            <RateLimitModal
+                open={!!rateLimitResult}
+                resetAt={rateLimitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
         </div>
     );
 }

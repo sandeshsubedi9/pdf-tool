@@ -27,6 +27,8 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -515,6 +517,7 @@ export default function OrganisePdfConvertPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // Drag state for Pages
     const dragPageId = useRef<string | null>(null);
@@ -759,7 +762,7 @@ export default function OrganisePdfConvertPage() {
 
 
     // ── Export ────────────────────────────────────────────────
-    const handleExport = async () => {
+    const handleExport = () => execute(async () => {
         if (pages.length === 0) {
             setError("No pages to export. Please add at least one page.");
             return;
@@ -779,7 +782,7 @@ export default function OrganisePdfConvertPage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    });
 
     // ── Loading screen ────────────────────────────────────────
     if (isLoading && pages.length === 0) {

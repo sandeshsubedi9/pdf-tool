@@ -5,11 +5,15 @@ export interface IUser extends Document {
   name?: string;
   password?: string;   // Optional (if using Google OAuth)
   
-  // Student Verification Fields
+  // Student & Verification Fields
   isStudent: boolean;
   studentEmail?: string;
+  emailVerified: boolean;
   verificationToken?: string;
   tokenExpiresAt?: Date;
+
+  // Document-based verification
+  verificationStatus: "none" | "pending" | "approved" | "rejected";
 
   createdAt: Date;
   updatedAt: Date;
@@ -40,11 +44,20 @@ const UserSchema: Schema = new Schema(
       lowercase: true,
       trim: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
     verificationToken: {
       type: String,
     },
     tokenExpiresAt: {
       type: Date,
+    },
+    verificationStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
     },
   },
   {

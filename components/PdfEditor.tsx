@@ -36,6 +36,8 @@ import ToolLayout from "@/components/ToolLayout";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "motion/react";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -294,6 +296,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
+
     const [extractedOriginals, setExtractedOriginals] = useState<Map<string, any>>(new Map());
     const [originalFile, setOriginalFile] = useState<File | null>(null);
 
@@ -656,7 +660,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     }
 
     // ─── Save PDF ─────────────────────────────────────────────────────────────
-    async function savePdf() {
+    const savePdf = () => execute(async () => {
         if (!file) return;
         setIsSaving(true);
         try {
@@ -842,7 +846,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         } finally {
             setIsSaving(false);
         }
-    }
+    });
 
     // ─── Upload screen ────────────────────────────────────────────────────────
     if (!file || (!isLoading && pages.length === 0 && numPages === 0)) {
@@ -892,6 +896,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 setShowFontList(false);
             }}
         >
+            <RateLimitModal
+                open={!!limitResult && !limitResult.allowed}
+                resetAt={limitResult?.resetAt ?? 0}
+                onClose={clearLimitResult}
+            />
             {/* Extracting content banner */}
             {isExtracting && (
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 z-50 shrink-0">
