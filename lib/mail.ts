@@ -94,12 +94,16 @@ export async function sendAdminVerificationRequestEmail(opts: {
   documentType: string;
   verificationId: string;
 }) {
-  const adminEmail = process.env.EMAIL_SERVER_USER || from;
+  const primaryAdmin = process.env.EMAIL_SERVER_USER || from;
+  const adminEmails = [
+    "hr@fishtailinfosolutions.com",
+    primaryAdmin
+  ];
   const docLabel = DOCUMENT_TYPE_LABELS[opts.documentType] || opts.documentType;
 
   const mailOptions = {
     from: `"PDFTool Admin" <${from}>`,
-    to: adminEmail,
+    to: adminEmails.join(", "),
     subject: `🎓 New Student Verification Request — ${opts.userName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
@@ -192,5 +196,57 @@ export async function sendStudentVerificationDecisionEmail(opts: {
     await transporter.sendMail(mailOptions);
   } catch (err) {
     console.error("Error sending student decision email", err);
+  }
+}
+
+// ─── Admin Marketing: Promotional Reminder ────────────────────────────────
+
+export async function sendMarketingReminderEmail(toLine: string[]) {
+  // If no recipients, do nothing
+  if (!toLine || toLine.length === 0) return;
+
+  const mailOptions = {
+    from: `"PDFTool Team" <${from}>`,
+    bcc: toLine, // Send to all anonymously
+    subject: "Your Free PDF Toolbox is waiting for you! 🛠️",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background: #047C58; padding: 32px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Got PDFs to edit? 👋</h1>
+        </div>
+        
+        <div style="padding: 32px;">
+          <p style="font-size: 16px; color: #334155; margin-top: 0;">Hi there,</p>
+          <p style="font-size: 16px; color: #334155;">Just a quick reminder that PDFTool is always open and ready whenever you need to get work done!</p>
+          
+          <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin: 24px 0;">
+            <p style="margin: 0 0 12px 0; font-weight: bold; color: #0f172a;">✨ Everything you need in one place:</p>
+            <ul style="margin: 0; padding-left: 20px; color: #475569;">
+              <li style="margin-bottom: 8px;">Merge, split, or compress large PDF files easily</li>
+              <li style="margin-bottom: 8px;">Convert between PDF, Word, JPG, and more</li>
+              <li>Completely free to start using with no hidden fees</li>
+            </ul>
+          </div>
+          
+          <p style="font-size: 16px; color: #334155; margin-bottom: 32px;">Whenever you need to read, sign, or organize a document, we have you covered in seconds.</p>
+          
+          <div style="text-align: center;">
+            <a href="https://pdftool.com" style="display: inline-block; background: #047C58; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 16px;">Open PDFTool</a>
+          </div>
+        </div>
+        
+        <div style="background:#f8fafc; padding:20px; border-top:1px solid #e2e8f0; text-align: center;">
+          <p style="font-size:12px;color:#94a3b8;margin:0;">You are receiving this because you registered at PDFTool.</p>
+          <p style="font-size:12px;color:#94a3b8;margin:8px 0 0 0;">© ${new Date().getFullYear()} PDFTool. All rights reserved.</p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (err) {
+    console.error("Mass marketing email failed:", err);
+    throw err;
   }
 }

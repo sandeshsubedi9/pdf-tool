@@ -153,36 +153,26 @@ export default function AdminVerificationsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-
-      <main className="max-w-6xl mx-auto px-4 pt-28 pb-20">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-brand-dark flex items-center gap-3">
-              <IconSchool size={32} className="text-brand-teal" />
-              Student Verifications
-            </h1>
-            <p className="text-brand-sage mt-1 text-sm">Review and manage student document submissions</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={fetchVerifications}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              <IconLoader2 size={16} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors shadow-sm"
-            >
-              <IconLogout size={16} />
-              Admin Logout
-            </button>
-          </div>
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-brand-dark flex items-center gap-3">
+            <IconSchool size={32} className="text-brand-teal" />
+            Student Verifications
+          </h1>
+          <p className="text-brand-sage mt-1 text-sm">Review and manage student document submissions</p>
         </div>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchVerifications}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            <IconLoader2 size={16} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+      </div>
 
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
@@ -303,7 +293,6 @@ export default function AdminVerificationsPage() {
             </div>
           )}
         </div>
-      </main>
 
       {/* Review Modal */}
       {selected && (

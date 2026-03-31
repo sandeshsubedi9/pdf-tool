@@ -41,9 +41,9 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="bg-brand-dark p-8 pb-10 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 mb-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-800">
+        <div className="bg-slate-800 p-8 pb-10 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-700 mb-4 shadow-inner">
             <IconShieldLock size={32} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Admin Portal</h1>

@@ -78,6 +78,7 @@ export async function PATCH(req: NextRequest) {
       });
     } else {
       await User.findByIdAndUpdate(verification.userId, {
+        isStudent: false,
         verificationStatus: "rejected",
       });
     }
