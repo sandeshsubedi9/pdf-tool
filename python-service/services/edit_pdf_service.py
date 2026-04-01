@@ -110,61 +110,36 @@ async def extract_pdf_content(file: UploadFile) -> dict:
         }
 
         # ── Extract text lines ──────────────────────────────────────────
-        # Use find_tables() to perfectly preserve table structures cell by cell
-        tables = page.find_tables()
-        table_cells = []
-        for table in tables:
-            for row in table.cells:
-                for cell in row:
-                    if cell:
-                        table_cells.append(fitz.Rect(cell))
-        
+        # Use get_text("dict") for detailed block/line/span info
         text_dict = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)
 
         for blk_idx, block in enumerate(text_dict.get("blocks", [])):
             if block.get("type") != 0:  # type 0 = text block
                 continue
 
-            block_rect = fitz.Rect(block.get("bbox"))
-            
-            # Check if this block is inside a table cell
-            is_in_table = False
-            for cell_rect in table_cells:
-                if block_rect.intersects(cell_rect):
-                    is_in_table = True
-                    break
+            for line_idx, line in enumerate(block.get("lines", [])):
+                dominant_size = 12.0
+                dominant_color_hex = "#000000"
+                dominant_font = "Helvetica"
+                is_bold = False
+                is_italic = False
+                
+                line_parts = []
+                span_count = 0
 
-            block_text = ""
-            dominant_size = 12.0
-            dominant_color_hex = "#000000"
-            dominant_font = "Helvetica"
-            is_bold = False
-            is_italic = False
-            
-            span_count = 0
-            real_x0, real_y0, real_x1, real_y1 = None, None, None, None
-
-            for line in block.get("lines", []):
                 for span in line.get("spans", []):
                     span_text = span.get("text", "")
-                    if not span_text.strip():
-                        block_text += span_text
+                    # Don't skip completely empty spans if they are just spaces
+                    if not span_text:
                         continue
                         
-                    sx0, sy0, sx1, sy1 = span.get("bbox", (0, 0, 0, 0))
-                    if real_x0 is None:
-                        real_x0, real_y0, real_x1, real_y1 = sx0, sy0, sx1, sy1
-                    else:
-                        real_x0 = min(real_x0, sx0)
-                        real_y0 = min(real_y0, sy0)
-                        real_x1 = max(real_x1, sx1)
-                        real_y1 = max(real_y1, sy1)
-
-                    block_text += span_text
+                    line_parts.append(span_text)
                     span_count += 1
 
+                    # Track the most common style (use the first span's style)
                     if span_count == 1:
                         dominant_size = span.get("size", 12.0)
+                        # Color is an integer in fitz
                         color_int = span.get("color", 0)
                         r = ((color_int >> 16) & 0xFF) / 255.0
                         g = ((color_int >> 8) & 0xFF) / 255.0
@@ -172,10 +147,12 @@ async def extract_pdf_content(file: UploadFile) -> dict:
                         dominant_color_hex = _rgb_to_hex(r, g, b)
 
                         font_name = span.get("font", "")
+                        # Detect bold/italic from font name
                         fn_lower = font_name.lower()
                         is_bold = "bold" in fn_lower or "heavy" in fn_lower or "black" in fn_lower
                         is_italic = "italic" in fn_lower or "oblique" in fn_lower
 
+                        # Map to a friendly font family
                         if any(k in fn_lower for k in ["arial", "helvetica", "sans"]):
                             dominant_font = "Helvetica"
                         elif any(k in fn_lower for k in ["times", "serif", "roman"]):
@@ -184,40 +161,34 @@ async def extract_pdf_content(file: UploadFile) -> dict:
                             dominant_font = "Courier New"
                         else:
                             dominant_font = "Helvetica"
-                block_text += "\n"
 
-            block_text = block_text.rstrip("\n")
-            if not block_text.strip():
-                continue
+                full_text = "".join(line_parts)
+                if not full_text.strip():
+                    continue
 
-            if real_x0 is None:
-                real_x0, real_y0, real_x1, real_y1 = block.get("bbox", (0, 0, 0, 0))
+                # Line bounding box (much tighter and perfectly positioned than block bbox)
+                bbox = line.get("bbox", (0, 0, 0, 0))
+                x0, y0, x1, y1 = bbox
 
-            pad_x = dominant_size * 0.1
-            pad_y = dominant_size * 0.1
-            orig_x0 = max(0, real_x0 - pad_x)
-            orig_y0 = max(0, real_y0 - pad_y)
-            orig_x1 = min(pw, real_x1 + pad_x)
-            orig_y1 = min(ph, real_y1 + pad_y)
-
-            page_data["text_blocks"].append({
-                "id": str(uuid.uuid4()),
-                "text": block_text,
-                "x_pct": (real_x0 / pw) * 100.0,
-                "y_pct": (real_y0 / ph) * 100.0,
-                "w_pct": ((real_x1 - real_x0) / pw) * 100.0,
-                "h_pct": ((real_y1 - real_y0) / ph) * 100.0,
-                "orig_x0": orig_x0,
-                "orig_y0": orig_y0,
-                "orig_x1": orig_x1,
-                "orig_y1": orig_y1,
-                "fontSize": round(dominant_size, 1),
-                "fontFamily": dominant_font,
-                "color": dominant_color_hex,
-                "bold": is_bold,
-                "italic": is_italic,
-                "align": align
-            })
+                page_data["text_blocks"].append({
+                    "id": f"ext_t_{page_idx}_{blk_idx}_{line_idx}",
+                    "text": full_text,
+                    "x_pct": (x0 / pw) * 100,
+                    "y_pct": (y0 / ph) * 100,
+                    "w_pct": ((x1 - x0) / pw) * 100,
+                    "h_pct": ((y1 - y0) / ph) * 100,
+                    # Original coords for whiteout (in PDF points)
+                    "orig_x0": x0,
+                    "orig_y0": y0,
+                    "orig_x1": x1,
+                    "orig_y1": y1,
+                    # Style
+                    "fontSize": round(dominant_size, 1),
+                    "fontFamily": dominant_font,
+                    "color": dominant_color_hex,
+                    "bold": is_bold,
+                    "italic": is_italic,
+                })
 
         # ── Extract images ───────────────────────────────────────────────
         img_list = page.get_images(full=True)
@@ -410,67 +381,34 @@ def _draw_text_block(page, item: dict, pw: float, ph: float):
     fitz_font = _resolve_fitz_font(font_family, bold, italic)
     color = _hex_to_rgb(color_hex)
 
-    align_str = item.get("align", "left")
-    
-    # We split and render manually to prevent bounds truncation and forced shrinking
-    lines = text.split("\n")
-    line_height = font_size * 1.3
-    
-    for i, line in enumerate(lines):
-        if not line.strip():
-            continue
-            
-        insert_y = y + font_size + (i * line_height)
-        
-        # Calculate exactly how wide the string is at this font size
-        try:
-            # fitz Font object could be needed to get exact length, but get_text_length works
-            text_len = fitz.get_text_length(line, fontname=fitz_font, fontsize=font_size)
-        except Exception:
-            text_len = font_size * 0.5 * len(line) # Fallback heuristic
-            
-        if align_str == "center":
-            insert_x = x + (w - text_len) / 2
-        elif align_str == "right":
-            insert_x = x + w - text_len
-        elif align_str == "justify":
-            # Native insert_textbox does Justify properly, but we can do it manually per line
-            # except the last line of a paragraph shouldn't be justified.
-            # But let's just use insert_textbox for the line but with width exactly.
-            if i == len(lines) - 1 or len(line.split(" ")) == 1:
-                # Don't justify the last line or single words
-                insert_x = x
-            else:
-                # We can just rely on insert_textbox for this specific line!
-                # It safely handles justification if we provide a tight rect.
-                line_rect = fitz.Rect(x, insert_y - font_size, x + w, insert_y + line_height)
-                try:
-                    page.insert_textbox(
-                        line_rect,
-                        line,
-                        fontname=fitz_font,
-                        fontsize=font_size,
-                        color=color,
-                        align=fitz.TEXT_ALIGN_JUSTIFY
-                    )
-                except Exception:
-                    page.insert_text(fitz.Point(x, insert_y), line, fontname=fitz_font, fontsize=font_size, color=color)
-                continue
-        else:
-            insert_x = x
-            
-        # Draw with exact coordinates
-        insert_pt = fitz.Point(insert_x, insert_y)
+    # Use a massive boundary to match the frontend `whiteSpace: "pre"` dynamic sizing behavior. 
+    # This guarantees PyMuPDF never silently truncates text that extends past the original `w` threshold.
+    text_rect = fitz.Rect(x, y, x + 10000, y + 10000)
+
+    try:
+        # Use insert_textbox for multi-line text with wrapping
+        page.insert_textbox(
+            text_rect,
+            text,
+            fontname=fitz_font,
+            fontsize=font_size,
+            color=color,
+            align=fitz.TEXT_ALIGN_LEFT,
+        )
+    except Exception as e:
+        logger.warning(f"insert_textbox failed, falling back to insert_text: {e}")
+        # Fallback: simple text insert at top-left of rect
+        insert_pt = fitz.Point(x, y + font_size)
         try:
             page.insert_text(
                 insert_pt,
-                line,
+                text,
                 fontname=fitz_font,
                 fontsize=font_size,
                 color=color,
             )
-        except Exception as e:
-            logger.warning(f"insert_text failed for line {i}: {e}")
+        except Exception as e2:
+            logger.error(f"Text insertion failed completely: {e2}")
 
 
 def _draw_image_block(page, item: dict, pw: float, ph: float):
