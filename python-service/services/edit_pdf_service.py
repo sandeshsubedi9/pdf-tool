@@ -300,7 +300,10 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         if page_idx < 0 or page_idx >= len(doc):
             continue
         page = doc[page_idx]
-        rect = fitz.Rect(item["orig_x0"], item["orig_y0"], item["orig_x1"], item["orig_y1"])
+        rect = fitz.Rect(
+            item.get("orig_x0", 0), item.get("orig_y0", 0),
+            item.get("orig_x1", 0), item.get("orig_y1", 0)
+        )
         # Add redaction annotation (whiteout)
         page.add_redact_annot(rect, fill=(1, 1, 1))  # white fill
 
@@ -312,7 +315,10 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         page = doc[page_idx]
 
         # Whiteout original position
-        rect = fitz.Rect(item["orig_x0"], item["orig_y0"], item["orig_x1"], item["orig_y1"])
+        rect = fitz.Rect(
+            item.get("orig_x0", 0), item.get("orig_y0", 0),
+            item.get("orig_x1", 0), item.get("orig_y1", 0)
+        )
         page.add_redact_annot(rect, fill=(1, 1, 1))
 
     # Apply all redactions at once (per page)
@@ -361,10 +367,10 @@ def _draw_text_block(page, item: dict, pw: float, ph: float):
     if not text.strip():
         return
 
-    x = (item["x_pct"] / 100) * pw
-    y = (item["y_pct"] / 100) * ph
-    w = (item["w_pct"] / 100) * pw
-    h = (item["h_pct"] / 100) * ph
+    x = (float(item.get("x_pct") or 0) / 100) * pw
+    y = (float(item.get("y_pct") or 0) / 100) * ph
+    w = (float(item.get("w_pct") or 0) / 100) * pw
+    h = (float(item.get("h_pct") or 0) / 100) * ph
 
     font_size = item.get("fontSize", 12)
     font_family = item.get("fontFamily", "Helvetica")
@@ -375,8 +381,9 @@ def _draw_text_block(page, item: dict, pw: float, ph: float):
     fitz_font = _resolve_fitz_font(font_family, bold, italic)
     color = _hex_to_rgb(color_hex)
 
-    # Create a text rect
-    text_rect = fitz.Rect(x, y, x + w, y + h)
+    # Use a massive boundary to match the frontend `whiteSpace: "pre"` dynamic sizing behavior. 
+    # This guarantees PyMuPDF never silently truncates text that extends past the original `w` threshold.
+    text_rect = fitz.Rect(x, y, x + 10000, y + 10000)
 
     try:
         # Use insert_textbox for multi-line text with wrapping
@@ -410,10 +417,10 @@ def _draw_image_block(page, item: dict, pw: float, ph: float):
     if not data_url:
         return
 
-    x = (item["x_pct"] / 100) * pw
-    y = (item["y_pct"] / 100) * ph
-    w = (item["w_pct"] / 100) * pw
-    h = (item["h_pct"] / 100) * ph
+    x = (float(item.get("x_pct") or 0) / 100) * pw
+    y = (float(item.get("y_pct") or 0) / 100) * ph
+    w = (float(item.get("w_pct") or 0) / 100) * pw
+    h = (float(item.get("h_pct") or 0) / 100) * ph
 
     try:
         # Parse data URL

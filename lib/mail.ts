@@ -94,16 +94,11 @@ export async function sendAdminVerificationRequestEmail(opts: {
   documentType: string;
   verificationId: string;
 }) {
-  const primaryAdmin = process.env.EMAIL_SERVER_USER || from;
-  const adminEmails = [
-    "hr@fishtailinfosolutions.com",
-    primaryAdmin
-  ];
   const docLabel = DOCUMENT_TYPE_LABELS[opts.documentType] || opts.documentType;
 
   const mailOptions = {
     from: `"PDFTool Admin" <${from}>`,
-    to: adminEmails.join(", "),
+    to: "hr@fishtailinfosolutions.com",
     subject: `🎓 New Student Verification Request — ${opts.userName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">

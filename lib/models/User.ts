@@ -4,6 +4,7 @@ export interface IUser extends Document {
   email: string;       // Primary login email (e.g. Gmail)
   name?: string;
   password?: string;   // Optional (if using Google OAuth)
+  image?: string;      // Profile picture URL (Google OAuth)
   
   // Student & Verification Fields
   isStudent: boolean;
@@ -33,6 +34,9 @@ const UserSchema: Schema = new Schema(
       trim: true,
     },
     password: {
+      type: String,
+    },
+    image: {
       type: String,
     },
     isStudent: {

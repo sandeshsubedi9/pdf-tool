@@ -48,20 +48,25 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         await connectToDatabase();
-        
+
         let dbUser = await User.findOne({ email: user.email?.toLowerCase() });
-        
+
         // Auto-register first-time Google sign-ins
         if (!dbUser && user.email) {
           // If their google account happens to be a .edu domain, instantly mark them!
           const autoStudent = isStudentEmail(user.email);
-          
+
           dbUser = await User.create({
             email: user.email.toLowerCase(),
             name: user.name,
+            image: user.image,
             isStudent: autoStudent,
             studentEmail: autoStudent ? user.email.toLowerCase() : undefined,
           });
+        } else if (dbUser && user.image && dbUser.image !== user.image) {
+          // Update missing/changed image on subsequent sign-ins
+          dbUser.image = user.image;
+          await dbUser.save();
         }
       }
       return true;
@@ -70,8 +75,9 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         // First login -> attach user id to token
         token.id = user.id;
+        token.image = user.image;
       }
-      
+
       // On every request, fetch the latest user info from DB 
       // since isStudent can change mid-session when they verify their email.
       if (token.email) {
@@ -83,12 +89,13 @@ export const authOptions: NextAuthOptions = {
             token.studentEmail = dbUser.studentEmail;
             token.id = dbUser._id.toString();
             token.verificationStatus = dbUser.verificationStatus || "none";
+            token.image = dbUser.image || token.image || (token as any).picture;
           }
         } catch (e) {
           console.error("JWT Session Callback Error:", e);
         }
       }
-      
+
       return token;
     },
     async session({ session, token }) {
@@ -97,6 +104,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isStudent = token.isStudent;
         (session.user as any).studentEmail = token.studentEmail;
         (session.user as any).verificationStatus = token.verificationStatus || "none";
+        (session.user as any).image = token.image || (token as any).picture || null;
       }
       return session;
     },

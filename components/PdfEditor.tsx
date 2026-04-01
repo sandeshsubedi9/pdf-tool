@@ -131,14 +131,14 @@ const HANDLE_STYLE: React.CSSProperties = {
     boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
 };
 const HANDLE_STYLES = {
-    topLeft:     { ...HANDLE_STYLE, cursor: "nw-resize" },
-    top:         { ...HANDLE_STYLE, cursor: "n-resize" },
-    topRight:    { ...HANDLE_STYLE, cursor: "ne-resize" },
-    right:       { ...HANDLE_STYLE, cursor: "e-resize" },
+    topLeft: { ...HANDLE_STYLE, cursor: "nw-resize" },
+    top: { ...HANDLE_STYLE, cursor: "n-resize" },
+    topRight: { ...HANDLE_STYLE, cursor: "ne-resize" },
+    right: { ...HANDLE_STYLE, cursor: "e-resize" },
     bottomRight: { ...HANDLE_STYLE, cursor: "se-resize" },
-    bottom:      { ...HANDLE_STYLE, cursor: "s-resize" },
-    bottomLeft:  { ...HANDLE_STYLE, cursor: "sw-resize" },
-    left:        { ...HANDLE_STYLE, cursor: "w-resize" },
+    bottom: { ...HANDLE_STYLE, cursor: "s-resize" },
+    bottomLeft: { ...HANDLE_STYLE, cursor: "sw-resize" },
+    left: { ...HANDLE_STYLE, cursor: "w-resize" },
 };
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
@@ -298,6 +298,14 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [isExtracting, setIsExtracting] = useState(false);
     const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
+    // ─── In-editor toast (replaces browser alert()) ──────────────────────────
+    const [editorToast, setEditorToast] = useState<{ msg: string; type: "success" | "error" | "info"; id: number } | null>(null);
+    const showEditorToast = (msg: string, type: "success" | "error" | "info" = "info") => {
+        const id = Date.now();
+        setEditorToast({ msg, type, id });
+        setTimeout(() => setEditorToast(t => t?.id === id ? null : t), 3500);
+    };
+
     const [extractedOriginals, setExtractedOriginals] = useState<Map<string, any>>(new Map());
     const [originalFile, setOriginalFile] = useState<File | null>(null);
 
@@ -395,8 +403,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     //    watermarks, backgrounds, lines) renders normally.
                     const origFillText = ctx.fillText.bind(ctx);
                     const origStrokeText = ctx.strokeText.bind(ctx);
-                    (ctx as any).fillText = () => {};
-                    (ctx as any).strokeText = () => {};
+                    (ctx as any).fillText = () => { };
+                    (ctx as any).strokeText = () => { };
 
                     await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
 
@@ -485,10 +493,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             pdfPageWidth: vp.width / SCALE,
                             pdfPageHeight: vp.height / SCALE,
                             originalText: lineText,
+                            // Map pdf.js Bottom-Left coordinates to PyMuPDF Top-Left coordinates for precise redaction
                             origX0: tx,
-                            origY0: ty,
+                            origY0: (vp.height / SCALE) - ty - fontSize,
                             origX1: tx + lineWidth,
-                            origY1: ty + fontSize,
+                            origY1: (vp.height / SCALE) - ty + (fontSize * 0.25),
                         };
                         newAnnotations.push(ann);
                         origMap.set(ann.id, { ...ann });
@@ -501,7 +510,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                 // ── Fetch images from backend (fire-and-forget after pages show) ──
                 setPages(results);
-                setAnnotations(prev => [...prev, ...newAnnotations]);
+                // Directly set the text annotations instead of appending to prevent React strict-mode double-mounting duplicates
+                setAnnotations(newAnnotations);
                 setExtractedOriginals(origMap);
                 setIsLoading(false);
                 setIsExtracting(true); // reuse banner for image extraction
@@ -534,7 +544,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                 origMap.set(img.id, { ...img });
                             }
                         }
-                        setAnnotations(prev => [...prev, ...imgAnnotations]);
+                        // Deduplicate images based on ID to avoid strict-mode double mount errors
+                        setAnnotations(prev => {
+                            const seen = new Set(prev.map(a => a.id));
+                            const newImgs = imgAnnotations.filter(img => !seen.has(img.id));
+                            return [...prev, ...newImgs];
+                        });
                         setExtractedOriginals(new Map(origMap));
                     }
                 } catch (imgErr) {
@@ -677,10 +692,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 if (!currentExistingIds.has(id)) {
                     deleted.push({
                         page: orig.page_number || annotations.find(a => a.id === id)?.page || 1,
-                        orig_x0: orig.orig_x0,
-                        orig_y0: orig.orig_y0,
-                        orig_x1: orig.orig_x1,
-                        orig_y1: orig.orig_y1,
+                        // text annotations store coords as camelCase (origX0); image annotations
+                        // come from backend as snake_case (orig_x0) — handle both
+                        orig_x0: orig.orig_x0 ?? orig.origX0,
+                        orig_y0: orig.orig_y0 ?? orig.origY0,
+                        orig_x1: orig.orig_x1 ?? orig.origX1,
+                        orig_y1: orig.orig_y1 ?? orig.origY1,
                     });
                 }
             });
@@ -709,10 +726,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         const editItem: any = {
                             type: ann.type,
                             page: ann.page,
-                            orig_x0: orig.orig_x0,
-                            orig_y0: orig.orig_y0,
-                            orig_x1: orig.orig_x1,
-                            orig_y1: orig.orig_y1,
+                            // same camelCase/snake_case dual-source handling as deleted items
+                            orig_x0: orig.orig_x0 ?? orig.origX0,
+                            orig_y0: orig.orig_y0 ?? orig.origY0,
+                            orig_x1: orig.orig_x1 ?? orig.origX1,
+                            orig_y1: orig.orig_y1 ?? orig.origY1,
                             x_pct: ann.type === "text" ? ta.x : ia.x,
                             y_pct: ann.type === "text" ? ta.y : ia.y,
                             w_pct: ann.type === "text" ? ta.w : ia.w,
@@ -720,7 +738,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         };
                         if (ann.type === "text") {
                             editItem.text = ta.text;
-                            editItem.fontSize = ta.fontSize;
+                            // Revert the 1.5 SCALE factor used for canvas rendering to specify correct PDF points
+                            editItem.fontSize = ta.fontSize / 1.5;
                             editItem.fontFamily = ta.fontFamily;
                             editItem.color = ta.color;
                             editItem.bold = ta.bold;
@@ -745,7 +764,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     };
                     if (ann.type === "text") {
                         addItem.text = ta.text;
-                        addItem.fontSize = ta.fontSize;
+                        // Revert the 1.5 SCALE factor to ensure correct sizing on PyMuPDF export
+                        addItem.fontSize = ta.fontSize / 1.5;
                         addItem.fontFamily = ta.fontFamily;
                         addItem.color = ta.color;
                         addItem.bold = ta.bold;
@@ -838,11 +858,14 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 a.click();
                 setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
             } else {
-                alert("No changes to save.");
+                showEditorToast("No changes to save.", "info");
             }
         } catch (err) {
             console.error("Save Error:", err);
-            alert("Failed to save PDF.");
+            showEditorToast(
+                err instanceof Error ? err.message : "Failed to save PDF.",
+                "error"
+            );
         } finally {
             setIsSaving(false);
         }
@@ -901,6 +924,35 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
+            {/* ── In-editor toast notification (replaces browser alert) ── */}
+            <AnimatePresence>
+                {editorToast && (
+                    <motion.div
+                        key={editorToast.id}
+                        initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold pointer-events-none select-none"
+                        style={{
+                            background: editorToast.type === "error"
+                                ? "#EF4444"
+                                : editorToast.type === "success"
+                                    ? "#047C58"
+                                    : "#1E1702",
+                            color: "#fff",
+                            minWidth: 220,
+                            maxWidth: 420,
+                            textAlign: "center",
+                        }}
+                    >
+                        <span>
+                            {editorToast.type === "error" ? "⚠️ " : editorToast.type === "success" ? "✅ " : "ℹ️ "}
+                            {editorToast.msg}
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* Extracting content banner */}
             {isExtracting && (
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 z-50 shrink-0">
@@ -1147,120 +1199,129 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                 zIndex: 20,
                                                             }}
                                                         >
-                                                            <Rnd
-                                                                key={`${ta.id}-${zoom}`}
-                                                                data-annotation="true"
-                                                                size={{ width: rndW, height: rndH }}
-                                                                position={{ x: 0, y: 0 }}
-                                                                onDragStop={(_: any, d: any) => {
-                                                                    updateAnnotation(ta.id, {
-                                                                        x: ta.x + (d.x / pagePxW) * 100,
-                                                                        y: ta.y + (d.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
-                                                                    updateAnnotation(ta.id, {
-                                                                        w: (parseInt(ref.style.width) / pagePxW) * 100,
-                                                                        h: (parseInt(ref.style.height) / pagePxH) * 100,
-                                                                        x: ta.x + (pos.x / pagePxW) * 100,
-                                                                        y: ta.y + (pos.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                disableDragging={tool !== "select" || ta.editing}
-                                                                enableResizing={tool === "select" && !ta.editing}
-                                                                handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
-                                                                className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
-                                                                style={{ position: "relative" }}
-                                                                onClick={(e: any) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedId(ta.id);
-                                                                    updateAnnotation(ta.id, { editing: true } as any);
-                                                                }}
-                                                            >
-                                                                <div className="w-full h-full relative group">
-                                                                    {ta.editing ? (
-                                                                        <textarea
-                                                                            autoFocus
-                                                                            rows={1}
-                                                                            onFocus={(e) => {
-                                                                                const target = e.target;
-                                                                                if (ta.isNew) {
-                                                                                    setTimeout(() => {
-                                                                                        target.select();
-                                                                                        target.style.height = "auto";
-                                                                                        const sh = target.scrollHeight;
-                                                                                        target.style.height = sh + "px";
-                                                                                        updateAnnotation(ta.id, { isNew: false } as any);
-                                                                                    }, 10);
-                                                                                } else {
-                                                                                    const val = target.value;
-                                                                                    target.value = "";
-                                                                                    target.value = val;
-                                                                                    target.style.height = "auto";
-                                                                                    const scrollH = target.scrollHeight;
-                                                                                    target.style.height = scrollH + "px";
-                                                                                }
-                                                                            }}
-                                                                            className="w-full h-full outline-none resize-none p-0 bg-transparent overflow-hidden"
-                                                                            style={{
-                                                                                // For existing text: fontSize was saved at canvas pixels (SCALE=1.5).
-                                                                                // Scale it by (current display width / original canvas width).
-                                                                                fontSize: ta.isExisting
-                                                                                    ? `${ta.fontSize * (pagePxW / pg.width)}px`
-                                                                                    : `${ta.fontSize * zoom}px`,
-                                                                                fontFamily: ta.fontFamily,
-                                                                                color: ta.color,
-                                                                                fontWeight: ta.bold ? "bold" : "normal",
-                                                                                fontStyle: ta.italic ? "italic" : "normal",
-                                                                                textDecoration: ta.underline ? "underline" : "none",
-                                                                                textAlign: ta.align,
-                                                                                lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                whiteSpace: "pre-wrap",
-                                                                            }}
-                                                                            value={ta.text}
-                                                                            onChange={e => {
-                                                                                updateAnnotation(ta.id, { text: e.target.value } as any);
-                                                                                e.target.style.height = "auto";
-                                                                                e.target.style.height = e.target.scrollHeight + "px";
-                                                                            }}
-                                                                            onBlur={() => updateAnnotation(ta.id, { editing: false } as any)}
-                                                                        />
-                                                                    ) : (
+                                                                <Rnd
+                                                                    key={`${ta.id}-${zoom}`}
+                                                                    data-annotation="true"
+                                                                    // Let the text box expand dynamically based on content.
+                                                                    // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
+                                                                    size={{ width: ta.editing || ta.isExisting ? "auto" : rndW, height: "auto" }}
+                                                                    position={{ x: 0, y: 0 }}
+                                                                    onDragStop={(_: any, d: any) => {
+                                                                        updateAnnotation(ta.id, {
+                                                                            x: ta.x + (d.x / pagePxW) * 100,
+                                                                            y: ta.y + (d.y / pagePxH) * 100,
+                                                                        } as any);
+                                                                    }}
+                                                                    onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
+                                                                        updateAnnotation(ta.id, {
+                                                                            w: (ref.offsetWidth / pagePxW) * 100,
+                                                                            h: (ref.offsetHeight / pagePxH) * 100,
+                                                                            x: ta.x + (pos.x / pagePxW) * 100,
+                                                                            y: ta.y + (pos.y / pagePxH) * 100,
+                                                                        } as any);
+                                                                    }}
+                                                                    disableDragging={tool !== "select" || ta.editing}
+                                                                    enableResizing={tool === "select" && !ta.editing}
+                                                                    handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
+                                                                    className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                    style={{ position: "relative" }}
+                                                                    onClick={(e: any) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedId(ta.id);
+                                                                        updateAnnotation(ta.id, { editing: true } as any);
+                                                                    }}
+                                                                >
+                                                                    <div className="w-full h-full relative group" style={{ display: "grid", minWidth: `${rndW}px` }}>
+                                                                        {/* Hidden measuring span that naturally pushes the container bounds without wrapping */}
                                                                         <div
-                                                                            className="w-full h-full p-0 overflow-hidden"
                                                                             style={{
-                                                                                // Same scaling logic as above
-                                                                                fontSize: ta.isExisting
-                                                                                    ? `${ta.fontSize * (pagePxW / pg.width)}px`
-                                                                                    : `${ta.fontSize * zoom}px`,
+                                                                                gridArea: "1 / 1 / 2 / 2",
+                                                                                visibility: "hidden",
+                                                                                whiteSpace: "pre", // Never wrap unexpectedly
                                                                                 fontFamily: ta.fontFamily,
-                                                                                color: ta.color,
+                                                                                fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
                                                                                 fontWeight: ta.bold ? "bold" : "normal",
                                                                                 fontStyle: ta.italic ? "italic" : "normal",
-                                                                                textDecoration: ta.underline ? "underline" : "none",
-                                                                                textAlign: ta.align,
-                                                                                cursor: tool === "select" ? "move" : "default",
-                                                                                // lineHeight:1 ensures no CSS leading creeps in for extracted lines
                                                                                 lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                whiteSpace: ta.isExisting ? "nowrap" : "pre-wrap",
-                                                                                overflow: "visible",
                                                                             }}
                                                                         >
-                                                                            {ta.text}
+                                                                            {ta.text + " "}
                                                                         </div>
-                                                                    )}
-                                                                    {selectedId === ta.id && (
-                                                                        <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
-                                                                            <button onClick={() => duplicateAnnotation(ta.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                <IconCopy size={12} />
-                                                                            </button>
-                                                                            <button onClick={() => deleteAnnotation(ta.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                <IconX size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </Rnd>
+
+                                                                        {ta.editing ? (
+                                                                            <textarea
+                                                                                autoFocus
+                                                                                rows={1}
+                                                                                style={{
+                                                                                    gridArea: "1 / 1 / 2 / 2",
+                                                                                    resize: "none",
+                                                                                    background: "transparent",
+                                                                                    outline: "none",
+                                                                                    border: "none",
+                                                                                    padding: 0,
+                                                                                    margin: 0,
+                                                                                    whiteSpace: "pre", // Auto expand horizontally, never wrap unless Enter
+                                                                                    overflow: "hidden", // We don't want scrollbars
+                                                                                    // Apply font styles exactly
+                                                                                    fontFamily: ta.fontFamily,
+                                                                                    fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
+                                                                                    color: ta.color,
+                                                                                    fontWeight: ta.bold ? "bold" : "normal",
+                                                                                    fontStyle: ta.italic ? "italic" : "normal",
+                                                                                    textDecoration: ta.underline ? "underline" : "none",
+                                                                                    textAlign: ta.align,
+                                                                                    lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                }}
+                                                                                value={ta.text}
+                                                                                onChange={e => updateAnnotation(ta.id, { text: e.target.value } as any)}
+                                                                                onFocus={(e) => {
+                                                                                    const target = e.target;
+                                                                                    if (ta.isNew) {
+                                                                                        setTimeout(() => {
+                                                                                            target.select();
+                                                                                            updateAnnotation(ta.id, { isNew: false } as any);
+                                                                                        }, 10);
+                                                                                    } else {
+                                                                                        const val = target.value;
+                                                                                        target.value = "";
+                                                                                        target.value = val;
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={() => updateAnnotation(ta.id, { editing: false } as any)}
+                                                                            />
+                                                                        ) : (
+                                                                            <div
+                                                                                style={{
+                                                                                    gridArea: "1 / 1 / 2 / 2",
+                                                                                    // Match same spacing & styles
+                                                                                    fontFamily: ta.fontFamily,
+                                                                                    fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
+                                                                                    color: ta.color,
+                                                                                    fontWeight: ta.bold ? "bold" : "normal",
+                                                                                    fontStyle: ta.italic ? "italic" : "normal",
+                                                                                    textDecoration: ta.underline ? "underline" : "none",
+                                                                                    textAlign: ta.align,
+                                                                                    cursor: tool === "select" ? "move" : "default",
+                                                                                    lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                    whiteSpace: "pre",
+                                                                                    overflow: "visible",
+                                                                                }}
+                                                                            >
+                                                                                {ta.text}
+                                                                            </div>
+                                                                        )}
+                                                                        {selectedId === ta.id && (
+                                                                            <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                <button onClick={() => duplicateAnnotation(ta.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                    <IconCopy size={12} />
+                                                                                </button>
+                                                                                <button onClick={() => deleteAnnotation(ta.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                    <IconX size={12} />
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </Rnd>
                                                         </div>
                                                     );
                                                 }
@@ -1347,7 +1408,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                 <div className="flex flex-col gap-1.5">
                                     <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Font</label>
                                     <div className="relative">
-                                        <div 
+                                        <div
                                             className="flex items-center justify-between bg-[#f5f4f0] border border-[#E0DED9] rounded-xl px-2.5 py-1.5 cursor-pointer hover:bg-[#e8e6e3] transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -1361,7 +1422,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                             <IconChevronDown size={14} className="text-brand-sage shrink-0" />
                                         </div>
                                         {showFontList && (
-                                            <div 
+                                            <div
                                                 className="absolute top-full mt-1 left-0 right-0 bg-white border border-[#E0DED9] rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden"
                                                 onClick={e => e.stopPropagation()}
                                             >
@@ -1379,25 +1440,25 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                     </div>
                                                 </div>
                                                 <div className="overflow-y-auto custom-scrollbar">
-                                                {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).map(f => (
-                                                    <button
-                                                        key={f}
-                                                        onMouseDown={e => e.preventDefault()}
-                                                        onClick={() => {
-                                                            setTextFont(f);
-                                                            setFontSearch("");
-                                                            setShowFontList(false);
-                                                            if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontFamily: f } as any);
-                                                        }}
-                                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-[#f5f4f0] transition-colors ${textFont === f ? "bg-black text-white hover:bg-black font-bold" : "text-brand-dark"}`}
-                                                        style={{ fontFamily: f }}
-                                                    >
-                                                        {f}
-                                                    </button>
-                                                ))}
-                                                {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).length === 0 && (
-                                                    <div className="p-3 text-center text-xs text-brand-sage font-medium">No results found</div>
-                                                )}
+                                                    {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).map(f => (
+                                                        <button
+                                                            key={f}
+                                                            onMouseDown={e => e.preventDefault()}
+                                                            onClick={() => {
+                                                                setTextFont(f);
+                                                                setFontSearch("");
+                                                                setShowFontList(false);
+                                                                if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontFamily: f } as any);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-[#f5f4f0] transition-colors ${textFont === f ? "bg-black text-white hover:bg-black font-bold" : "text-brand-dark"}`}
+                                                            style={{ fontFamily: f }}
+                                                        >
+                                                            {f}
+                                                        </button>
+                                                    ))}
+                                                    {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).length === 0 && (
+                                                        <div className="p-3 text-center text-xs text-brand-sage font-medium">No results found</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
