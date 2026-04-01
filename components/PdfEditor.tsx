@@ -28,9 +28,13 @@ import {
     IconFileText,
     IconForms,
     IconFileTypePdf,
-    IconX,
     IconCopy,
     IconSearch,
+    IconAlignLeft,
+    IconAlignCenter,
+    IconAlignRight,
+    IconAlignJustified,
+    IconX,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -58,7 +62,7 @@ interface TextAnnotation {
     bold: boolean;
     italic: boolean;
     underline: boolean;
-    align: "left" | "center" | "right";
+    align: "left" | "center" | "right" | "justify";
     editing: boolean;
     isNew?: boolean;
     // Existing content tracking
@@ -398,132 +402,211 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     canvas.height = vp.height;
                     const ctx = canvas.getContext("2d")!;
 
-                    // ── PHASE 1: Intercept fillText/strokeText so text is
-                    //    never drawn on the canvas. Everything else (images,
-                    //    watermarks, backgrounds, lines) renders normally.
+                    // ── PHASE 1: Intercept fillText/strokeText and image methods
+                    //    so text and raster images are never drawn on the canvas.
                     const origFillText = ctx.fillText.bind(ctx);
                     const origStrokeText = ctx.strokeText.bind(ctx);
+                    const origDrawImage = ctx.drawImage ? ctx.drawImage.bind(ctx) : null;
+                    const origPutImageData = ctx.putImageData ? ctx.putImageData.bind(ctx) : null;
+                    
                     (ctx as any).fillText = () => { };
                     (ctx as any).strokeText = () => { };
+                    if (origDrawImage) (ctx as any).drawImage = () => { };
+                    if (origPutImageData) (ctx as any).putImageData = () => { };
 
                     await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
 
-                    // Restore after render (good practice)
+                    // Restore after render
                     (ctx as any).fillText = origFillText;
                     (ctx as any).strokeText = origStrokeText;
+                    if (origDrawImage) (ctx as any).drawImage = origDrawImage;
+                    if (origPutImageData) (ctx as any).putImageData = origPutImageData;
 
                     results.push({ dataUrl: canvas.toDataURL("image/png"), width: vp.width, height: vp.height });
 
-                    // ── PHASE 2: Get exact text positions from pdf.js
-                    //    transform matrix. No backend guessing needed.
+                    // ── PHASE 2: Get exact text from pdf.js and yield exact lines
                     const textContent = await page.getTextContent();
-
-                    // Group spans into lines by proximity of Y coordinate
-                    // so that we create one editable block per visual line
                     const spans = textContent.items.filter((it: any) => it.str && it.str.trim());
-
-                    // Build lines by clustering spans with same baseline (transform[5])
+                    
                     const lineMap = new Map<string, any[]>();
                     for (const span of spans as any[]) {
-                        const [a, b, c, d, tx, ty] = span.transform;
-                        // round ty to nearest 1pt to group same-line spans
+                        const [, , , , tx, ty] = span.transform;
+                        // Group spans horizontally if they share exactly the same Y baseline
                         const lineKey = `${Math.round(ty)}`;
                         if (!lineMap.has(lineKey)) lineMap.set(lineKey, []);
                         lineMap.get(lineKey)!.push(span);
                     }
 
-                    let lineIdx = 0;
+                    const blocks: any[] = [];
+                    let blockIdx = 0;
+
                     for (const [, lineSpans] of lineMap) {
-                        // Sort spans left→right by tx
+                        // Sort grouped spans left-to-right to maintain logical reading order in the line
                         lineSpans.sort((a: any, b: any) => a.transform[4] - b.transform[4]);
-
-                        // Use the first span's transform for position
-                        const first = lineSpans[0];
-                        const [a, b, c, d, tx, ty] = first.transform;
-
-                        // Font size = magnitude of the vertical scale component
-                        const fontSize = Math.sqrt(c * c + d * d);
-                        const fontInfo = mapFont(first.fontName || "");
-
-                        // Convert PDF coordinates (bottom-left origin) to
-                        // canvas coordinates (top-left origin) at SCALE
-                        const canvasX = tx * SCALE;
-                        // PDF Y is from bottom; canvas Y is from top
-                        const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE;
-
-                        // Measure total width of the line
-                        let lineWidth = 0;
-                        let lineText = "";
-                        for (const span of lineSpans) {
-                            lineText += span.str;
-                            lineWidth += span.width;
+                        
+                        // BUT for table cells, if they are far apart, they should NOT be grouped into one block!
+                        // That was the previous flaw. We must split lineSpans if there is a wide horizontal gap.
+                        const splitSpans: any[][] = [];
+                        let currentGroup = [lineSpans[0]];
+                        for (let j = 1; j < lineSpans.length; j++) {
+                            const prev = currentGroup[currentGroup.length - 1];
+                            const curr = lineSpans[j];
+                            const gap = curr.transform[4] - (prev.transform[4] + prev.width);
+                            
+                            // If gap is more than ~2 character widths, split it (it's a new table column)
+                            const fontSize = Math.sqrt(curr.transform[2] * curr.transform[2] + curr.transform[3] * curr.transform[3]);
+                            if (gap > fontSize * 1.5) {
+                                splitSpans.push(currentGroup);
+                                currentGroup = [curr];
+                            } else {
+                                currentGroup.push(curr);
+                            }
                         }
+                        splitSpans.push(currentGroup);
 
-                        const lineWidthPx = lineWidth * SCALE;
-                        const lineHeightPx = fontSize * SCALE * 1.35; // natural line height
+                        for (const group of splitSpans) {
+                            const first = group[0];
+                            const [a, b, c, d, tx, ty] = first.transform;
+                            const fontSize = Math.sqrt(c * c + d * d);
+                            const fontInfo = mapFont(first.fontName || "");
+                            
+                            let text = "";
+                            let width = 0;
+                            let minTx = tx;
+                            let maxTx = tx;
+                            
+                            for (const s of group) {
+                                // Add space if small gap
+                                const isFirst = text === "";
+                                if (!isFirst) {
+                                    const prevS = group[group.indexOf(s) - 1];
+                                    const smallGap = s.transform[4] - (prevS.transform[4] + prevS.width);
+                                    if (smallGap > fontSize * 0.1) text += " ";
+                                }
+                                text += s.str;
+                                maxTx = Math.max(maxTx, s.transform[4] + s.width);
+                            }
+                            width = maxTx - minTx;
 
-                        // Try to extract color from span (pdf.js provides it as rgb array)
-                        let color = "#000000";
-                        if (first.color && Array.isArray(first.color)) {
-                            const [r, g, b_] = first.color;
-                            color = `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b_ * 255).toString(16).padStart(2, "0")}`;
+                            const canvasX = minTx * SCALE;
+                            const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE;
+                            const spanW = width * SCALE;
+
+                            let color = "#000000";
+                            if (first.color && Array.isArray(first.color)) {
+                                const [r, g, b_] = first.color;
+                                color = `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b_ * 255).toString(16).padStart(2, "0")}`;
+                            }
+
+                            blocks.push({
+                                id: `pjs_${i}_${blockIdx++}`,
+                                x: canvasX,
+                                y: canvasY,
+                                w: spanW,
+                                h: fontSize * SCALE * 1.35,
+                                fontSize: fontSize * SCALE,
+                                fontFamily: fontInfo.family,
+                                color,
+                                bold: fontInfo.bold,
+                                italic: fontInfo.italic,
+                                text,
+                                origX0: minTx,
+                                origY0: (vp.height / SCALE) - ty - fontSize,
+                                origX1: maxTx,
+                                origY1: (vp.height / SCALE) - ty + (fontSize * 0.25),
+                            });
                         }
+                    }
 
+                    // ── Vertical Grouping Pass ──
+                    // Sort horizontal line blocks top-to-bottom, then left-to-right
+                    blocks.sort((a, b) => {
+                        if (Math.abs(a.y - b.y) > 2) return a.y - b.y;
+                        return a.x - b.x;
+                    });
+
+                    const paragraphs: any[] = [];
+                    for (const block of blocks) {
+                        let merged = false;
+                        for (const p of paragraphs) {
+                            if (p.fontFamily !== block.fontFamily) continue;
+                            if (Math.abs(p.fontSize - block.fontSize) > 2) continue;
+
+                            const verticalGap = block.y - (p.y + p.h);
+                            // Are they adjacent lines?
+                            const isNextLine = verticalGap > -5 && verticalGap < block.fontSize * 1.5;
+                            // Do they share horizontal bounds?
+                            const isLeftAligned = Math.abs(p.x - block.x) < block.fontSize;
+                            const isCentered = Math.abs((p.x + p.w / 2) - (block.x + block.w / 2)) < block.fontSize;
+                            const isIndented = block.x > p.x && block.x < p.x + p.w * 0.5;
+
+                            if (isNextLine && (isLeftAligned || isCentered || isIndented)) {
+                                p.text += "\n" + block.text;
+                                p.origX0 = Math.min(p.origX0, block.origX0);
+                                p.origY0 = Math.min(p.origY0, block.origY0);
+                                p.origX1 = Math.max(p.origX1, block.origX1);
+                                p.origY1 = Math.max(p.origY1, block.origY1);
+                                
+                                const maxRight = Math.max(p.x + p.w, block.x + block.w);
+                                p.x = Math.min(p.x, block.x);
+                                p.w = maxRight - p.x;
+                                p.h = (block.y + block.h) - p.y;
+                                
+                                merged = true;
+                                break;
+                            }
+                        }
+                        if (!merged) {
+                            paragraphs.push({ ...block });
+                        }
+                    }
+
+                    for (const block of paragraphs) {
                         const ann: TextAnnotation = {
-                            id: `pjs_${i}_${lineIdx}`,
+                            id: block.id,
                             type: "text",
                             page: i,
-                            // Store position as % of canvas size
-                            x: (canvasX / vp.width) * 100,
-                            y: (canvasY / vp.height) * 100,
-                            w: (lineWidthPx / vp.width) * 100,
-                            h: (lineHeightPx / vp.height) * 100,
-                            text: lineText,
-                            fontSize: fontSize * SCALE,  // px at current scale
-                            fontFamily: fontInfo.family,
-                            color,
-                            bold: fontInfo.bold,
-                            italic: fontInfo.italic,
+                            x: (block.x / vp.width) * 100,
+                            y: (block.y / vp.height) * 100,
+                            w: (block.w / vp.width) * 100,
+                            h: (block.h / vp.height) * 100,
+                            text: block.text,
+                            fontSize: block.fontSize,
+                            fontFamily: block.fontFamily,
+                            color: block.color,
+                            bold: block.bold,
+                            italic: block.italic,
                             underline: false,
                             align: "left",
                             editing: false,
                             isExisting: true,
-                            // Store original PDF transform for backend save
-                            pdfTransform: first.transform,
-                            pdfPageWidth: vp.width / SCALE,
-                            pdfPageHeight: vp.height / SCALE,
-                            originalText: lineText,
-                            // Map pdf.js Bottom-Left coordinates to PyMuPDF Top-Left coordinates for precise redaction
-                            origX0: tx,
-                            origY0: (vp.height / SCALE) - ty - fontSize,
-                            origX1: tx + lineWidth,
-                            origY1: (vp.height / SCALE) - ty + (fontSize * 0.25),
+                            origX0: block.origX0,
+                            origY0: block.origY0,
+                            origX1: block.origX1,
+                            origY1: block.origY1,
+                            originalText: block.text,
                         };
                         newAnnotations.push(ann);
                         origMap.set(ann.id, { ...ann });
-                        lineIdx++;
                     }
-
-                    // ── PHASE 3: Images still come from backend (pdf.js
-                    //    doesn't easily give image coordinates)
                 }
 
-                // ── Fetch images from backend (fire-and-forget after pages show) ──
+                // Show pages and text immediately first
                 setPages(results);
-                // Directly set the text annotations instead of appending to prevent React strict-mode double-mounting duplicates
                 setAnnotations(newAnnotations);
                 setExtractedOriginals(origMap);
                 setIsLoading(false);
-                setIsExtracting(true); // reuse banner for image extraction
+                setIsExtracting(true); // show extracting banner for images
 
                 try {
                     const formData = new FormData();
                     formData.append("file", file, file.name);
                     const res = await fetch("/api/edit-pdf/extract", { method: "POST", body: formData });
                     if (res.ok) {
-                        const imgData = await res.json();
-                        const imgAnnotations: ImageAnnotation[] = [];
-                        for (const pageData of imgData.pages || []) {
+                        const backendData = await res.json();
+                        const extractedAnnotations: Annotation[] = [];
+                        
+                        for (const pageData of backendData.pages || []) {
                             for (const img of pageData.images || []) {
                                 const ann: ImageAnnotation = {
                                     id: img.id,
@@ -540,15 +623,16 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                     origX1: img.orig_x1,
                                     origY1: img.orig_y1,
                                 };
-                                imgAnnotations.push(ann);
+                                extractedAnnotations.push(ann);
                                 origMap.set(img.id, { ...img });
                             }
                         }
-                        // Deduplicate images based on ID to avoid strict-mode double mount errors
+                        
+                        // Set the new annotations
                         setAnnotations(prev => {
                             const seen = new Set(prev.map(a => a.id));
-                            const newImgs = imgAnnotations.filter(img => !seen.has(img.id));
-                            return [...prev, ...newImgs];
+                            const newAnns = extractedAnnotations.filter(a => !seen.has(a.id));
+                            return [...prev, ...newAnns];
                         });
                         setExtractedOriginals(new Map(origMap));
                     }
@@ -721,8 +805,13 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     const sizeChanged = ann.type === "text"
                         ? (Math.abs(ta.w - orig.w_pct) > 0.1 || Math.abs(ta.h - orig.h_pct) > 0.1)
                         : (Math.abs(ia.w - orig.w_pct) > 0.1 || Math.abs(ia.h - orig.h_pct) > 0.1);
+                    const styleChanged = ann.type === "text" && (
+                        ta.color !== orig.color || Math.abs(ta.fontSize - (orig.fontSize * 1.5)) > 0.1 ||
+                        ta.bold !== orig.bold || ta.italic !== orig.italic || ta.fontFamily !== orig.fontFamily ||
+                        ta.align !== orig.align
+                    );
 
-                    if (textChanged || posChanged || sizeChanged) {
+                    if (textChanged || posChanged || sizeChanged || styleChanged) {
                         const editItem: any = {
                             type: ann.type,
                             page: ann.page,
@@ -744,6 +833,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             editItem.color = ta.color;
                             editItem.bold = ta.bold;
                             editItem.italic = ta.italic;
+                            editItem.align = ta.align;
                         } else {
                             editItem.dataUrl = ia.dataUrl;
                         }
@@ -770,6 +860,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         addItem.color = ta.color;
                         addItem.bold = ta.bold;
                         addItem.italic = ta.italic;
+                        addItem.align = ta.align;
                     } else {
                         addItem.dataUrl = ia.dataUrl;
                     }
@@ -1515,6 +1606,32 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                     else if (btn.id === "italic") setTextItalic(v);
                                                     else setTextUnderline(v);
                                                     if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { [btn.id]: v } as any);
+                                                }}
+                                                className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-all ${isOn ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]" : "text-brand-sage hover:text-brand-dark"}`}
+                                            >
+                                                <btn.icon size={16} />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                
+                                {/* Text Alignment */}
+                                <div className="flex gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                                    {([
+                                        { id: "left", icon: IconAlignLeft },
+                                        { id: "center", icon: IconAlignCenter },
+                                        { id: "right", icon: IconAlignRight },
+                                    ] as const).map(btn => {
+                                        const alignVal = selectedAnn?.type === "text"
+                                            ? (selectedAnn as TextAnnotation).align
+                                            : textAlign;
+                                        const isOn = alignVal === btn.id;
+                                        return (
+                                            <button
+                                                key={btn.id}
+                                                onClick={() => {
+                                                    setTextAlign(btn.id as any);
+                                                    if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { align: btn.id } as any);
                                                 }}
                                                 className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-all ${isOn ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]" : "text-brand-sage hover:text-brand-dark"}`}
                                             >
