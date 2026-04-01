@@ -5,7 +5,7 @@ export interface IUser extends Document {
   name?: string;
   password?: string;   // Optional (if using Google OAuth)
   image?: string;      // Profile picture URL (Google OAuth)
-  
+
   // Student & Verification Fields
   isStudent: boolean;
   studentEmail?: string;
