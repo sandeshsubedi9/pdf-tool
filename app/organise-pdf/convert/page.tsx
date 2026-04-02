@@ -522,6 +522,39 @@ export default function OrganisePdfConvertPage() {
     // Drag state for Pages
     const dragPageId = useRef<string | null>(null);
     const dragOverPageId = useRef<string | null>(null);
+    const canvasScrollRef = useRef<HTMLDivElement>(null);
+    const dragScrollRaf = useRef<number | null>(null);
+
+    const stopDragScroll = () => {
+        if (dragScrollRaf.current !== null) {
+            cancelAnimationFrame(dragScrollRaf.current);
+            dragScrollRaf.current = null;
+        }
+    };
+
+    const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        const el = canvasScrollRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const distTop = e.clientY - rect.top;
+        const distBottom = rect.bottom - e.clientY;
+        const threshold = 80;
+        const speed = 12;
+        stopDragScroll();
+        if (distTop < threshold || distBottom < threshold) {
+            const tick = () => {
+                if (!canvasScrollRef.current) return;
+                if (distTop < threshold) {
+                    canvasScrollRef.current.scrollTop -= speed * (1 - distTop / threshold);
+                } else {
+                    canvasScrollRef.current.scrollTop += speed * (1 - distBottom / threshold);
+                }
+                dragScrollRaf.current = requestAnimationFrame(tick);
+            };
+            dragScrollRaf.current = requestAnimationFrame(tick);
+        }
+    }, []);
 
     // ── Load files from FileStore ────────────────────────────
     useEffect(() => {
@@ -707,6 +740,7 @@ export default function OrganisePdfConvertPage() {
     }, []);
 
     const handleDragEnd = useCallback(() => {
+        stopDragScroll();
         if (!dragPageId.current || !dragOverPageId.current) return;
         if (dragPageId.current === dragOverPageId.current) return;
 
@@ -892,7 +926,13 @@ export default function OrganisePdfConvertPage() {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 relative">
+                    <div
+                        ref={canvasScrollRef}
+                        className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 relative"
+                        onDragOver={handleCanvasDragOver}
+                        onDragLeave={stopDragScroll}
+                        onDrop={stopDragScroll}
+                    >
                         {/* Error bar embedded temporarily at top inside canvas */}
                         <AnimatePresence>
                             {error && (

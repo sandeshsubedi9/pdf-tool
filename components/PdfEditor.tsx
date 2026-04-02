@@ -31,6 +31,9 @@ import {
     IconX,
     IconCopy,
     IconSearch,
+    IconRotateClockwise,
+    IconGripVertical,
+    IconFilePlus,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -41,7 +44,7 @@ import { RateLimitModal } from "@/components/RateLimitModal";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type Tool = "select" | "text" | "image" | "draw" | "highlight" | "eraser";
+type Tool = "select" | "text" | "image" | "draw" | "highlight" | "whiteout";
 
 interface TextAnnotation {
     id: string;
@@ -90,10 +93,14 @@ interface DrawAnnotation {
     id: string;
     type: "draw";
     page: number;
-    paths: { x: number; y: number }[][]; // coords are % of page
+    paths: { x: number; y: number }[][]; // relative to local w/h bounding box [0..1]
     color: string;
     lineWidth: number;
     isHighlight?: boolean;
+    x: number; // bounding box X % of page
+    y: number; // bounding box Y % of page
+    w: number; // bounding box W % of page
+    h: number; // bounding box H % of page
 }
 
 type Annotation = TextAnnotation | ImageAnnotation | DrawAnnotation;
@@ -143,97 +150,128 @@ const HANDLE_STYLES = {
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
+// ─── Inline contentEditable text editor ────────────────────────────────────
+// A contentEditable div renders text IDENTICALLY to a regular display div.
+// Unlike <textarea>, it has no browser-specific padding, size quirks, or
+// font-weight inheritance issues — eliminating jarring size/position shifts.
+
+interface TextEditBoxProps {
+    initialText: string;
+    style: React.CSSProperties;
+    onUpdate: (text: string) => void;
+    onBlur: () => void;
+    selectAll?: boolean;
+}
+
+function TextEditBox({ initialText, style, onUpdate, onBlur, selectAll }: TextEditBoxProps) {
+    const ref = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        // Set content directly via DOM — avoids React re-render cursor-jump issue
+        el.textContent = initialText;
+        el.focus();
+        
+        // Handle text selection
+        try {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(el);
+            if (!selectAll) {
+                // Place cursor at end of text if not selecting all
+                range.collapse(false);
+            }
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        } catch { /* ignore selection errors in restricted environments */ }
+    }, []); // Only on mount — do NOT add deps or cursor will jump on every keystroke
+
+    return (
+        <div
+            ref={ref}
+            contentEditable
+            suppressContentEditableWarning
+            spellCheck={false}
+            onInput={(e) => onUpdate(e.currentTarget.textContent || "")}
+            onBlur={onBlur}
+            onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.blur(); }}
+            style={{
+                gridArea: "1 / 1 / 2 / 2",
+                outline: "none",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                cursor: "text",
+                ...style,
+            }}
+        />
+    );
+}
+
 // ─── Draw overlay canvas per page ───────────────────────────────────────────
 
 function DrawCanvas({
     page,
-    annotations,
     tool,
     drawColor,
     drawWidth,
+    width,
+    height,
     onDrawEnd,
 }: {
     page: number;
-    annotations: DrawAnnotation[];
     tool: Tool;
     drawColor: string;
     drawWidth: number;
+    width: number;
+    height: number;
     onDrawEnd: (ann: DrawAnnotation) => void;
 }) {
     const ref = useRef<HTMLCanvasElement>(null);
     const isDrawing = useRef(false);
     const currentPath = useRef<{ x: number; y: number }[]>([]);
 
-    // Redraw saved annotations
-    useEffect(() => {
-        const c = ref.current;
-        if (!c) return;
-        const ctx = c.getContext("2d")!;
-        ctx.clearRect(0, 0, c.width, c.height);
-        for (const ann of annotations) {
-            for (const path of ann.paths) {
-                if (path.length < 2) continue;
-                ctx.beginPath();
-                ctx.lineCap = "round";
-                ctx.lineJoin = "round";
-                if (ann.isHighlight) {
-                    ctx.globalAlpha = 0.35;
-                    ctx.strokeStyle = ann.color;
-                    ctx.lineWidth = ann.lineWidth * 4;
-                } else {
-                    ctx.globalAlpha = 1;
-                    ctx.strokeStyle = ann.color;
-                    ctx.lineWidth = ann.lineWidth;
-                }
-                ctx.moveTo(path[0].x * c.width, path[0].y * c.height);
-                for (let i = 1; i < path.length; i++) {
-                    ctx.lineTo(path[i].x * c.width, path[i].y * c.height);
-                }
-                ctx.stroke();
-                ctx.globalAlpha = 1;
-            }
-        }
-    }, [annotations]);
-
-    function getPos(e: React.MouseEvent) {
+    function getPos(e: MouseEvent | React.MouseEvent) {
         const c = ref.current!;
         const r = c.getBoundingClientRect();
         return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
     }
 
     function down(e: React.MouseEvent) {
-        if (!["draw", "highlight", "eraser"].includes(tool)) return;
+        if (!["draw", "highlight", "whiteout"].includes(tool)) return;
         e.stopPropagation();
         isDrawing.current = true;
         currentPath.current = [getPos(e)];
     }
 
-    function move(e: React.MouseEvent) {
-        if (!isDrawing.current) return;
-        const pos = getPos(e);
-        currentPath.current.push(pos);
-        const c = ref.current!;
-        const ctx = c.getContext("2d")!;
-        const path = currentPath.current;
-        if (path.length < 2) return;
-        const prev = path[path.length - 2];
-        const cur = path[path.length - 1];
-        ctx.beginPath();
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        if (tool === "highlight") {
-            ctx.globalAlpha = 0.35;
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawWidth * 4;
-        } else if (tool === "eraser") {
-            ctx.globalCompositeOperation = "destination-out";
-            ctx.strokeStyle = "rgba(0,0,0,1)";
-            ctx.lineWidth = drawWidth * 6;
-        } else {
-            ctx.globalAlpha = 1;
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawWidth;
-        }
+    useEffect(() => {
+        function handleMove(e: MouseEvent) {
+            if (!isDrawing.current) return;
+            const pos = getPos(e);
+            currentPath.current.push(pos);
+            const c = ref.current!;
+            const ctx = c.getContext("2d")!;
+            const path = currentPath.current;
+            if (path.length < 2) return;
+            const prev = path[path.length - 2];
+            const cur = path[path.length - 1];
+            ctx.beginPath();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            if (tool === "highlight") {
+                ctx.globalAlpha = 0.35;
+                ctx.strokeStyle = drawColor;
+                ctx.lineWidth = drawWidth * 4;
+            } else if (tool === "whiteout") {
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = drawWidth * 4;
+            } else {
+                ctx.globalAlpha = 1;
+                ctx.strokeStyle = drawColor;
+                ctx.lineWidth = drawWidth;
+            }
         ctx.moveTo(prev.x * c.width, prev.y * c.height);
         ctx.lineTo(cur.x * c.width, cur.y * c.height);
         ctx.stroke();
@@ -241,29 +279,69 @@ function DrawCanvas({
         ctx.globalCompositeOperation = "source-over";
     }
 
-    function up() {
+    function handleUp() {
         if (!isDrawing.current) return;
         isDrawing.current = false;
         const path = currentPath.current;
-        if (path.length >= 2) {
+        const c = ref.current;
+        if (path.length >= 2 && c) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const p of path) {
+                if (p.x < minX) minX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y > maxY) maxY = p.y;
+            }
+            
+            const effectiveDrawWidth = (tool === "whiteout" || tool === "highlight") ? drawWidth * 4 : drawWidth;
+            const padX = (effectiveDrawWidth / 2 + 2) / c.width;
+            const padY = (effectiveDrawWidth / 2 + 2) / c.height;
+            minX = Math.max(0, minX - padX);
+            minY = Math.max(0, minY - padY);
+            maxX = Math.min(1, maxX + padX);
+            maxY = Math.min(1, maxY + padY);
+
+            const w = maxX - minX;
+            const h = maxY - minY;
+
+            const relPath = path.map(p => ({
+                x: w === 0 ? 0 : (p.x - minX) / w,
+                y: h === 0 ? 0 : (p.y - minY) / h
+            }));
+
             onDrawEnd({
                 id: uid(),
                 type: "draw",
                 page,
-                paths: [path],
-                color: tool === "eraser" ? "#ffffff" : drawColor,
-                lineWidth: drawWidth,
+                paths: [relPath],
+                color: tool === "whiteout" ? "#ffffff" : drawColor,
+                lineWidth: tool === "whiteout" ? drawWidth * 4 : drawWidth,
                 isHighlight: tool === "highlight",
+                x: minX * 100,
+                y: minY * 100,
+                w: w * 100,
+                h: h * 100,
             });
+            c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
         }
         currentPath.current = [];
     }
 
-    const isActive = ["draw", "highlight", "eraser"].includes(tool);
+        window.addEventListener("mousemove", handleMove);
+        window.addEventListener("mouseup", handleUp);
+        return () => {
+            window.removeEventListener("mousemove", handleMove);
+            window.removeEventListener("mouseup", handleUp);
+        };
+    }, [tool, drawColor, drawWidth, page, onDrawEnd]);
+
+    const isActive = ["draw", "highlight", "whiteout"].includes(tool);
 
     return (
         <canvas
             ref={ref}
+            width={width}
+            height={height}
             className="absolute inset-0 z-10"
             style={{
                 width: "100%",
@@ -272,11 +350,48 @@ function DrawCanvas({
                 cursor: isActive ? "crosshair" : "default",
             }}
             onMouseDown={down}
-            onMouseMove={move}
-            onMouseUp={up}
-            onMouseLeave={up}
         />
     );
+}
+
+// ─── useDragAutoScroll ───────────────────────────────────────────────────────
+// Fires requestAnimationFrame-based auto-scroll when the user drags near the
+// top/bottom edge (threshold px) of the given scrollable container ref.
+function useDragAutoScroll(containerRef: React.RefObject<HTMLElement | null>, threshold = 60, speed = 10) {
+    const raf = useRef<number | null>(null);
+
+    const stop = () => {
+        if (raf.current !== null) { cancelAnimationFrame(raf.current); raf.current = null; }
+    };
+
+    const onDragOver = useCallback((e: React.DragEvent | DragEvent) => {
+        const el = containerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const y = (e as any).clientY;
+        const distTop = y - rect.top;
+        const distBottom = rect.bottom - y;
+
+        stop();
+
+        if (distTop < threshold || distBottom < threshold) {
+            const scroll = () => {
+                if (!containerRef.current) return;
+                if (distTop < threshold) {
+                    containerRef.current.scrollTop -= speed * (1 - distTop / threshold);
+                } else {
+                    containerRef.current.scrollTop += speed * (1 - distBottom / threshold);
+                }
+                raf.current = requestAnimationFrame(scroll);
+            };
+            raf.current = requestAnimationFrame(scroll);
+        }
+    }, [containerRef, threshold, speed]);
+
+    const onDragEnd = useCallback(() => stop(), []);
+    const onDragLeave = useCallback(() => stop(), []);
+
+    return { onDragOver, onDragEnd, onDragLeave };
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -296,6 +411,25 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
+    const [isBlankMode, setIsBlankMode] = useState(false);
+
+    const startWithBlankPage = () => {
+        const W = 2480; // A4 at 300dpi-ish, looks good at any zoom
+        const H = 3508;
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, W, H);
+        const dataUrl = canvas.toDataURL("image/png");
+        setPages([{ dataUrl, width: W, height: H }]);
+        setNumPages(1);
+        setIsBlankMode(true);
+        setCurrentPage(1);
+        setAnnotations([]);
+        setSelectedId(null);
+    };
     const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // ─── In-editor toast (replaces browser alert()) ──────────────────────────
@@ -326,6 +460,117 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     const imgInputRef = useRef<HTMLInputElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const sidebarScrollRef = useRef<HTMLDivElement>(null);
+    const sidebarAutoScroll = useDragAutoScroll(sidebarScrollRef);
+
+    // ─── Page management ─────────────────────────────────────────────────────
+    const [pageRotations, setPageRotations] = useState<Record<number, number>>({});
+    const [deleteConfirmPage, setDeleteConfirmPage] = useState<number | null>(null);
+    const dragPageRef = useRef<number | null>(null);
+    const [dragOverPage, setDragOverPage] = useState<number | null>(null);
+
+    const rotatePage = (pageIndex: number) => {
+        setPageRotations(prev => ({ ...prev, [pageIndex]: ((prev[pageIndex] ?? 0) + 90) % 360 }));
+    };
+
+    const deletePage = (pageIndex: number) => {
+        if (pages.length <= 1) {
+            showEditorToast("Cannot delete the only page.", "error");
+            return;
+        }
+        setPages(prev => prev.filter((_, i) => i !== pageIndex));
+        setAnnotations(prev => {
+            const filtered = prev.filter(a => a.page !== pageIndex + 1);
+            return filtered.map(a => a.page > pageIndex + 1 ? { ...a, page: a.page - 1 } : a);
+        });
+        setPageRotations(prev => {
+            const next: Record<number, number> = {};
+            Object.entries(prev).forEach(([k, v]) => {
+                const ki = parseInt(k);
+                if (ki < pageIndex) next[ki] = v;
+                else if (ki > pageIndex) next[ki - 1] = v;
+            });
+            return next;
+        });
+        setNumPages(p => p - 1);
+        setDeleteConfirmPage(null);
+        setCurrentPage(c => (c > pageIndex + 1 ? c - 1 : Math.min(c, pages.length - 1)));
+        showEditorToast("Page deleted. This action cannot be undone.", "error");
+    };
+
+    const addBlankPage = (afterIndex: number) => {
+        // Create a blank white canvas dataUrl
+        const first = pages[0];
+        const canvas = document.createElement("canvas");
+        const W = first?.width ?? 794;
+        const H = first?.height ?? 1122;
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, W, H);
+        const dataUrl = canvas.toDataURL("image/png");
+        const blank: PageData = { dataUrl, width: W, height: H };
+        setPages(prev => {
+            const next = [...prev];
+            next.splice(afterIndex + 1, 0, blank);
+            return next;
+        });
+        setAnnotations(prev =>
+            prev.map(a => a.page > afterIndex + 1 ? { ...a, page: a.page + 1 } : a)
+        );
+        setNumPages(p => p + 1);
+        // Scroll to new page after state settles
+        setTimeout(() => scrollToPage(afterIndex + 2), 80);
+        showEditorToast("Blank page added.", "success");
+    };
+
+    const handlePageDragStart = (e: React.DragEvent, index: number) => {
+        dragPageRef.current = index;
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handlePageDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setDragOverPage(index);
+    };
+
+    const handlePageDrop = (e: React.DragEvent, targetIndex: number) => {
+        e.preventDefault();
+        const from = dragPageRef.current;
+        if (from === null || from === targetIndex) { setDragOverPage(null); return; }
+
+        setPages(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(from, 1);
+            next.splice(targetIndex, 0, moved);
+            return next;
+        });
+        setAnnotations(prev => prev.map(a => {
+            let pg = a.page - 1; // 0-indexed
+            if (pg === from) pg = targetIndex;
+            else if (from < targetIndex && pg > from && pg <= targetIndex) pg--;
+            else if (from > targetIndex && pg >= targetIndex && pg < from) pg++;
+            return { ...a, page: pg + 1 };
+        }));
+        setPageRotations(prev => {
+            const next: Record<number, number> = {};
+            const keys = Object.keys(prev).map(Number);
+            keys.forEach(k => {
+                let nk = k;
+                if (k === from) nk = targetIndex;
+                else if (from < targetIndex && k > from && k <= targetIndex) nk = k - 1;
+                else if (from > targetIndex && k >= targetIndex && k < from) nk = k + 1;
+                next[nk] = prev[k];
+            });
+            return next;
+        });
+        dragPageRef.current = null;
+        setDragOverPage(null);
+        setCurrentPage(targetIndex + 1);
+        setTimeout(() => scrollToPage(targetIndex + 1), 80);
+    };
 
     const canZoomIn = ZOOM_LEVELS.indexOf(zoom) < ZOOM_LEVELS.length - 1;
     const canZoomOut = ZOOM_LEVELS.indexOf(zoom) > 0;
@@ -398,19 +643,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     canvas.height = vp.height;
                     const ctx = canvas.getContext("2d")!;
 
-                    // ── PHASE 1: Intercept fillText/strokeText so text is
-                    //    never drawn on the canvas. Everything else (images,
-                    //    watermarks, backgrounds, lines) renders normally.
-                    const origFillText = ctx.fillText.bind(ctx);
-                    const origStrokeText = ctx.strokeText.bind(ctx);
-                    (ctx as any).fillText = () => { };
-                    (ctx as any).strokeText = () => { };
-
+                    // Render the full page including text — this gives a pixel-perfect
+                    // canvas image identical to what PDF viewers produce.
                     await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
-
-                    // Restore after render (good practice)
-                    (ctx as any).fillText = origFillText;
-                    (ctx as any).strokeText = origStrokeText;
 
                     results.push({ dataUrl: canvas.toDataURL("image/png"), width: vp.width, height: vp.height });
 
@@ -449,7 +684,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         // canvas coordinates (top-left origin) at SCALE
                         const canvasX = tx * SCALE;
                         // PDF Y is from bottom; canvas Y is from top
-                        const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE;
+                        // 0.82 ≈ typical CSS font ascent ratio (ascent / fontSize).
+                        // Subtracting only the ascent (not full fontSize) aligns the CSS
+                        // text baseline with the canvas-rendered baseline, eliminating the
+                        // vertical shift between the transparent overlay and the PDF image.
+                        const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE * 0.82;
 
                         // Measure total width of the line
                         let lineWidth = 0;
@@ -610,21 +849,13 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         const ann = annotations.find(a => a.id === id);
         if (!ann) return;
         let copy: Annotation;
-        if (ann.type === "draw") {
-            copy = {
-                ...ann,
-                id: uid(),
-                paths: ann.paths.map(p => p.map(pt => ({ x: pt.x + 2, y: pt.y + 2 })))
-            } as DrawAnnotation;
-        } else {
-            copy = {
-                ...ann,
-                id: uid(),
-                x: (ann as any).x + 3,
-                y: (ann as any).y + 3,
-                isNew: ann.type === "text" ? true : undefined
-            } as Annotation;
-        }
+        copy = {
+            ...ann,
+            id: uid(),
+            x: (ann as any).x + 3,
+            y: (ann as any).y + 3,
+            isNew: ann.type === "text" ? true : undefined
+        } as Annotation;
         setAnnotations(prev => [...prev, copy]);
         setSelectedId(copy.id);
     };
@@ -703,7 +934,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             });
 
             for (const ann of annotations) {
-                if (ann.type === "draw") continue; // draws handled separately
 
                 const isExisting = (ann as any).isExisting;
 
@@ -750,27 +980,40 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         modified.push(editItem);
                     }
                     // If nothing changed, skip — leave original as-is
-                } else if (!isExisting && (ann.type === "text" || ann.type === "image")) {
-                    // New annotation
+                } else if (!isExisting) {
+                    // New annotation (text, image, or draw)
                     const ta = ann as TextAnnotation;
                     const ia = ann as ImageAnnotation;
+                    const da = ann as DrawAnnotation;
                     const addItem: any = {
                         type: ann.type,
                         page: ann.page,
-                        x_pct: ann.type === "text" ? ta.x : ia.x,
-                        y_pct: ann.type === "text" ? ta.y : ia.y,
-                        w_pct: ann.type === "text" ? ta.w : ia.w,
-                        h_pct: ann.type === "text" ? ta.h : ia.h,
                     };
-                    if (ann.type === "text") {
+                    if (ann.type === "draw") {
+                        addItem.x_pct = da.x;
+                        addItem.y_pct = da.y;
+                        addItem.w_pct = da.w;
+                        addItem.h_pct = da.h;
+                        addItem.color = da.color;
+                        addItem.lineWidth = da.lineWidth;
+                        addItem.isHighlight = da.isHighlight;
+                        addItem.paths = da.paths;
+                    } else if (ann.type === "text") {
+                        addItem.x_pct = ta.x;
+                        addItem.y_pct = ta.y;
+                        addItem.w_pct = ta.w;
+                        addItem.h_pct = ta.h;
                         addItem.text = ta.text;
-                        // Revert the 1.5 SCALE factor to ensure correct sizing on PyMuPDF export
                         addItem.fontSize = ta.fontSize / 1.5;
                         addItem.fontFamily = ta.fontFamily;
                         addItem.color = ta.color;
                         addItem.bold = ta.bold;
                         addItem.italic = ta.italic;
                     } else {
+                        addItem.x_pct = ia.x;
+                        addItem.y_pct = ia.y;
+                        addItem.w_pct = ia.w;
+                        addItem.h_pct = ia.h;
                         addItem.dataUrl = ia.dataUrl;
                     }
                     added.push(addItem);
@@ -802,10 +1045,20 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
-            } else if (added.length > 0 && pdfArrayBuffer) {
+            } else if (added.length > 0 && (pdfArrayBuffer || isBlankMode)) {
                 // Only new annotations — use pdf-lib (original approach, faster)
                 const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-                const pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
+                
+                let pdfDoc;
+                if (pdfArrayBuffer) {
+                    pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
+                } else {
+                    // Start from scratch for blank mode
+                    pdfDoc = await PDFDocument.create();
+                    for (let i = 0; i < numPages; i++) {
+                        pdfDoc.addPage([595.28, 841.89]); // A4 in points
+                    }
+                }
                 const pdfPages = pdfDoc.getPages();
                 const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
                 const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -845,6 +1098,32 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             ? await pdfDoc.embedPng(imgBytes)
                             : await pdfDoc.embedJpg(imgBytes);
                         pdfPage.drawImage(embeddedImg, { x: xPt, y: yPt, width: wPt, height: hPt });
+                    } else if (ann.type === "draw") {
+                        const da = ann as DrawAnnotation;
+                        const xPt = (da.x / 100) * pw;
+                        const yPtTop = (da.y / 100) * ph;
+                        const wPt = (da.w / 100) * pw;
+                        const hPt = (da.h / 100) * ph;
+                        
+                        const hexToRgb = (hex: string) => {
+                            const r = parseInt(hex.slice(1, 3), 16) / 255;
+                            const g = parseInt(hex.slice(3, 5), 16) / 255;
+                            const b = parseInt(hex.slice(5, 7), 16) / 255;
+                            return rgb(r, g, b);
+                        };
+
+                        for (const path of da.paths) {
+                            if (path.length < 2) continue;
+                            const svgPath = path.map((p, ix) => 
+                                `${ix === 0 ? 'M' : 'L'} ${xPt + p.x * wPt} ${ph - (yPtTop + p.y * hPt)}`
+                            ).join(" ");
+                            
+                            pdfPage.drawSvgPath(svgPath, {
+                                color: undefined,
+                                borderColor: hexToRgb(da.color),
+                                borderWidth: da.isHighlight ? da.lineWidth * 4 : da.lineWidth,
+                            });
+                        }
                     }
                 }
 
@@ -853,7 +1132,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `edited_${file.name}`;
+                a.download = file ? `edited_${file.name}` : `document.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
@@ -872,7 +1151,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     });
 
     // ─── Upload screen ────────────────────────────────────────────────────────
-    if (!file || (!isLoading && pages.length === 0 && numPages === 0)) {
+    if (!file && !isBlankMode) {
         return (
             <ToolLayout
                 title="Edit PDF"
@@ -893,6 +1172,27 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             }
                         }}
                     />
+
+                    {/* ── Start with blank page ── */}
+                    <div className="mt-6 flex flex-col items-center gap-3">
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="flex-1 h-px bg-[#E0DED9]" />
+                            <span className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">or</span>
+                            <div className="flex-1 h-px bg-[#E0DED9]" />
+                        </div>
+                        <button
+                            onClick={startWithBlankPage}
+                            className="group flex items-center gap-3 px-6 py-3.5 rounded-2xl border-2 border-dashed border-[#047C58]/40 hover:border-[#047C58] bg-white hover:bg-emerald-50 transition-all w-full justify-center"
+                        >
+                            <div className="w-8 h-8 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-all">
+                                <IconFilePlus size={18} className="text-[#047C58]" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm font-bold text-brand-dark">Start with a blank page</p>
+                                <p className="text-[11px] text-brand-sage">Create a new document from scratch</p>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </ToolLayout>
         );
@@ -998,7 +1298,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             { id: "image", icon: IconPhoto, label: "Image" },
                             { id: "draw", icon: IconPencil, label: "Draw" },
                             { id: "highlight", icon: IconHighlight, label: "Highlight" },
-                            { id: "eraser", icon: IconEraser, label: "Eraser" },
+                            { id: "whiteout", icon: IconEraser, label: "Whiteout" },
                         ] as const).map(btn => (
                             <button
                                 key={btn.id}
@@ -1104,24 +1404,129 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             {/* ── MAIN LAYOUT ── */}
             <div className="flex-1 flex overflow-hidden">
 
-                {/* Left: Thumbnails */}
+                {/* Left: Thumbnails with page management */}
                 {pages.length > 0 && (
-                    <div className="hidden md:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[140px]">
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4 bg-[#fdfdfb]">
+                    <div className="hidden md:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[152px]">
+                        <div
+                            ref={sidebarScrollRef}
+                            className="flex-1 overflow-y-auto custom-scrollbar py-3 bg-[#fdfdfb]"
+                            onDragLeave={(e) => { setDragOverPage(null); sidebarAutoScroll.onDragLeave(); }}
+                            onDrop={() => { setDragOverPage(null); sidebarAutoScroll.onDragEnd(); }}
+                            onDragOver={(e) => sidebarAutoScroll.onDragOver(e)}
+                        >
+                            {/* Add page at the very top */}
+                            <button
+                                onClick={() => addBlankPage(-1)}
+                                className="w-full flex items-center justify-center gap-1 py-1.5 mb-1 text-[10px] font-bold text-brand-sage hover:text-brand-teal hover:bg-emerald-50 transition-all opacity-0 hover:opacity-100 group-hover:opacity-100"
+                                style={{ opacity: pages.length > 0 ? undefined : 1 }}
+                                title="Add blank page at start"
+                            >
+                                <IconFilePlus size={12} /> Add here
+                            </button>
+
                             {pages.map((pg, i) => (
-                                <div key={i} className="flex flex-col items-center gap-1.5">
+                                <div
+                                    key={i}
+                                    className={`relative group flex flex-col items-center px-2 pb-2 transition-all ${
+                                        dragOverPage === i ? "bg-blue-50 ring-2 ring-inset ring-blue-400 rounded-xl" : ""
+                                    }`}
+                                    draggable
+                                    onDragStart={e => handlePageDragStart(e, i)}
+                                    onDragOver={e => handlePageDragOver(e, i)}
+                                    onDrop={e => handlePageDrop(e, i)}
+                                >
+                                    {/* Drag grip */}
+                                    <div className="absolute left-1.5 top-2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-brand-sage">
+                                        <IconGripVertical size={12} />
+                                    </div>
+
+                                    {/* Thumbnail */}
                                     <button
                                         id={`edit-thumb-${i + 1}`}
                                         onClick={() => scrollToPage(i + 1)}
-                                        className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden ${currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"}`}
+                                        className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 ${
+                                            currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"
+                                        }`}
                                     >
-                                        <img src={pg.dataUrl} alt={`Page ${i + 1}`} className="w-full object-contain" draggable={false} />
+                                        <img
+                                            src={pg.dataUrl}
+                                            alt={`Page ${i + 1}`}
+                                            className="w-full object-contain pointer-events-none select-none"
+                                            draggable={false}
+                                            style={{
+                                                transform: `rotate(${pageRotations[i] ?? 0}deg)`,
+                                                transition: "transform 0.3s ease",
+                                            }}
+                                        />
+
+                                        {/* Hover action buttons */}
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                            {/* Rotate */}
+                                            <button
+                                                onClick={e => { e.stopPropagation(); rotatePage(i); }}
+                                                className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-brand-dark hover:bg-white shadow-md transition-all"
+                                                title="Rotate 90°"
+                                            >
+                                                <IconRotateClockwise size={13} />
+                                            </button>
+                                            {/* Delete */}
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
+                                                className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md transition-all"
+                                                title="Delete page"
+                                            >
+                                                <IconTrash size={13} />
+                                            </button>
+                                        </div>
                                     </button>
-                                    <span className={`text-[11px] font-bold ${currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"}`}>
+
+                                    <span className={`text-[10px] font-bold mt-1 ${
+                                        currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"
+                                    }`}>
                                         Page {i + 1}
                                     </span>
+
+                                    {/* Add page below this one */}
+                                    <button
+                                        onClick={() => addBlankPage(i)}
+                                        className="w-full flex items-center justify-center gap-1 py-0.5 mt-0.5 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-all border border-dashed border-emerald-300 hover:border-emerald-500"
+                                        title="Add blank page after this one"
+                                    >
+                                        <IconFilePlus size={10} /> Add page
+                                    </button>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete page confirmation modal */}
+                {deleteConfirmPage !== null && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirmPage(null)}>
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 w-[320px] flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                    <IconTrash size={20} className="text-red-500" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-brand-dark text-sm">Delete Page {deleteConfirmPage + 1}?</p>
+                                    <p className="text-[11px] text-brand-sage mt-0.5">This cannot be undone. All annotations on this page will also be removed.</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setDeleteConfirmPage(null)}
+                                    className="flex-1 py-2.5 rounded-xl border border-[#E0DED9] text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => deletePage(deleteConfirmPage)}
+                                    className="flex-1 py-2.5 rounded-xl bg-red-500 text-xs font-bold text-white hover:bg-red-600 transition-all"
+                                >
+                                    Delete Page
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1139,8 +1544,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         >
                             {pages.map((pg, i) => {
                                 const pageAnns = annotations.filter(a => a.page === i + 1);
-                                const drawAnns = pageAnns.filter(a => a.type === "draw") as DrawAnnotation[];
-                                const overlayAnns = pageAnns.filter(a => a.type === "text" || a.type === "image");
+                                const overlayAnns = pageAnns.filter(a => ["text", "image", "draw"].includes(a.type));
 
                                 return (
                                     <div
@@ -1151,25 +1555,30 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                             aspectRatio: `${pg.width} / ${pg.height}`,
                                             width: "100%",
                                             border: "1px solid #ccc",
-                                            cursor: tool === "text" ? "text" : ["draw", "highlight", "eraser"].includes(tool) ? "crosshair" : "default",
+                                            cursor: tool === "text" ? "text" : ["draw", "highlight", "whiteout"].includes(tool) ? "crosshair" : "default",
                                         }}
                                         onClick={e => onPageClick(e, i)}
                                     >
-                                        {/* Page image */}
+                                        {/* Page image - rotates with pageRotations */}
                                         <img
                                             src={pg.dataUrl}
                                             alt={`Page ${i + 1}`}
                                             className="w-full h-full object-contain select-none pointer-events-none"
                                             draggable={false}
+                                            style={{
+                                                transform: `rotate(${pageRotations[i] ?? 0}deg)`,
+                                                transition: "transform 0.3s ease",
+                                            }}
                                         />
 
                                         {/* Draw canvas overlay */}
                                         <DrawCanvas
                                             page={i + 1}
-                                            annotations={drawAnns}
                                             tool={tool}
                                             drawColor={drawColor}
                                             drawWidth={drawWidth}
+                                            width={Math.min(900 * zoom, 3000)}
+                                            height={Math.min(900 * zoom, 3000) * (pg.height / pg.width)}
                                             onDrawEnd={addDraw}
                                         />
 
@@ -1177,7 +1586,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                              Position: CSS left/top % on wrapper → always zoom-accurate, no DOM reads
                                              Size: computed pixel dimensions from deterministic formula → matches zoom exactly
                                              Font: ta.fontSize * zoom → scales with page */}
-                                        <div className="absolute inset-0 z-20" style={{ pointerEvents: ["draw", "highlight", "eraser"].includes(tool) ? "none" : "auto" }}>
+                                        <div className="absolute inset-0 z-20" style={{ pointerEvents: "none" }}>
                                             {overlayAnns.map(ann => {
                                                 // Page pixel size computed from the same formula as the container style.
                                                 // No DOM reads needed – deterministic and always current.
@@ -1188,6 +1597,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                     const ta = ann as TextAnnotation;
                                                     const rndW = (ta.w / 100) * pagePxW;
                                                     const rndH = (ta.h / 100) * pagePxH;
+                                                    // When text hasn't been changed yet, the overlay is invisible
+                                                    // so the real PDF text rendered on the canvas shows through.
+                                                    const isUnmodified = ta.isExisting && ta.text === ta.originalText;
                                                     return (
                                                         <div
                                                             key={ta.id}
@@ -1197,11 +1609,13 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                 left: `${ta.x}%`,
                                                                 top: `${ta.y}%`,
                                                                 zIndex: 20,
+                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
                                                             }}
                                                         >
                                                                 <Rnd
                                                                     key={`${ta.id}-${zoom}`}
                                                                     data-annotation="true"
+                                                                    bounds={`#edit-page-${i}`}
                                                                     // Let the text box expand dynamically based on content.
                                                                     // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
                                                                     size={{ width: ta.editing || ta.isExisting ? "auto" : rndW, height: "auto" }}
@@ -1249,20 +1663,20 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         </div>
 
                                                                         {ta.editing ? (
-                                                                            <textarea
-                                                                                autoFocus
-                                                                                rows={1}
+                                                                            // contentEditable div renders identically to the display div below —
+                                                                            // same font metrics, same line-height, same CSS box model.
+                                                                            // This eliminates the jarring size/position shift on click.
+                                                                            <TextEditBox
+                                                                                initialText={ta.text}
+                                                                                onUpdate={(text) => updateAnnotation(ta.id, { text } as any)}
+                                                                                onBlur={() => updateAnnotation(ta.id, { editing: false, isNew: false } as any)}
+                                                                                selectAll={ta.isNew}
                                                                                 style={{
-                                                                                    gridArea: "1 / 1 / 2 / 2",
-                                                                                    resize: "none",
-                                                                                    background: "transparent",
-                                                                                    outline: "none",
-                                                                                    border: "none",
-                                                                                    padding: 0,
-                                                                                    margin: 0,
-                                                                                    whiteSpace: "pre", // Auto expand horizontally, never wrap unless Enter
-                                                                                    overflow: "hidden", // We don't want scrollbars
-                                                                                    // Apply font styles exactly
+                                                                                    whiteSpace: "pre",
+                                                                                    overflow: "visible",
+                                                                                    // Opaque white totally hides the original PDF text underneath so you 
+                                                                                    // don't see double/ghosting text while typing.
+                                                                                    background: "#ffffff",
                                                                                     fontFamily: ta.fontFamily,
                                                                                     fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
                                                                                     color: ta.color,
@@ -1271,23 +1685,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     textDecoration: ta.underline ? "underline" : "none",
                                                                                     textAlign: ta.align,
                                                                                     lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                    minWidth: `${rndW}px`,
                                                                                 }}
-                                                                                value={ta.text}
-                                                                                onChange={e => updateAnnotation(ta.id, { text: e.target.value } as any)}
-                                                                                onFocus={(e) => {
-                                                                                    const target = e.target;
-                                                                                    if (ta.isNew) {
-                                                                                        setTimeout(() => {
-                                                                                            target.select();
-                                                                                            updateAnnotation(ta.id, { isNew: false } as any);
-                                                                                        }, 10);
-                                                                                    } else {
-                                                                                        const val = target.value;
-                                                                                        target.value = "";
-                                                                                        target.value = val;
-                                                                                    }
-                                                                                }}
-                                                                                onBlur={() => updateAnnotation(ta.id, { editing: false } as any)}
                                                                             />
                                                                         ) : (
                                                                             <div
@@ -1296,12 +1695,16 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     // Match same spacing & styles
                                                                                     fontFamily: ta.fontFamily,
                                                                                     fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                    color: ta.color,
+                                                                                    // If unmodified: transparent → real PDF canvas text shows through.
+                                                                                    // If modified: show new text on SOLID white background so user sees their change 
+                                                                                    // without the original ghost text bleeding through.
+                                                                                    color: isUnmodified ? "transparent" : ta.color,
+                                                                                    background: isUnmodified ? "transparent" : "#ffffff",
                                                                                     fontWeight: ta.bold ? "bold" : "normal",
                                                                                     fontStyle: ta.italic ? "italic" : "normal",
                                                                                     textDecoration: ta.underline ? "underline" : "none",
                                                                                     textAlign: ta.align,
-                                                                                    cursor: tool === "select" ? "move" : "default",
+                                                                                    cursor: ta.isExisting ? "text" : (tool === "select" ? "move" : "default"),
                                                                                     lineHeight: ta.isExisting ? 1 : 1.3,
                                                                                     whiteSpace: "pre",
                                                                                     overflow: "visible",
@@ -1336,11 +1739,13 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                 left: `${ia.x}%`,
                                                                 top: `${ia.y}%`,
                                                                 zIndex: 20,
+                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
                                                             }}
                                                         >
                                                             <Rnd
                                                                 key={`${ia.id}-${zoom}`}
                                                                 data-annotation="true"
+                                                                bounds={`#edit-page-${i}`}
                                                                 size={{ width: (ia.w / 100) * pagePxW, height: (ia.h / 100) * pagePxH }}
                                                                 position={{ x: 0, y: 0 }}
                                                                 onDragStop={(_: any, d: any) => {
@@ -1372,6 +1777,81 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 <IconCopy size={12} />
                                                                             </button>
                                                                             <button onClick={() => deleteAnnotation(ia.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                <IconX size={12} />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </Rnd>
+                                                        </div>
+                                                    );
+                                                }
+                                                if (ann.type === "draw") {
+                                                    const da = ann as DrawAnnotation;
+                                                    return (
+                                                        <div
+                                                            key={da.id}
+                                                            data-annotation="true"
+                                                            className="absolute"
+                                                            style={{
+                                                                left: `${da.x}%`,
+                                                                top: `${da.y}%`,
+                                                                zIndex: 20,
+                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                            }}
+                                                        >
+                                                            <Rnd
+                                                                key={`${da.id}-${zoom}`}
+                                                                data-annotation="true"
+                                                                bounds={`#edit-page-${i}`}
+                                                                size={{ width: (da.w / 100) * pagePxW, height: (da.h / 100) * pagePxH }}
+                                                                position={{ x: 0, y: 0 }}
+                                                                onDragStop={(_: any, d: any) => {
+                                                                    updateAnnotation(da.id, {
+                                                                        x: da.x + (d.x / pagePxW) * 100,
+                                                                        y: da.y + (d.y / pagePxH) * 100,
+                                                                    } as any);
+                                                                }}
+                                                                onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
+                                                                    updateAnnotation(da.id, {
+                                                                        w: (parseInt(ref.style.width) / pagePxW) * 100,
+                                                                        h: (parseInt(ref.style.height) / pagePxH) * 100,
+                                                                        x: da.x + (pos.x / pagePxW) * 100,
+                                                                        y: da.y + (pos.y / pagePxH) * 100,
+                                                                    } as any);
+                                                                }}
+                                                                disableDragging={tool !== "select"}
+                                                                enableResizing={tool === "select"}
+                                                                handleStyles={selectedId === da.id ? HANDLE_STYLES : {}}
+                                                                className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                style={{ position: "relative" }}
+                                                                onClick={(e: any) => { e.stopPropagation(); setSelectedId(da.id); }}
+                                                            >
+                                                                <div className="w-full h-full relative group">
+                                                                    <svg width="100%" height="100%" style={{ overflow: "hidden" }} preserveAspectRatio="none">
+                                                                        {da.paths.map((path, idx) => {
+                                                                            if (path.length < 2) return null;
+                                                                            const svgPath = path.map((p, ix) => `${ix === 0 ? 'M' : 'L'} ${p.x * ((da.w / 100) * pagePxW)} ${p.y * ((da.h / 100) * pagePxH)}`).join(" ");
+                                                                            return (
+                                                                                <path
+                                                                                    key={idx}
+                                                                                    d={svgPath}
+                                                                                    fill="none"
+                                                                                    stroke={da.color}
+                                                                                    strokeWidth={da.isHighlight ? da.lineWidth * 4 : da.lineWidth}
+                                                                                    strokeOpacity={da.isHighlight ? 0.35 : 1}
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                />
+                                                                            );
+                                                                        })}
+                                                                    </svg>
+                                                                    {selectedId === da.id && (
+                                                                        <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                            <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                <IconCopy size={12} />
+                                                                            </button>
+                                                                            <button onClick={() => deleteAnnotation(da.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
                                                                                 <IconX size={12} />
                                                                             </button>
                                                                         </div>
@@ -1528,8 +2008,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             </div>
                         )}
 
-                        {/* Selected individual component actions (for Text & Image) */}
-                        {selectedAnn && (selectedAnn.type === "text" || selectedAnn.type === "image") && (
+                        {/* Selected individual component actions */}
+                        {selectedAnn && (
                             <div className="flex flex-col gap-1.5 pt-2 border-t border-[#E0DED9]">
                                 <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Actions</label>
                                 <div className="flex gap-2">
@@ -1550,29 +2030,58 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         )}
 
                         {/* Draw settings */}
-                        {["draw", "highlight", "eraser"].includes(tool) && (
-                            <div className="flex flex-col gap-4">
-                                {tool !== "eraser" && (
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Brush Color</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {COLORS.map(c => (
-                                                <button
-                                                    key={c}
-                                                    onClick={() => setDrawColor(c)}
-                                                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${drawColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
-                                                    style={{ background: c }}
-                                                />
-                                            ))}
+                        {(["draw", "highlight", "whiteout"].includes(tool) || selectedAnn?.type === "draw") && (() => {
+                            const isWhiteout = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color === "#ffffff" : tool === "whiteout";
+                            const currentLineWidth = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).lineWidth : drawWidth;
+                            const currentColor = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color : drawColor;
+                            
+                            return (
+                                <div className="flex flex-col gap-4">
+                                    {isWhiteout && (
+                                        <div className="bg-red-50 border border-red-200 p-2.5 rounded-xl text-[11px] text-red-700 font-medium leading-relaxed">
+                                            <strong className="font-bold">Warning:</strong> Whiteout covers information visually but does not fully remove it. Do not use for redacting sensitive or important information.
                                         </div>
+                                    )}
+                                    {!isWhiteout && (
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Brush Color</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {COLORS.map(c => (
+                                                    <button
+                                                        key={c}
+                                                        onClick={() => {
+                                                            setDrawColor(c);
+                                                            if (selectedAnn?.id && selectedAnn.type === "draw") {
+                                                                updateAnnotation(selectedAnn.id, { color: c } as any);
+                                                            }
+                                                        }}
+                                                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${currentColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
+                                                        style={{ background: c }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Thickness: {currentLineWidth}px</label>
+                                        <input 
+                                            type="range" 
+                                            min={1} 
+                                            max={24} 
+                                            className="w-full accent-black" 
+                                            value={currentLineWidth} 
+                                            onChange={e => {
+                                                const v = Number(e.target.value);
+                                                setDrawWidth(v);
+                                                if (selectedAnn?.id && selectedAnn.type === "draw") {
+                                                    updateAnnotation(selectedAnn.id, { lineWidth: v } as any);
+                                                }
+                                            }} 
+                                        />
                                     </div>
-                                )}
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Thickness: {drawWidth}px</label>
-                                    <input type="range" min={1} max={24} className="w-full accent-black" value={drawWidth} onChange={e => setDrawWidth(Number(e.target.value))} />
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {!selectedAnn && tool === "select" && (
                             <div className="mt-16 text-center px-4">
