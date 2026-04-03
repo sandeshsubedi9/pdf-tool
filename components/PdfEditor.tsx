@@ -36,6 +36,7 @@ import {
     IconFilePlus,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
+import Navbar from "@/components/Navbar";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "motion/react";
@@ -130,6 +131,8 @@ const GOOGLE_FONTS = [
     "Helvetica", "Arial", "Georgia", "Times New Roman", "Courier New",
 ];
 
+const POPULAR_FONT_SIZES = [8, 12, 14, 16, 18, 20, 24, 28, 36, 48, 64, 72];
+
 const HANDLE_STYLE: React.CSSProperties = {
     width: 10, height: 10,
     background: "#2563eb",
@@ -172,7 +175,7 @@ function TextEditBox({ initialText, style, onUpdate, onBlur, selectAll }: TextEd
         // Set content directly via DOM — avoids React re-render cursor-jump issue
         el.textContent = initialText;
         el.focus();
-        
+
         // Handle text selection
         try {
             const range = document.createRange();
@@ -272,60 +275,60 @@ function DrawCanvas({
                 ctx.strokeStyle = drawColor;
                 ctx.lineWidth = drawWidth;
             }
-        ctx.moveTo(prev.x * c.width, prev.y * c.height);
-        ctx.lineTo(cur.x * c.width, cur.y * c.height);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = "source-over";
-    }
-
-    function handleUp() {
-        if (!isDrawing.current) return;
-        isDrawing.current = false;
-        const path = currentPath.current;
-        const c = ref.current;
-        if (path.length >= 2 && c) {
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const p of path) {
-                if (p.x < minX) minX = p.x;
-                if (p.y < minY) minY = p.y;
-                if (p.x > maxX) maxX = p.x;
-                if (p.y > maxY) maxY = p.y;
-            }
-            
-            const effectiveDrawWidth = (tool === "whiteout" || tool === "highlight") ? drawWidth * 4 : drawWidth;
-            const padX = (effectiveDrawWidth / 2 + 2) / c.width;
-            const padY = (effectiveDrawWidth / 2 + 2) / c.height;
-            minX = Math.max(0, minX - padX);
-            minY = Math.max(0, minY - padY);
-            maxX = Math.min(1, maxX + padX);
-            maxY = Math.min(1, maxY + padY);
-
-            const w = maxX - minX;
-            const h = maxY - minY;
-
-            const relPath = path.map(p => ({
-                x: w === 0 ? 0 : (p.x - minX) / w,
-                y: h === 0 ? 0 : (p.y - minY) / h
-            }));
-
-            onDrawEnd({
-                id: uid(),
-                type: "draw",
-                page,
-                paths: [relPath],
-                color: tool === "whiteout" ? "#ffffff" : drawColor,
-                lineWidth: tool === "whiteout" ? drawWidth * 4 : drawWidth,
-                isHighlight: tool === "highlight",
-                x: minX * 100,
-                y: minY * 100,
-                w: w * 100,
-                h: h * 100,
-            });
-            c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+            ctx.moveTo(prev.x * c.width, prev.y * c.height);
+            ctx.lineTo(cur.x * c.width, cur.y * c.height);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
         }
-        currentPath.current = [];
-    }
+
+        function handleUp() {
+            if (!isDrawing.current) return;
+            isDrawing.current = false;
+            const path = currentPath.current;
+            const c = ref.current;
+            if (path.length >= 2 && c) {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const p of path) {
+                    if (p.x < minX) minX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y > maxY) maxY = p.y;
+                }
+
+                const effectiveDrawWidth = (tool === "whiteout" || tool === "highlight") ? drawWidth * 4 : drawWidth;
+                const padX = (effectiveDrawWidth / 2 + 2) / c.width;
+                const padY = (effectiveDrawWidth / 2 + 2) / c.height;
+                minX = Math.max(0, minX - padX);
+                minY = Math.max(0, minY - padY);
+                maxX = Math.min(1, maxX + padX);
+                maxY = Math.min(1, maxY + padY);
+
+                const w = maxX - minX;
+                const h = maxY - minY;
+
+                const relPath = path.map(p => ({
+                    x: w === 0 ? 0 : (p.x - minX) / w,
+                    y: h === 0 ? 0 : (p.y - minY) / h
+                }));
+
+                onDrawEnd({
+                    id: uid(),
+                    type: "draw",
+                    page,
+                    paths: [relPath],
+                    color: tool === "whiteout" ? "#ffffff" : drawColor,
+                    lineWidth: tool === "whiteout" ? drawWidth * 4 : drawWidth,
+                    isHighlight: tool === "highlight",
+                    x: minX * 100,
+                    y: minY * 100,
+                    w: w * 100,
+                    h: h * 100,
+                });
+                c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+            }
+            currentPath.current = [];
+        }
 
         window.addEventListener("mousemove", handleMove);
         window.addEventListener("mouseup", handleUp);
@@ -413,6 +416,20 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [isExtracting, setIsExtracting] = useState(false);
     const [isBlankMode, setIsBlankMode] = useState(false);
 
+    useEffect(() => {
+        if (sessionStorage.getItem("edit_pdf_blank") === "true") {
+            sessionStorage.removeItem("edit_pdf_blank");
+            startWithBlankPage();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Sync the font size local text state whenever the selection changes
+    useEffect(() => {
+        const currentSize = selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontSize : textFontSize;
+        setFontSizeInputText(currentSize === 0 ? "" : currentSize.toString());
+    }, [selectedId, tool, annotations]);
+
     const startWithBlankPage = () => {
         const W = 2480; // A4 at 300dpi-ish, looks good at any zoom
         const H = 3508;
@@ -457,6 +474,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("left");
     const [fontSearch, setFontSearch] = useState("Helvetica");
     const [showFontList, setShowFontList] = useState(false);
+    const [showFontSizeList, setShowFontSizeList] = useState(false);
+    const [fontSizeInputText, setFontSizeInputText] = useState(""); // Unified local string state for the text input to correctly handle decimals and backspacing cleanly
 
     const imgInputRef = useRef<HTMLInputElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -464,14 +483,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const sidebarAutoScroll = useDragAutoScroll(sidebarScrollRef);
 
     // ─── Page management ─────────────────────────────────────────────────────
-    const [pageRotations, setPageRotations] = useState<Record<number, number>>({});
     const [deleteConfirmPage, setDeleteConfirmPage] = useState<number | null>(null);
     const dragPageRef = useRef<number | null>(null);
     const [dragOverPage, setDragOverPage] = useState<number | null>(null);
-
-    const rotatePage = (pageIndex: number) => {
-        setPageRotations(prev => ({ ...prev, [pageIndex]: ((prev[pageIndex] ?? 0) + 90) % 360 }));
-    };
 
     const deletePage = (pageIndex: number) => {
         if (pages.length <= 1) {
@@ -483,15 +497,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             const filtered = prev.filter(a => a.page !== pageIndex + 1);
             return filtered.map(a => a.page > pageIndex + 1 ? { ...a, page: a.page - 1 } : a);
         });
-        setPageRotations(prev => {
-            const next: Record<number, number> = {};
-            Object.entries(prev).forEach(([k, v]) => {
-                const ki = parseInt(k);
-                if (ki < pageIndex) next[ki] = v;
-                else if (ki > pageIndex) next[ki - 1] = v;
-            });
-            return next;
-        });
+
         setNumPages(p => p - 1);
         setDeleteConfirmPage(null);
         setCurrentPage(c => (c > pageIndex + 1 ? c - 1 : Math.min(c, pages.length - 1)));
@@ -554,18 +560,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             else if (from > targetIndex && pg >= targetIndex && pg < from) pg++;
             return { ...a, page: pg + 1 };
         }));
-        setPageRotations(prev => {
-            const next: Record<number, number> = {};
-            const keys = Object.keys(prev).map(Number);
-            keys.forEach(k => {
-                let nk = k;
-                if (k === from) nk = targetIndex;
-                else if (from < targetIndex && k > from && k <= targetIndex) nk = k - 1;
-                else if (from > targetIndex && k >= targetIndex && k < from) nk = k + 1;
-                next[nk] = prev[k];
-            });
-            return next;
-        });
+
         dragPageRef.current = null;
         setDragOverPage(null);
         setCurrentPage(targetIndex + 1);
@@ -620,17 +615,33 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 function mapFont(rawFontName: string): { family: string; bold: boolean; italic: boolean } {
                     // Strip common PDF font name prefixes like "BCDEE+"
                     const clean = rawFontName.replace(/^[A-Z]{6}\+/, "");
-                    const bold = /bold|heavy|black/i.test(clean);
-                    const italic = /italic|oblique/i.test(clean);
+                    const bold = /bold|heavy|black|semibold|demibold/i.test(clean);
+                    const italic = /italic|oblique|slanted/i.test(clean);
                     let family = "Helvetica";
-                    if (/times|minion|palatino|garamond|bookman|schoolbook|roman/i.test(clean)) family = "Times New Roman";
-                    else if (/courier|monospace|typewriter/i.test(clean)) family = "Courier New";
+                    if (/times|minion|palatino|garamond|bookman|schoolbook/i.test(clean)) family = "Times New Roman";
+                    else if (/courier|consolas|monospace|typewriter/i.test(clean)) family = "Courier New";
                     else if (/arial/i.test(clean)) family = "Arial";
                     else if (/calibri/i.test(clean)) family = "Calibri";
+                    else if (/cambria/i.test(clean)) family = "Cambria";
                     else if (/georgia/i.test(clean)) family = "Georgia";
                     else if (/verdana/i.test(clean)) family = "Verdana";
+                    else if (/tahoma/i.test(clean)) family = "Tahoma";
                     else if (/trebuchet/i.test(clean)) family = "Trebuchet MS";
+                    else if (/segoe/i.test(clean)) family = "Segoe UI";
                     else if (/impact/i.test(clean)) family = "Impact";
+                    else if (/lato/i.test(clean)) family = "Lato";
+                    else if (/roboto/i.test(clean)) family = "Roboto";
+                    else if (/open.?sans/i.test(clean)) family = "Open Sans";
+                    else if (/source.?sans/i.test(clean)) family = "Source Sans Pro";
+                    else if (/noto.?sans/i.test(clean)) family = "Noto Sans";
+                    else if (/poppins/i.test(clean)) family = "Poppins";
+                    else if (/inter/i.test(clean)) family = "Inter";
+                    else if (/montserrat/i.test(clean)) family = "Montserrat";
+                    else if (/comic/i.test(clean)) family = "Comic Sans MS";
+                    else if (/century/i.test(clean)) family = "Century Gothic";
+                    else if (/franklin/i.test(clean)) family = "Franklin Gothic";
+                    else if (/futura/i.test(clean)) family = "Futura";
+                    else if (/lucida/i.test(clean)) family = "Lucida Sans";
                     return { family, bold, italic };
                 }
 
@@ -649,98 +660,255 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                     results.push({ dataUrl: canvas.toDataURL("image/png"), width: vp.width, height: vp.height });
 
-                    // ── PHASE 2: Get exact text positions from pdf.js
-                    //    transform matrix. No backend guessing needed.
-                    const textContent = await page.getTextContent();
+                    // ── PHASE 2: Extract font metadata from pdf.js internals ─
+                    //    After render(), fonts are loaded in page.commonObjs.
+                    //    We mine the operator list to find font keys,
+                    //    then look up real PostScript names + bold/italic flags.
+                    const fontMetaMap = new Map<string, { name: string; bold: boolean; italic: boolean }>();
+                    const textColorMap: string[] = []; // color per showText operation
 
-                    // Group spans into lines by proximity of Y coordinate
-                    // so that we create one editable block per visual line
-                    const spans = textContent.items.filter((it: any) => it.str && it.str.trim());
+                    try {
+                        const OPS = (await import("pdfjs-dist")).OPS;
+                        const opList = await page.getOperatorList();
 
-                    // Build lines by clustering spans with same baseline (transform[5])
-                    const lineMap = new Map<string, any[]>();
-                    for (const span of spans as any[]) {
-                        const [a, b, c, d, tx, ty] = span.transform;
-                        // round ty to nearest 1pt to group same-line spans
-                        const lineKey = `${Math.round(ty)}`;
-                        if (!lineMap.has(lineKey)) lineMap.set(lineKey, []);
-                        lineMap.get(lineKey)!.push(span);
+                        let currentColor = "#000000";
+
+                        for (let oi = 0; oi < opList.fnArray.length; oi++) {
+                            const op = opList.fnArray[oi];
+
+                            // Track font switches
+                            if (op === OPS.setFont) {
+                                const fontRef = opList.argsArray[oi][0];
+                                if (!fontMetaMap.has(fontRef)) {
+                                    try {
+                                        const fontObj = (page as any).commonObjs.get(fontRef);
+                                        if (fontObj) {
+                                            const realName = fontObj.name || fontObj.loadedName || "";
+                                            fontMetaMap.set(fontRef, {
+                                                name: realName,
+                                                bold: !!(fontObj.bold ?? /bold|heavy|black|semibold/i.test(realName)),
+                                                italic: !!(fontObj.italic ?? /italic|oblique/i.test(realName)),
+                                            });
+                                        }
+                                    } catch { /* font not available */ }
+                                }
+                            }
+                            // Track fill color changes (used for text color)
+                            else if (op === OPS.setFillRGBColor) {
+                                const [r, g, b] = opList.argsArray[oi];
+                                currentColor = `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b * 255).toString(16).padStart(2, "0")}`;
+                            }
+                            else if (op === OPS.setFillGray) {
+                                const gray = Math.round(opList.argsArray[oi][0] * 255);
+                                const hex = gray.toString(16).padStart(2, "0");
+                                currentColor = `#${hex}${hex}${hex}`;
+                            }
+                            else if (op === OPS.setFillCMYKColor) {
+                                const [c, m, y, k] = opList.argsArray[oi];
+                                const r = Math.round(255 * (1 - c) * (1 - k));
+                                const g = Math.round(255 * (1 - m) * (1 - k));
+                                const b = Math.round(255 * (1 - y) * (1 - k));
+                                currentColor = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                            }
+                            // Record color at each text draw
+                            else if (op === OPS.showText || op === OPS.showSpacedText) {
+                                textColorMap.push(currentColor);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not extract font/color metadata:", e);
                     }
 
-                    let lineIdx = 0;
-                    for (const [, lineSpans] of lineMap) {
-                        // Sort spans left→right by tx
-                        lineSpans.sort((a: any, b: any) => a.transform[4] - b.transform[4]);
+                    // ── Get text positions from pdf.js ──────────────────────
+                    const textContent = await page.getTextContent();
+                    const pdfStyles = (textContent as any).styles || {};
 
-                        // Use the first span's transform for position
-                        const first = lineSpans[0];
-                        const [a, b, c, d, tx, ty] = first.transform;
+                    // Filter to non-empty spans, keeping track of their original index to match textColorMap
+                    const spans = (textContent.items as any[])
+                        .map((it, idx) => ({ ...it, originalIndex: idx }))
+                        .filter((it: any) => it.str && it.str.trim());
 
-                        // Font size = magnitude of the vertical scale component
-                        const fontSize = Math.sqrt(c * c + d * d);
-                        const fontInfo = mapFont(first.fontName || "");
+                    // DEBUG: Log first few font objects extracted (remove after debugging)
+                    if (i === 1) {
+                        console.log("[FontMeta] Font metadata map:", Object.fromEntries(fontMetaMap));
+                        console.log("[FontMeta] Text colors extracted:", textColorMap.slice(0, 10));
+                    }
 
-                        // Convert PDF coordinates (bottom-left origin) to
-                        // canvas coordinates (top-left origin) at SCALE
+                    // ── Smart-cluster spans ──────────────────────────────────
+                    // Only merge spans that are:
+                    //   1. On the same baseline (ty within 1pt)
+                    //   2. Same font (fontName matches exactly)
+                    //   3. Truly adjacent (X gap < half a character width)
+                    // This prevents table cells from merging and preserves
+                    // per-span font properties (bold, italic, family, size).
+                    interface SpanCluster {
+                        spans: any[];
+                        fontName: string;
+                        tx: number;
+                        ty: number;
+                        endX: number;
+                        fontSize: number;
+                        fontInfo: { family: string; bold: boolean; italic: boolean };
+                        color: string;
+                    }
+
+                    const clusters: SpanCluster[] = [];
+
+                    for (const span of spans) {
+                        const [sa, sb, sc, sd, stx, sty] = span.transform;
+                        const sFontSize = Math.sqrt(sc * sc + sd * sd);
+
+                        // ── Font detection ──────────────────────────────────
+                        // span.fontName is an internal key like "g_d0_f1".
+                        const fontRefName = span.fontName;
+                        const realFontMeta = fontMetaMap.get(fontRefName);
+
+                        let sFontInfo = { family: "Helvetica", bold: false, italic: false };
+
+                        if (realFontMeta) {
+                            // If we extracted the real font name, pass that into mapFont to get clean family name
+                            sFontInfo = mapFont(realFontMeta.name);
+                            // Override bold/italic explicitly from metadata if true
+                            if (realFontMeta.bold) sFontInfo.bold = true;
+                            if (realFontMeta.italic) sFontInfo.italic = true;
+                        } else {
+                            // The REAL font info lives in textContent.styles.
+                            const styleEntry = pdfStyles[span.fontName];
+                            const cssFontFamily = styleEntry?.fontFamily || "";
+
+                            // Map the CSS font family to our known families
+                            sFontInfo = mapFont(cssFontFamily || span.fontName || "");
+
+                            // For generic families (serif/sans-serif/monospace),
+                            // map to sensible defaults
+                            if (/^serif$/i.test(cssFontFamily)) sFontInfo.family = "Times New Roman";
+                            else if (/^sans-serif$/i.test(cssFontFamily)) sFontInfo.family = "Helvetica";
+                            else if (/^monospace$/i.test(cssFontFamily)) sFontInfo.family = "Courier New";
+                            else if (cssFontFamily && !/^(sans-serif|serif|monospace)$/i.test(cssFontFamily)) {
+                                // pdf.js gave us a specific family — use it directly
+                                sFontInfo.family = cssFontFamily;
+                            }
+
+                            // Bold/italic: check BOTH the fontName key AND the CSS family.
+                            const fontHints = (span.fontName || "") + " " + cssFontFamily;
+                            if (/bold|heavy|black|semibold|demibold/i.test(fontHints)) sFontInfo.bold = true;
+                            if (/italic|oblique|slanted/i.test(fontHints)) sFontInfo.italic = true;
+                        }
+
+                        // DEBUG: Log what pdf.js gives us vs what we resolved
+                        if (clusters.length < 5) {
+                            console.log(`[FontDebug] fontName="${span.fontName}" meta=`, realFontMeta, `→ family="${sFontInfo.family}" bold=${sFontInfo.bold} italic=${sFontInfo.italic} fontSize=${sFontSize} text="${span.str.substring(0, 30)}"`);
+                        }
+
+                        const spanEndX = stx + (span.width || 0);
+
+                        // Try to extract color
+                        let sColor = "#000000";
+                        if (span.color && Array.isArray(span.color) && span.color.length >= 3) {
+                            const [cr, cg, cb] = span.color;
+                            // Check if color is not just transparent black ([0,0,0,0])
+                            if (span.color.length === 3 || span.color[3] > 0) {
+                                sColor = `#${Math.round(cr * 255).toString(16).padStart(2, "0")}${Math.round(cg * 255).toString(16).padStart(2, "0")}${Math.round(cb * 255).toString(16).padStart(2, "0")}`;
+                            } else if (textColorMap[span.originalIndex]) {
+                                sColor = textColorMap[span.originalIndex];
+                            }
+                        } else if (textColorMap[span.originalIndex]) {
+                            sColor = textColorMap[span.originalIndex];
+                        }
+
+                        // Try to merge into an existing cluster
+                        let merged = false;
+                        for (const cluster of clusters) {
+                            const baselineMatch = Math.abs(cluster.ty - sty) < 1;
+                            const sameFont = cluster.fontName === span.fontName;
+                            const gap = stx - cluster.endX;
+                            // Adjacent = gap is small (less than half a character width)
+                            const adjacent = gap >= -0.5 && gap < sFontSize * 0.5;
+
+                            if (baselineMatch && sameFont && adjacent) {
+                                cluster.spans.push(span);
+                                cluster.endX = Math.max(cluster.endX, spanEndX);
+                                merged = true;
+                                break;
+                            }
+                        }
+
+                        if (!merged) {
+                            clusters.push({
+                                spans: [span],
+                                fontName: span.fontName,
+                                tx: stx,
+                                ty: sty,
+                                endX: spanEndX,
+                                fontSize: sFontSize,
+                                fontInfo: sFontInfo,
+                                color: sColor,
+                            });
+                        }
+                    }
+
+                    // ── Create annotations from clusters ─────────────────────
+                    let spanIdx = 0;
+                    for (const cluster of clusters) {
+                        // Sort spans left → right
+                        cluster.spans.sort((ca: any, cb: any) => ca.transform[4] - cb.transform[4]);
+
+                        const first = cluster.spans[0];
+                        const [, , , , tx, ty] = first.transform;
+                        const fontSize = cluster.fontSize;
+
+                        // Concatenate text, inserting spaces where there are visible gaps
+                        let clusterText = "";
+                        for (let si = 0; si < cluster.spans.length; si++) {
+                            const sp = cluster.spans[si];
+                            clusterText += sp.str;
+                            if (si < cluster.spans.length - 1) {
+                                const nextSp = cluster.spans[si + 1];
+                                const gap = nextSp.transform[4] - (sp.transform[4] + (sp.width || 0));
+                                if (gap > fontSize * 0.15) clusterText += " ";
+                            }
+                        }
+
+                        // Total width from first span's start to last span's end
+                        const lastSpan = cluster.spans[cluster.spans.length - 1];
+                        const totalWidth = (lastSpan.transform[4] + (lastSpan.width || 0)) - tx;
+
+                        // Convert PDF coords → canvas coords
                         const canvasX = tx * SCALE;
-                        // PDF Y is from bottom; canvas Y is from top
-                        // 0.82 ≈ typical CSS font ascent ratio (ascent / fontSize).
-                        // Subtracting only the ascent (not full fontSize) aligns the CSS
-                        // text baseline with the canvas-rendered baseline, eliminating the
-                        // vertical shift between the transparent overlay and the PDF image.
                         const canvasY = (vp.height / SCALE - ty) * SCALE - fontSize * SCALE * 0.82;
-
-                        // Measure total width of the line
-                        let lineWidth = 0;
-                        let lineText = "";
-                        for (const span of lineSpans) {
-                            lineText += span.str;
-                            lineWidth += span.width;
-                        }
-
-                        const lineWidthPx = lineWidth * SCALE;
-                        const lineHeightPx = fontSize * SCALE * 1.35; // natural line height
-
-                        // Try to extract color from span (pdf.js provides it as rgb array)
-                        let color = "#000000";
-                        if (first.color && Array.isArray(first.color)) {
-                            const [r, g, b_] = first.color;
-                            color = `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b_ * 255).toString(16).padStart(2, "0")}`;
-                        }
+                        const clusterWidthPx = totalWidth * SCALE;
+                        const clusterHeightPx = fontSize * SCALE * 1.35;
 
                         const ann: TextAnnotation = {
-                            id: `pjs_${i}_${lineIdx}`,
+                            id: `pjs_${i}_${spanIdx}`,
                             type: "text",
                             page: i,
-                            // Store position as % of canvas size
                             x: (canvasX / vp.width) * 100,
                             y: (canvasY / vp.height) * 100,
-                            w: (lineWidthPx / vp.width) * 100,
-                            h: (lineHeightPx / vp.height) * 100,
-                            text: lineText,
-                            fontSize: fontSize * SCALE,  // px at current scale
-                            fontFamily: fontInfo.family,
-                            color,
-                            bold: fontInfo.bold,
-                            italic: fontInfo.italic,
+                            w: (clusterWidthPx / vp.width) * 100,
+                            h: (clusterHeightPx / vp.height) * 100,
+                            text: clusterText,
+                            fontSize: Math.round((fontSize * SCALE) * 10) / 10, // Round to 1 decimal place for cleaner UI
+                            fontFamily: cluster.fontInfo.family,
+                            color: cluster.color,
+                            bold: cluster.fontInfo.bold,
+                            italic: cluster.fontInfo.italic,
                             underline: false,
                             align: "left",
                             editing: false,
                             isExisting: true,
-                            // Store original PDF transform for backend save
                             pdfTransform: first.transform,
                             pdfPageWidth: vp.width / SCALE,
                             pdfPageHeight: vp.height / SCALE,
-                            originalText: lineText,
-                            // Map pdf.js Bottom-Left coordinates to PyMuPDF Top-Left coordinates for precise redaction
+                            originalText: clusterText,
                             origX0: tx,
                             origY0: (vp.height / SCALE) - ty - fontSize,
-                            origX1: tx + lineWidth,
+                            origX1: tx + totalWidth,
                             origY1: (vp.height / SCALE) - ty + (fontSize * 0.25),
                         };
                         newAnnotations.push(ann);
                         origMap.set(ann.id, { ...ann });
-                        lineIdx++;
+                        spanIdx++;
                     }
 
                     // ── PHASE 3: Images still come from backend (pdf.js
@@ -870,8 +1038,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         if ((e.target as HTMLElement).closest("[data-annotation]")) return;
         const el = e.currentTarget;
         const rect = el.getBoundingClientRect();
+
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
+
         const newText: TextAnnotation = {
             id: uid(), type: "text", page: pageIndex + 1,
             x, y,
@@ -952,7 +1122,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         ? (Math.abs(ta.w - orig.w_pct) > 0.1 || Math.abs(ta.h - orig.h_pct) > 0.1)
                         : (Math.abs(ia.w - orig.w_pct) > 0.1 || Math.abs(ia.h - orig.h_pct) > 0.1);
 
-                    if (textChanged || posChanged || sizeChanged) {
+                    const propChanged = ann.type === "text" && (
+                        ta.fontFamily !== orig.fontFamily ||
+                        ta.color !== orig.color ||
+                        ta.bold !== orig.bold ||
+                        ta.italic !== orig.italic ||
+                        Math.abs(ta.fontSize - (orig.fontSize || 0)) > 0.1
+                    );
+
+                    if (textChanged || posChanged || sizeChanged || propChanged) {
                         const editItem: any = {
                             type: ann.type,
                             page: ann.page,
@@ -1048,7 +1226,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             } else if (added.length > 0 && (pdfArrayBuffer || isBlankMode)) {
                 // Only new annotations — use pdf-lib (original approach, faster)
                 const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-                
+
                 let pdfDoc;
                 if (pdfArrayBuffer) {
                     pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
@@ -1104,7 +1282,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         const yPtTop = (da.y / 100) * ph;
                         const wPt = (da.w / 100) * pw;
                         const hPt = (da.h / 100) * ph;
-                        
+
                         const hexToRgb = (hex: string) => {
                             const r = parseInt(hex.slice(1, 3), 16) / 255;
                             const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -1114,10 +1292,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                         for (const path of da.paths) {
                             if (path.length < 2) continue;
-                            const svgPath = path.map((p, ix) => 
+                            const svgPath = path.map((p, ix) =>
                                 `${ix === 0 ? 'M' : 'L'} ${xPt + p.x * wPt} ${ph - (yPtTop + p.y * hPt)}`
                             ).join(" ");
-                            
+
                             pdfPage.drawSvgPath(svgPath, {
                                 color: undefined,
                                 borderColor: hexToRgb(da.color),
@@ -1140,9 +1318,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 showEditorToast("No changes to save.", "info");
             }
         } catch (err) {
-            console.error("Save Error:", err);
+            // Log a sanitized error to the console (prevents backend stack trace leaks)
+            console.error("Save Error: Failed to generate the edited document on the server.");
+            // Show a generic, user-friendly message in the toast
             showEditorToast(
-                err instanceof Error ? err.message : "Failed to save PDF.",
+                "Something went wrong while saving the PDF. Please try again.",
                 "error"
             );
         } finally {
@@ -1159,39 +1339,31 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 icon={<IconPencil size={28} />}
                 accentColor="#047C58"
             >
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-border">
-                    <FileUpload
-                        accept={{ "application/pdf": [".pdf"] }}
-                        multiple={false}
-                        files={[]}
-                        setFiles={(files) => {
-                            if (Array.isArray(files) && files.length > 0) setFile(files[0]);
-                            else if (typeof files === "function") {
-                                const result = files([]);
-                                if (result.length > 0) setFile(result[0]);
-                            }
-                        }}
-                    />
+                <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+                    {/* Uploader */}
+                    <div className="p-8 pb-6">
+                        <FileUpload
+                            accept={{ "application/pdf": [".pdf"] }}
+                            multiple={false}
+                            files={[]}
+                            setFiles={(files) => {
+                                if (Array.isArray(files) && files.length > 0) setFile(files[0]);
+                                else if (typeof files === "function") {
+                                    const result = files([]);
+                                    if (result.length > 0) setFile(result[0]);
+                                }
+                            }}
+                        />
+                    </div>
 
-                    {/* ── Start with blank page ── */}
-                    <div className="mt-6 flex flex-col items-center gap-3">
-                        <div className="flex items-center gap-3 w-full">
-                            <div className="flex-1 h-px bg-[#E0DED9]" />
-                            <span className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">or</span>
-                            <div className="flex-1 h-px bg-[#E0DED9]" />
-                        </div>
-                        <button
-                            onClick={startWithBlankPage}
-                            className="group flex items-center gap-3 px-6 py-3.5 rounded-2xl border-2 border-dashed border-[#047C58]/40 hover:border-[#047C58] bg-white hover:bg-emerald-50 transition-all w-full justify-center"
-                        >
-                            <div className="w-8 h-8 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-all">
-                                <IconFilePlus size={18} className="text-[#047C58]" />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-brand-dark">Start with a blank page</p>
-                                <p className="text-[11px] text-brand-sage">Create a new document from scratch</p>
-                            </div>
-                        </button>
+                    {/* Card Footer for Blank Page */}
+                    <div
+                        onClick={startWithBlankPage}
+                        className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border bg-[#faf9f7] cursor-pointer hover:bg-[#f2f0e9] transition-colors"
+                    >
+                        <span className="text-xs font-medium text-brand-sage">
+                            Start with a blank page
+                        </span>
                     </div>
                 </div>
             </ToolLayout>
@@ -1212,903 +1384,989 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     // ─── Editor ───────────────────────────────────────────────────────────────
     return (
-        <div
-            className="h-[calc(100vh-64px)] flex flex-col bg-[#fdfdfb] overflow-hidden"
-            onClick={() => {
-                setShowZoomMenu(false);
-                setShowFontList(false);
-            }}
-        >
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
-            {/* ── In-editor toast notification (replaces browser alert) ── */}
-            <AnimatePresence>
-                {editorToast && (
-                    <motion.div
-                        key={editorToast.id}
-                        initial={{ opacity: 0, y: 24, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 12, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold pointer-events-none select-none"
-                        style={{
-                            background: editorToast.type === "error"
-                                ? "#EF4444"
-                                : editorToast.type === "success"
-                                    ? "#047C58"
-                                    : "#1E1702",
-                            color: "#fff",
-                            minWidth: 220,
-                            maxWidth: 420,
-                            textAlign: "center",
-                        }}
-                    >
-                        <span>
-                            {editorToast.type === "error" ? "⚠️ " : editorToast.type === "success" ? "✅ " : "ℹ️ "}
-                            {editorToast.msg}
-                        </span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            {/* Extracting content banner */}
-            {isExtracting && (
-                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 z-50 shrink-0">
-                    <IconLoader2 size={14} className="animate-spin text-emerald-600" />
-                    <span className="text-xs font-semibold text-emerald-700">Extracting existing content for editing…</span>
-                </div>
-            )}
-
-            {/* ── SECONDARY NAVBAR ── */}
-            <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
-
-                {/* LEFT: Back + file info */}
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="pr-4 border-r border-[#E0DED9] shrink-0">
-                        <button
-                            onClick={() => setFile(null)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
+        <>
+            {!file && <Navbar />}
+            <div
+                className={`flex flex-col bg-[#fdfdfb] overflow-hidden ${!file ? "mt-16 h-[calc(100vh-64px)]" : "h-[calc(100vh-64px)]"}`}
+                onClick={() => {
+                    setShowZoomMenu(false);
+                    setShowFontList(false);
+                    setShowFontSizeList(false);
+                }}
+            >
+                <RateLimitModal
+                    open={!!limitResult && !limitResult.allowed}
+                    resetAt={limitResult?.resetAt ?? 0}
+                    onClose={clearLimitResult}
+                />
+                {/* ── In-editor toast notification (replaces browser alert) ── */}
+                <AnimatePresence>
+                    {editorToast && (
+                        <motion.div
+                            key={editorToast.id}
+                            initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-9999 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold pointer-events-none select-none"
+                            style={{
+                                background: editorToast.type === "error"
+                                    ? "#EF4444"
+                                    : editorToast.type === "success"
+                                        ? "#047C58"
+                                        : "#1E1702",
+                                color: "#fff",
+                                minWidth: 220,
+                                maxWidth: 420,
+                                textAlign: "center",
+                            }}
                         >
-                            <IconArrowLeft size={16} />
-                            Back
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="bg-[#f0f0f0] p-1.5 rounded-lg shrink-0">
-                            <IconFileTypePdf size={18} className="text-black" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-bold text-brand-dark max-w-[150px] truncate leading-tight">{file.name}</span>
-                            <span className="text-[10px] text-brand-sage font-medium">
-                                {numPages} pages · {file.size ? (file.size / 1024 / 1024).toFixed(2) + " MB" : ""}
+                            <span>
+                                {editorToast.type === "error" ? "⚠️ " : editorToast.type === "success" ? "✅ " : "ℹ️ "}
+                                {editorToast.msg}
                             </span>
-                        </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                {/* Extracting content banner */}
+                {isExtracting && (
+                    <div className="bg-linear-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-2 flex items-center justify-center gap-2 z-50 shrink-0">
+                        <IconLoader2 size={14} className="animate-spin text-emerald-600" />
+                        <span className="text-xs font-semibold text-emerald-700">Extracting existing content for editing…</span>
                     </div>
-                </div>
+                )}
 
-                {/* CENTER: Tools + Page Nav + Zoom */}
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                    {/* Tool buttons */}
-                    <div className="flex items-center bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-1 gap-0.5">
-                        {([
-                            { id: "select", icon: IconCursorText, label: "Select" },
-                            { id: "text", icon: IconTypography, label: "Text" },
-                            { id: "image", icon: IconPhoto, label: "Image" },
-                            { id: "draw", icon: IconPencil, label: "Draw" },
-                            { id: "highlight", icon: IconHighlight, label: "Highlight" },
-                            { id: "whiteout", icon: IconEraser, label: "Whiteout" },
-                        ] as const).map(btn => (
+                {/* ── SECONDARY NAVBAR ── */}
+                <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
+
+                    {/* LEFT: Back + file info */}
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="pr-4 border-r border-[#E0DED9] shrink-0">
                             <button
-                                key={btn.id}
                                 onClick={() => {
-                                    setTool(btn.id as Tool);
-                                    if (btn.id === "image") imgInputRef.current?.click();
+                                    setFile(null);
+                                    setIsBlankMode(false);
                                 }}
-                                className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${tool === btn.id ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]/60" : "text-brand-sage hover:text-brand-dark hover:bg-white/50"}`}
-                                title={btn.label}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
                             >
-                                <btn.icon size={16} />
-                                <span className="text-[11px] font-bold hidden xl:block">{btn.label}</span>
+                                <IconArrowLeft size={16} />
+                                Back
                             </button>
-                        ))}
-                    </div>
-
-                    <div className="w-px h-6 bg-[#E0DED9]" />
-
-                    {/* Page navigation */}
-                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
-                        <button
-                            onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
-                            disabled={currentPage === 1}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all"
-                        >
-                            <IconChevronUp size={14} />
-                        </button>
-                        <button
-                            onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))}
-                            disabled={currentPage === numPages}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all"
-                        >
-                            <IconChevronDown size={14} />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                        <div className="bg-[#f5f4f0]/60 hover:bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-xl px-2 py-1 transition-all">
-                            <input
-                                type="text"
-                                className="w-8 text-center font-bold text-sm bg-transparent focus:outline-none text-brand-dark"
-                                value={pageJump}
-                                onChange={e => setPageJump(e.target.value.replace(/\D/g, ""))}
-                                onKeyDown={e => {
-                                    if (e.key === "Enter") {
-                                        const val = parseInt(pageJump);
-                                        if (!isNaN(val) && val >= 1 && val <= numPages) scrollToPage(val);
-                                        else setPageJump(currentPage.toString());
-                                    }
-                                }}
-                                onBlur={() => setPageJump(currentPage.toString())}
-                            />
                         </div>
-                        <span className="text-xs font-bold text-brand-sage">/ {numPages}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="bg-[#f0f0f0] p-1.5 rounded-lg shrink-0">
+                                <IconFileTypePdf size={18} className="text-black" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-bold text-brand-dark max-w-[150px] truncate leading-tight">
+                                    {file ? file.name : "Blank Document"}
+                                </span>
+                                <span className="text-[10px] text-brand-sage font-medium">
+                                    {numPages} pages {file?.size ? `· ${(file.size / 1024 / 1024).toFixed(2)} MB` : ""}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="w-px h-6 bg-[#E0DED9]" />
+                    {/* CENTER: Tools + Page Nav + Zoom */}
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                        {/* Tool buttons */}
+                        <div className="flex items-center bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-1 gap-0.5">
+                            {([
+                                { id: "select", icon: IconCursorText, label: "Select" },
+                                { id: "text", icon: IconTypography, label: "Text" },
+                                { id: "image", icon: IconPhoto, label: "Image" },
+                                { id: "draw", icon: IconPencil, label: "Draw" },
+                                { id: "highlight", icon: IconHighlight, label: "Highlight" },
+                                { id: "whiteout", icon: IconEraser, label: "Whiteout" },
+                            ] as const).map(btn => (
+                                <button
+                                    key={btn.id}
+                                    onClick={() => {
+                                        setTool(btn.id as Tool);
+                                        if (btn.id === "image") imgInputRef.current?.click();
+                                    }}
+                                    className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${tool === btn.id ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]/60" : "text-brand-sage hover:text-brand-dark hover:bg-white/50"}`}
+                                    title={btn.label}
+                                >
+                                    <btn.icon size={16} />
+                                    <span className="text-[11px] font-bold hidden xl:block">{btn.label}</span>
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* Zoom */}
-                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
-                        <button onClick={zoomOut} disabled={!canZoomOut} className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all">
-                            <IconMinus size={14} />
-                        </button>
-                        <div className="relative">
+                        <div className="w-px h-6 bg-[#E0DED9]" />
+
+                        {/* Page navigation */}
+                        <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
                             <button
-                                onClick={e => { e.stopPropagation(); setShowZoomMenu(v => !v); }}
-                                className="px-2 py-1 text-xs font-bold text-brand-dark hover:bg-white rounded-lg transition-all min-w-[46px] text-center"
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all"
                             >
-                                {ZOOM_LABELS[zoom] ?? `${Math.round(zoom * 100)}%`}
+                                <IconChevronUp size={14} />
                             </button>
-                            <AnimatePresence>
-                                {showZoomMenu && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -4, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white rounded-xl border border-[#E0DED9] shadow-xl overflow-hidden z-50 min-w-[90px]"
-                                    >
-                                        {ZOOM_LEVELS.map(z => (
-                                            <button
-                                                key={z}
-                                                onClick={e => { e.stopPropagation(); setZoom(z); setShowZoomMenu(false); }}
-                                                className={`w-full px-4 py-2 text-xs font-bold text-left hover:bg-[#f5f4f0] transition-colors ${zoom === z ? "bg-black text-white hover:bg-black" : "text-brand-dark"}`}
-                                            >
-                                                {ZOOM_LABELS[z]}
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            <button
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))}
+                                disabled={currentPage === numPages}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all"
+                            >
+                                <IconChevronDown size={14} />
+                            </button>
                         </div>
-                        <button onClick={zoomIn} disabled={!canZoomIn} className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all">
-                            <IconPlus size={14} />
-                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                            <div className="bg-[#f5f4f0]/60 hover:bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-xl px-2 py-1 transition-all">
+                                <input
+                                    type="text"
+                                    className="w-8 text-center font-bold text-sm bg-transparent focus:outline-none text-brand-dark"
+                                    value={pageJump}
+                                    onChange={e => setPageJump(e.target.value.replace(/\D/g, ""))}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                            const val = parseInt(pageJump);
+                                            if (!isNaN(val) && val >= 1 && val <= numPages) scrollToPage(val);
+                                            else setPageJump(currentPage.toString());
+                                        }
+                                    }}
+                                    onBlur={() => setPageJump(currentPage.toString())}
+                                />
+                            </div>
+                            <span className="text-xs font-bold text-brand-sage">/ {numPages}</span>
+                        </div>
+
+                        <div className="w-px h-6 bg-[#E0DED9]" />
+
+                        {/* Zoom */}
+                        <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                            <button onMouseDown={e => e.preventDefault()} onClick={zoomOut} disabled={!canZoomOut} className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all">
+                                <IconMinus size={14} />
+                            </button>
+                            <div className="relative">
+                                <button
+                                    onMouseDown={e => e.preventDefault()}
+                                    onClick={e => {
+                                    e.stopPropagation();
+                                    setShowZoomMenu(v => !v);
+                                    setShowFontList(false);
+                                    setShowFontSizeList(false);
+                                }}
+                                    className="px-2 py-1 text-xs font-bold text-brand-dark hover:bg-white rounded-lg transition-all min-w-[46px] text-center"
+                                >
+                                    {ZOOM_LABELS[zoom] ?? `${Math.round(zoom * 100)}%`}
+                                </button>
+                                <AnimatePresence>
+                                    {showZoomMenu && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white rounded-xl border border-[#E0DED9] shadow-xl overflow-hidden z-50 min-w-[90px]"
+                                        >
+                                            {ZOOM_LEVELS.map(z => (
+                                                <button
+                                                    key={z}
+                                                    onClick={e => { e.stopPropagation(); setZoom(z); setShowZoomMenu(false); }}
+                                                    className={`w-full px-4 py-2 text-xs font-bold text-left hover:bg-[#f5f4f0] transition-colors ${zoom === z ? "bg-black text-white hover:bg-black" : "text-brand-dark"}`}
+                                                >
+                                                    {ZOOM_LABELS[z]}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                            <button onMouseDown={e => e.preventDefault()} onClick={zoomIn} disabled={!canZoomIn} className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all">
+                                <IconPlus size={14} />
+                            </button>
+                        </div>
                     </div>
+
+                    {/* RIGHT spacer */}
+                    <div className="flex-1 hidden lg:block" />
                 </div>
 
-                {/* RIGHT spacer */}
-                <div className="flex-1 hidden lg:block" />
-            </div>
+                {/* ── MAIN LAYOUT ── */}
+                <div className="flex-1 flex overflow-hidden">
 
-            {/* ── MAIN LAYOUT ── */}
-            <div className="flex-1 flex overflow-hidden">
-
-                {/* Left: Thumbnails with page management */}
-                {pages.length > 0 && (
-                    <div className="hidden md:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[152px]">
-                        <div
-                            ref={sidebarScrollRef}
-                            className="flex-1 overflow-y-auto custom-scrollbar py-3 bg-[#fdfdfb]"
-                            onDragLeave={(e) => { setDragOverPage(null); sidebarAutoScroll.onDragLeave(); }}
-                            onDrop={() => { setDragOverPage(null); sidebarAutoScroll.onDragEnd(); }}
-                            onDragOver={(e) => sidebarAutoScroll.onDragOver(e)}
-                        >
-                            {/* Add page at the very top */}
-                            <button
-                                onClick={() => addBlankPage(-1)}
-                                className="w-full flex items-center justify-center gap-1 py-1.5 mb-1 text-[10px] font-bold text-brand-sage hover:text-brand-teal hover:bg-emerald-50 transition-all opacity-0 hover:opacity-100 group-hover:opacity-100"
-                                style={{ opacity: pages.length > 0 ? undefined : 1 }}
-                                title="Add blank page at start"
+                    {/* Left: Thumbnails with page management */}
+                    {pages.length > 0 && (
+                        <div className="hidden md:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[152px]">
+                            <div
+                                ref={sidebarScrollRef}
+                                className="flex-1 overflow-y-auto custom-scrollbar py-3 bg-[#fdfdfb]"
+                                onDragLeave={(e) => { setDragOverPage(null); sidebarAutoScroll.onDragLeave(); }}
+                                onDrop={() => { setDragOverPage(null); sidebarAutoScroll.onDragEnd(); }}
+                                onDragOver={(e) => sidebarAutoScroll.onDragOver(e)}
                             >
-                                <IconFilePlus size={12} /> Add here
-                            </button>
-
-                            {pages.map((pg, i) => (
-                                <div
-                                    key={i}
-                                    className={`relative group flex flex-col items-center px-2 pb-2 transition-all ${
-                                        dragOverPage === i ? "bg-blue-50 ring-2 ring-inset ring-blue-400 rounded-xl" : ""
-                                    }`}
-                                    draggable
-                                    onDragStart={e => handlePageDragStart(e, i)}
-                                    onDragOver={e => handlePageDragOver(e, i)}
-                                    onDrop={e => handlePageDrop(e, i)}
-                                >
-                                    {/* Drag grip */}
-                                    <div className="absolute left-1.5 top-2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-brand-sage">
-                                        <IconGripVertical size={12} />
-                                    </div>
-
-                                    {/* Thumbnail */}
+                                {/* Add page at the very top */}
+                                <div className="px-2 mb-2 mt-[-4px]">
                                     <button
-                                        id={`edit-thumb-${i + 1}`}
-                                        onClick={() => scrollToPage(i + 1)}
-                                        className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 ${
-                                            currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"
-                                        }`}
-                                    >
-                                        <img
-                                            src={pg.dataUrl}
-                                            alt={`Page ${i + 1}`}
-                                            className="w-full object-contain pointer-events-none select-none"
-                                            draggable={false}
-                                            style={{
-                                                transform: `rotate(${pageRotations[i] ?? 0}deg)`,
-                                                transition: "transform 0.3s ease",
-                                            }}
-                                        />
-
-                                        {/* Hover action buttons */}
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                                            {/* Rotate */}
-                                            <button
-                                                onClick={e => { e.stopPropagation(); rotatePage(i); }}
-                                                className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-brand-dark hover:bg-white shadow-md transition-all"
-                                                title="Rotate 90°"
-                                            >
-                                                <IconRotateClockwise size={13} />
-                                            </button>
-                                            {/* Delete */}
-                                            <button
-                                                onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
-                                                className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md transition-all"
-                                                title="Delete page"
-                                            >
-                                                <IconTrash size={13} />
-                                            </button>
-                                        </div>
-                                    </button>
-
-                                    <span className={`text-[10px] font-bold mt-1 ${
-                                        currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"
-                                    }`}>
-                                        Page {i + 1}
-                                    </span>
-
-                                    {/* Add page below this one */}
-                                    <button
-                                        onClick={() => addBlankPage(i)}
+                                        onClick={() => addBlankPage(-1)}
                                         className="w-full flex items-center justify-center gap-1 py-0.5 mt-0.5 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-all border border-dashed border-emerald-300 hover:border-emerald-500"
-                                        title="Add blank page after this one"
+                                        title="Add blank page at start"
                                     >
                                         <IconFilePlus size={10} /> Add page
                                     </button>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
-                {/* Delete page confirmation modal */}
-                {deleteConfirmPage !== null && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirmPage(null)}>
-                        <div className="bg-white rounded-2xl shadow-2xl p-6 w-[320px] flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                    <IconTrash size={20} className="text-red-500" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-brand-dark text-sm">Delete Page {deleteConfirmPage + 1}?</p>
-                                    <p className="text-[11px] text-brand-sage mt-0.5">This cannot be undone. All annotations on this page will also be removed.</p>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setDeleteConfirmPage(null)}
-                                    className="flex-1 py-2.5 rounded-xl border border-[#E0DED9] text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => deletePage(deleteConfirmPage)}
-                                    className="flex-1 py-2.5 rounded-xl bg-red-500 text-xs font-bold text-white hover:bg-red-600 transition-all"
-                                >
-                                    Delete Page
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Center: All pages scrollable */}
-                <div
-                    ref={scrollContainerRef}
-                    className="flex-1 bg-[#E8E6E3] overflow-auto custom-scrollbar"
-                    onScroll={handleScroll}
-                >
-                    <div className="py-8 flex flex-col items-center gap-8 pb-20">
-                        <div
-                            className="flex flex-col gap-8"
-                            style={{ width: `${Math.min(900 * zoom, 3000)}px`, maxWidth: "none" }}
-                        >
-                            {pages.map((pg, i) => {
-                                const pageAnns = annotations.filter(a => a.page === i + 1);
-                                const overlayAnns = pageAnns.filter(a => ["text", "image", "draw"].includes(a.type));
-
-                                return (
+                                {pages.map((pg, i) => (
                                     <div
                                         key={i}
-                                        id={`edit-page-${i}`}
-                                        className="relative bg-white shadow-xl mx-auto select-none"
-                                        style={{
-                                            aspectRatio: `${pg.width} / ${pg.height}`,
-                                            width: "100%",
-                                            border: "1px solid #ccc",
-                                            cursor: tool === "text" ? "text" : ["draw", "highlight", "whiteout"].includes(tool) ? "crosshair" : "default",
-                                        }}
-                                        onClick={e => onPageClick(e, i)}
+                                        className={`relative group flex flex-col items-center px-2 pb-2 transition-all ${dragOverPage === i ? "bg-blue-50 ring-2 ring-inset ring-blue-400 rounded-xl" : ""
+                                            }`}
+                                        draggable
+                                        onDragStart={e => handlePageDragStart(e, i)}
+                                        onDragOver={e => handlePageDragOver(e, i)}
+                                        onDrop={e => handlePageDrop(e, i)}
                                     >
-                                        {/* Page image - rotates with pageRotations */}
-                                        <img
-                                            src={pg.dataUrl}
-                                            alt={`Page ${i + 1}`}
-                                            className="w-full h-full object-contain select-none pointer-events-none"
-                                            draggable={false}
+                                        {/* Drag grip */}
+                                        <div className="absolute left-1.5 top-2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-brand-sage">
+                                            <IconGripVertical size={12} />
+                                        </div>
+
+                                        {/* Thumbnail */}
+                                        <div
+                                            id={`edit-thumb-${i + 1}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => e.key === 'Enter' && scrollToPage(i + 1)}
+                                            onClick={() => scrollToPage(i + 1)}
+                                            className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 block ${currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"
+                                                }`}
+                                        >
+                                            <img
+                                                src={pg.dataUrl}
+                                                alt={`Page ${i + 1}`}
+                                                className="w-full object-contain pointer-events-none select-none"
+                                                draggable={false}
+                                            />
+
+                                            {/* Hover action buttons */}
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                                {/* Delete */}
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
+                                                    className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md transition-all"
+                                                    title="Delete page"
+                                                >
+                                                    <IconTrash size={13} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <span className={`text-[10px] font-bold mt-1 ${currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"
+                                            }`}>
+                                            Page {i + 1}
+                                        </span>
+
+                                        {/* Add page below this one */}
+                                        <button
+                                            onClick={() => addBlankPage(i)}
+                                            className="w-full flex items-center justify-center gap-1 py-0.5 mt-0.5 text-[9px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-all border border-dashed border-emerald-300 hover:border-emerald-500"
+                                            title="Add blank page after this one"
+                                        >
+                                            <IconFilePlus size={10} /> Add page
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delete page confirmation modal */}
+                    {deleteConfirmPage !== null && (
+                        <div className="fixed inset-0 z-9999 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setDeleteConfirmPage(null)}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-[320px] flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                        <IconTrash size={20} className="text-red-500" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-brand-dark text-sm">Delete Page {deleteConfirmPage + 1}?</p>
+                                        <p className="text-[11px] text-brand-sage mt-0.5">This cannot be undone. All annotations on this page will also be removed.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setDeleteConfirmPage(null)}
+                                        className="flex-1 py-2.5 rounded-xl border border-[#E0DED9] text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => deletePage(deleteConfirmPage)}
+                                        className="flex-1 py-2.5 rounded-xl bg-red-500 text-xs font-bold text-white hover:bg-red-600 transition-all"
+                                    >
+                                        Delete Page
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Center: All pages scrollable */}
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex-1 bg-[#E8E6E3] overflow-auto custom-scrollbar"
+                        onScroll={handleScroll}
+                    >
+                        <div className="py-8 flex flex-col items-center gap-8 pb-20">
+                            <div
+                                className="flex flex-col gap-8 mx-auto"
+                                style={{ width: `${Math.min(900 * zoom, 3000)}px`, maxWidth: "none" }}
+                            >
+                                {pages.map((pg, i) => {
+                                    const pageAnns = annotations.filter(a => a.page === i + 1);
+                                    const overlayAnns = pageAnns.filter(a => ["text", "image", "draw"].includes(a.type));
+                                    const baseW = Math.min(900 * zoom, 3000);
+
+                                    return (
+                                        <div
+                                            key={i}
+                                            className="relative bg-white shadow-xl select-none overflow-clip"
                                             style={{
-                                                transform: `rotate(${pageRotations[i] ?? 0}deg)`,
-                                                transition: "transform 0.3s ease",
+                                                aspectRatio: `${pg.width} / ${pg.height}`,
+                                                width: `${baseW}px`,
+                                                marginLeft: "50%",
+                                                transform: "translateX(-50%)",
+                                                border: "1px solid #ccc",
+                                                cursor: tool === "text" ? "text" : ["draw", "highlight", "whiteout"].includes(tool) ? "crosshair" : "default",
+                                                overflow: "clip",
                                             }}
-                                        />
+                                            onClick={e => onPageClick(e, i)}
+                                        >
+                                            <div
+                                                id={`edit-page-${i}`}
+                                                className="overflow-clip"
+                                                style={{
+                                                    position: "absolute",
+                                                    top: "50%",
+                                                    left: "50%",
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    transform: `translate(-50%, -50%)`,
+                                                    overflow: "clip",
+                                                    clipPath: "inset(0)", // Force clip everything outside the bounds
+                                                }}
+                                            >
+                                                {/* Page image */}
+                                                <img
+                                                    src={pg.dataUrl}
+                                                    alt={`Page ${i + 1}`}
+                                                    className="w-full h-full object-contain pointer-events-none select-none"
+                                                    draggable={false}
+                                                />
 
-                                        {/* Draw canvas overlay */}
-                                        <DrawCanvas
-                                            page={i + 1}
-                                            tool={tool}
-                                            drawColor={drawColor}
-                                            drawWidth={drawWidth}
-                                            width={Math.min(900 * zoom, 3000)}
-                                            height={Math.min(900 * zoom, 3000) * (pg.height / pg.width)}
-                                            onDrawEnd={addDraw}
-                                        />
+                                                {/* Draw canvas overlay */}
+                                                <DrawCanvas
+                                                    page={i + 1}
+                                                    tool={tool}
+                                                    drawColor={drawColor}
+                                                    drawWidth={drawWidth}
+                                                    width={baseW}
+                                                    height={baseW * (pg.height / pg.width)}
+                                                    onDrawEnd={addDraw}
+                                                />
 
-                                        {/* Text / Image annotation overlays
-                                             Position: CSS left/top % on wrapper → always zoom-accurate, no DOM reads
-                                             Size: computed pixel dimensions from deterministic formula → matches zoom exactly
-                                             Font: ta.fontSize * zoom → scales with page */}
-                                        <div className="absolute inset-0 z-20" style={{ pointerEvents: "none" }}>
-                                            {overlayAnns.map(ann => {
-                                                // Page pixel size computed from the same formula as the container style.
-                                                // No DOM reads needed – deterministic and always current.
-                                                const pagePxW = Math.min(900 * zoom, 3000);
-                                                const pagePxH = pagePxW * (pg.height / pg.width);
+                                                {/* Text / Image annotation overlays */}
+                                                <div className="absolute inset-0 z-20" style={{ pointerEvents: "none" }}>
+                                                    {overlayAnns.map(ann => {
+                                                        const pagePxW = baseW;
+                                                        const pagePxH = baseW * (pg.height / pg.width);
 
-                                                if (ann.type === "text") {
-                                                    const ta = ann as TextAnnotation;
-                                                    const rndW = (ta.w / 100) * pagePxW;
-                                                    const rndH = (ta.h / 100) * pagePxH;
-                                                    // When text hasn't been changed yet, the overlay is invisible
-                                                    // so the real PDF text rendered on the canvas shows through.
-                                                    const isUnmodified = ta.isExisting && ta.text === ta.originalText;
-                                                    return (
-                                                        <div
-                                                            key={ta.id}
-                                                            data-annotation="true"
-                                                            className="absolute"
-                                                            style={{
-                                                                left: `${ta.x}%`,
-                                                                top: `${ta.y}%`,
-                                                                zIndex: 20,
-                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                            }}
-                                                        >
-                                                                <Rnd
-                                                                    key={`${ta.id}-${zoom}`}
+                                                        if (ann.type === "text") {
+                                                            const ta = ann as TextAnnotation;
+                                                            const rndW = (ta.w / 100) * pagePxW;
+                                                            const rndH = (ta.h / 100) * pagePxH;
+                                                            // When text hasn't been changed yet, the overlay is invisible
+                                                            // so the real PDF text rendered on the canvas shows through.
+                                                            const isUnmodified = ta.isExisting && ta.text === ta.originalText;
+                                                            return (
+                                                                <div
+                                                                    key={ta.id}
                                                                     data-annotation="true"
-                                                                    bounds={`#edit-page-${i}`}
-                                                                    // Let the text box expand dynamically based on content.
-                                                                    // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
-                                                                    size={{ width: ta.editing || ta.isExisting ? "auto" : rndW, height: "auto" }}
-                                                                    position={{ x: 0, y: 0 }}
-                                                                    onDragStop={(_: any, d: any) => {
-                                                                        updateAnnotation(ta.id, {
-                                                                            x: ta.x + (d.x / pagePxW) * 100,
-                                                                            y: ta.y + (d.y / pagePxH) * 100,
-                                                                        } as any);
-                                                                    }}
-                                                                    onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
-                                                                        updateAnnotation(ta.id, {
-                                                                            w: (ref.offsetWidth / pagePxW) * 100,
-                                                                            h: (ref.offsetHeight / pagePxH) * 100,
-                                                                            x: ta.x + (pos.x / pagePxW) * 100,
-                                                                            y: ta.y + (pos.y / pagePxH) * 100,
-                                                                        } as any);
-                                                                    }}
-                                                                    disableDragging={tool !== "select" || ta.editing}
-                                                                    enableResizing={tool === "select" && !ta.editing}
-                                                                    handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
-                                                                    className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
-                                                                    style={{ position: "relative" }}
-                                                                    onClick={(e: any) => {
-                                                                        e.stopPropagation();
-                                                                        setSelectedId(ta.id);
-                                                                        updateAnnotation(ta.id, { editing: true } as any);
+                                                                    className="absolute"
+                                                                    style={{
+                                                                        left: `${ta.x}%`,
+                                                                        top: `${ta.y}%`,
+                                                                        zIndex: 20,
+                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
                                                                     }}
                                                                 >
-                                                                    <div className="w-full h-full relative group" style={{ display: "grid", minWidth: `${rndW}px` }}>
-                                                                        {/* Hidden measuring span that naturally pushes the container bounds without wrapping */}
-                                                                        <div
-                                                                            style={{
-                                                                                gridArea: "1 / 1 / 2 / 2",
-                                                                                visibility: "hidden",
-                                                                                whiteSpace: "pre", // Never wrap unexpectedly
-                                                                                fontFamily: ta.fontFamily,
-                                                                                fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                fontWeight: ta.bold ? "bold" : "normal",
-                                                                                fontStyle: ta.italic ? "italic" : "normal",
-                                                                                lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                            }}
-                                                                        >
-                                                                            {ta.text + " "}
-                                                                        </div>
-
-                                                                        {ta.editing ? (
-                                                                            // contentEditable div renders identically to the display div below —
-                                                                            // same font metrics, same line-height, same CSS box model.
-                                                                            // This eliminates the jarring size/position shift on click.
-                                                                            <TextEditBox
-                                                                                initialText={ta.text}
-                                                                                onUpdate={(text) => updateAnnotation(ta.id, { text } as any)}
-                                                                                onBlur={() => updateAnnotation(ta.id, { editing: false, isNew: false } as any)}
-                                                                                selectAll={ta.isNew}
-                                                                                style={{
-                                                                                    whiteSpace: "pre",
-                                                                                    overflow: "visible",
-                                                                                    // Opaque white totally hides the original PDF text underneath so you 
-                                                                                    // don't see double/ghosting text while typing.
-                                                                                    background: "#ffffff",
-                                                                                    fontFamily: ta.fontFamily,
-                                                                                    fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                    color: ta.color,
-                                                                                    fontWeight: ta.bold ? "bold" : "normal",
-                                                                                    fontStyle: ta.italic ? "italic" : "normal",
-                                                                                    textDecoration: ta.underline ? "underline" : "none",
-                                                                                    textAlign: ta.align,
-                                                                                    lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                    minWidth: `${rndW}px`,
-                                                                                }}
-                                                                            />
-                                                                        ) : (
+                                                                    <Rnd
+                                                                        key={`${ta.id}-${zoom}`}
+                                                                        data-annotation="true"
+                                                                        bounds={`#edit-page-${i}`}
+                                                                        // Let the text box expand dynamically based on content.
+                                                                        // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
+                                                                        size={{ width: "auto", height: "auto" }}
+                                                                        position={{ x: 0, y: 0 }}
+                                                                        onDragStop={(_: any, d: any) => {
+                                                                            updateAnnotation(ta.id, {
+                                                                                x: ta.x + (d.x / pagePxW) * 100,
+                                                                                y: ta.y + (d.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
+                                                                            updateAnnotation(ta.id, {
+                                                                                w: (ref.offsetWidth / pagePxW) * 100,
+                                                                                h: (ref.offsetHeight / pagePxH) * 100,
+                                                                                x: ta.x + (pos.x / pagePxW) * 100,
+                                                                                y: ta.y + (pos.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        disableDragging={tool !== "select" || ta.editing}
+                                                                        enableResizing={false}
+                                                                        handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
+                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        style={{ position: "relative" }}
+                                                                        onClick={(e: any) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedId(ta.id);
+                                                                            updateAnnotation(ta.id, { editing: true } as any);
+                                                                        }}
+                                                                    >
+                                                                        <div className="w-full h-full relative group" style={{ display: "grid" }}>
+                                                                            {/* Hidden measuring span that naturally pushes the container bounds without wrapping */}
                                                                             <div
                                                                                 style={{
                                                                                     gridArea: "1 / 1 / 2 / 2",
-                                                                                    // Match same spacing & styles
+                                                                                    visibility: "hidden",
+                                                                                    whiteSpace: "pre-wrap", // Naturally wrap when hitting edge
+                                                                                    wordBreak: "break-word",
                                                                                     fontFamily: ta.fontFamily,
                                                                                     fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                    // If unmodified: transparent → real PDF canvas text shows through.
-                                                                                    // If modified: show new text on SOLID white background so user sees their change 
-                                                                                    // without the original ghost text bleeding through.
-                                                                                    color: isUnmodified ? "transparent" : ta.color,
-                                                                                    background: isUnmodified ? "transparent" : "#ffffff",
                                                                                     fontWeight: ta.bold ? "bold" : "normal",
                                                                                     fontStyle: ta.italic ? "italic" : "normal",
-                                                                                    textDecoration: ta.underline ? "underline" : "none",
-                                                                                    textAlign: ta.align,
-                                                                                    cursor: ta.isExisting ? "text" : (tool === "select" ? "move" : "default"),
                                                                                     lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                    whiteSpace: "pre",
-                                                                                    overflow: "visible",
                                                                                 }}
                                                                             >
-                                                                                {ta.text}
+                                                                                {ta.text + " "}
                                                                             </div>
-                                                                        )}
-                                                                        {selectedId === ta.id && (
-                                                                            <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
-                                                                                <button onClick={() => duplicateAnnotation(ta.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                    <IconCopy size={12} />
-                                                                                </button>
-                                                                                <button onClick={() => deleteAnnotation(ta.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                    <IconX size={12} />
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </Rnd>
-                                                        </div>
-                                                    );
-                                                }
-                                                if (ann.type === "image") {
-                                                    const ia = ann as ImageAnnotation;
-                                                    return (
-                                                        <div
-                                                            key={ia.id}
-                                                            data-annotation="true"
-                                                            className="absolute"
-                                                            style={{
-                                                                left: `${ia.x}%`,
-                                                                top: `${ia.y}%`,
-                                                                zIndex: 20,
-                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                            }}
-                                                        >
-                                                            <Rnd
-                                                                key={`${ia.id}-${zoom}`}
-                                                                data-annotation="true"
-                                                                bounds={`#edit-page-${i}`}
-                                                                size={{ width: (ia.w / 100) * pagePxW, height: (ia.h / 100) * pagePxH }}
-                                                                position={{ x: 0, y: 0 }}
-                                                                onDragStop={(_: any, d: any) => {
-                                                                    updateAnnotation(ia.id, {
-                                                                        x: ia.x + (d.x / pagePxW) * 100,
-                                                                        y: ia.y + (d.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
-                                                                    updateAnnotation(ia.id, {
-                                                                        w: (parseInt(ref.style.width) / pagePxW) * 100,
-                                                                        h: (parseInt(ref.style.height) / pagePxH) * 100,
-                                                                        x: ia.x + (pos.x / pagePxW) * 100,
-                                                                        y: ia.y + (pos.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                disableDragging={tool !== "select"}
-                                                                enableResizing={tool === "select"}
-                                                                handleStyles={selectedId === ia.id ? HANDLE_STYLES : {}}
-                                                                className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
-                                                                style={{ position: "relative" }}
-                                                                onClick={(e: any) => { e.stopPropagation(); setSelectedId(ia.id); }}
-                                                            >
-                                                                <div className="w-full h-full relative group">
-                                                                    <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" alt="" />
-                                                                    {selectedId === ia.id && (
-                                                                        <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
-                                                                            <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                <IconCopy size={12} />
-                                                                            </button>
-                                                                            <button onClick={() => deleteAnnotation(ia.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                <IconX size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </Rnd>
-                                                        </div>
-                                                    );
-                                                }
-                                                if (ann.type === "draw") {
-                                                    const da = ann as DrawAnnotation;
-                                                    return (
-                                                        <div
-                                                            key={da.id}
-                                                            data-annotation="true"
-                                                            className="absolute"
-                                                            style={{
-                                                                left: `${da.x}%`,
-                                                                top: `${da.y}%`,
-                                                                zIndex: 20,
-                                                                pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                            }}
-                                                        >
-                                                            <Rnd
-                                                                key={`${da.id}-${zoom}`}
-                                                                data-annotation="true"
-                                                                bounds={`#edit-page-${i}`}
-                                                                size={{ width: (da.w / 100) * pagePxW, height: (da.h / 100) * pagePxH }}
-                                                                position={{ x: 0, y: 0 }}
-                                                                onDragStop={(_: any, d: any) => {
-                                                                    updateAnnotation(da.id, {
-                                                                        x: da.x + (d.x / pagePxW) * 100,
-                                                                        y: da.y + (d.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
-                                                                    updateAnnotation(da.id, {
-                                                                        w: (parseInt(ref.style.width) / pagePxW) * 100,
-                                                                        h: (parseInt(ref.style.height) / pagePxH) * 100,
-                                                                        x: da.x + (pos.x / pagePxW) * 100,
-                                                                        y: da.y + (pos.y / pagePxH) * 100,
-                                                                    } as any);
-                                                                }}
-                                                                disableDragging={tool !== "select"}
-                                                                enableResizing={tool === "select"}
-                                                                handleStyles={selectedId === da.id ? HANDLE_STYLES : {}}
-                                                                className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
-                                                                style={{ position: "relative" }}
-                                                                onClick={(e: any) => { e.stopPropagation(); setSelectedId(da.id); }}
-                                                            >
-                                                                <div className="w-full h-full relative group">
-                                                                    <svg width="100%" height="100%" style={{ overflow: "hidden" }} preserveAspectRatio="none">
-                                                                        {da.paths.map((path, idx) => {
-                                                                            if (path.length < 2) return null;
-                                                                            const svgPath = path.map((p, ix) => `${ix === 0 ? 'M' : 'L'} ${p.x * ((da.w / 100) * pagePxW)} ${p.y * ((da.h / 100) * pagePxH)}`).join(" ");
-                                                                            return (
-                                                                                <path
-                                                                                    key={idx}
-                                                                                    d={svgPath}
-                                                                                    fill="none"
-                                                                                    stroke={da.color}
-                                                                                    strokeWidth={da.isHighlight ? da.lineWidth * 4 : da.lineWidth}
-                                                                                    strokeOpacity={da.isHighlight ? 0.35 : 1}
-                                                                                    strokeLinecap="round"
-                                                                                    strokeLinejoin="round"
+
+                                                                            {ta.editing ? (
+                                                                                // contentEditable div renders identically to the display div below —
+                                                                                // same font metrics, same line-height, same CSS box model.
+                                                                                // This eliminates the jarring size/position shift on click.
+                                                                                <TextEditBox
+                                                                                    initialText={ta.text}
+                                                                                    onUpdate={(text) => updateAnnotation(ta.id, { text } as any)}
+                                                                                    onBlur={() => updateAnnotation(ta.id, { editing: false, isNew: false } as any)}
+                                                                                    selectAll={ta.isNew}
+                                                                                    style={{
+                                                                                        whiteSpace: "pre-wrap",
+                                                                                        wordBreak: "break-word",
+                                                                                        overflow: "visible",
+                                                                                        // Opaque white totally hides the original PDF text underneath so you 
+                                                                                        // don't see double/ghosting text while typing. New text has no ghost, so it is transparent.
+                                                                                        background: ta.isExisting ? "#ffffff" : "transparent",
+                                                                                        fontFamily: ta.fontFamily,
+                                                                                        fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
+                                                                                        color: ta.color,
+                                                                                        fontWeight: ta.bold ? "bold" : "normal",
+                                                                                        fontStyle: ta.italic ? "italic" : "normal",
+                                                                                        textDecoration: ta.underline ? "underline" : "none",
+                                                                                        textAlign: ta.align,
+                                                                                        lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                        minWidth: `${rndW}px`,
+                                                                                        maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`, // Strictly never stretch past right edge of page
+                                                                                    }}
                                                                                 />
-                                                                            );
-                                                                        })}
-                                                                    </svg>
-                                                                    {selectedId === da.id && (
-                                                                        <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
-                                                                            <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                <IconCopy size={12} />
-                                                                            </button>
-                                                                            <button onClick={() => deleteAnnotation(da.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                <IconX size={12} />
-                                                                            </button>
+                                                                            ) : (
+                                                                                <div
+                                                                                    style={{
+                                                                                        gridArea: "1 / 1 / 2 / 2",
+                                                                                        // Match same spacing & styles
+                                                                                        fontFamily: ta.fontFamily,
+                                                                                        fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
+                                                                                        // If unmodified: transparent → real PDF canvas text shows through.
+                                                                                        // If modified: show new text on SOLID white background so user sees their change 
+                                                                                        // without the original ghost text bleeding through. New text is always transparent.
+                                                                                        color: isUnmodified ? "transparent" : ta.color,
+                                                                                        background: ta.isExisting ? (isUnmodified ? "transparent" : "#ffffff") : "transparent",
+                                                                                        fontWeight: ta.bold ? "bold" : "normal",
+                                                                                        fontStyle: ta.italic ? "italic" : "normal",
+                                                                                        textDecoration: ta.underline ? "underline" : "none",
+                                                                                        textAlign: ta.align,
+                                                                                        cursor: ta.isExisting ? "text" : (tool === "select" ? "move" : "default"),
+                                                                                        lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                        whiteSpace: "pre",
+                                                                                        overflow: "visible",
+                                                                                    }}
+                                                                                >
+                                                                                    {ta.text}
+                                                                                </div>
+                                                                            )}
+                                                                            {selectedId === ta.id && (
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                    <button onClick={() => duplicateAnnotation(ta.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                        <IconCopy size={12} />
+                                                                                    </button>
+                                                                                    <button onClick={() => deleteAnnotation(ta.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                        <IconX size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
-                                                                    )}
+                                                                    </Rnd>
                                                                 </div>
-                                                            </Rnd>
+                                                            );
+                                                        }
+                                                        if (ann.type === "image") {
+                                                            const ia = ann as ImageAnnotation;
+                                                            return (
+                                                                <div
+                                                                    key={ia.id}
+                                                                    data-annotation="true"
+                                                                    className="absolute"
+                                                                    style={{
+                                                                        left: `${ia.x}%`,
+                                                                        top: `${ia.y}%`,
+                                                                        zIndex: 20,
+                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                    }}
+                                                                >
+                                                                    <Rnd
+                                                                        key={`${ia.id}-${zoom}`}
+                                                                        data-annotation="true"
+                                                                        bounds={`#edit-page-${i}`}
+                                                                        size={{ width: (ia.w / 100) * pagePxW, height: (ia.h / 100) * pagePxH }}
+                                                                        position={{ x: 0, y: 0 }}
+                                                                        onDragStop={(_: any, d: any) => {
+                                                                            updateAnnotation(ia.id, {
+                                                                                x: ia.x + (d.x / pagePxW) * 100,
+                                                                                y: ia.y + (d.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
+                                                                            updateAnnotation(ia.id, {
+                                                                                w: (parseInt(ref.style.width) / pagePxW) * 100,
+                                                                                h: (parseInt(ref.style.height) / pagePxH) * 100,
+                                                                                x: ia.x + (pos.x / pagePxW) * 100,
+                                                                                y: ia.y + (pos.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        disableDragging={tool !== "select"}
+                                                                        enableResizing={tool === "select"}
+                                                                        handleStyles={selectedId === ia.id ? HANDLE_STYLES : {}}
+                                                                        className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        style={{ position: "relative" }}
+                                                                        onClick={(e: any) => { e.stopPropagation(); setSelectedId(ia.id); }}
+                                                                    >
+                                                                        <div className="w-full h-full relative group">
+                                                                            <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" alt="" />
+                                                                            {selectedId === ia.id && (
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                    <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                        <IconCopy size={12} />
+                                                                                    </button>
+                                                                                    <button onClick={() => deleteAnnotation(ia.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                        <IconX size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </Rnd>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        if (ann.type === "draw") {
+                                                            const da = ann as DrawAnnotation;
+                                                            return (
+                                                                <div
+                                                                    key={da.id}
+                                                                    data-annotation="true"
+                                                                    className="absolute"
+                                                                    style={{
+                                                                        left: `${da.x}%`,
+                                                                        top: `${da.y}%`,
+                                                                        zIndex: 20,
+                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                    }}
+                                                                >
+                                                                    <Rnd
+                                                                        key={`${da.id}-${zoom}`}
+                                                                        data-annotation="true"
+                                                                        bounds={`#edit-page-${i}`}
+                                                                        size={{ width: (da.w / 100) * pagePxW, height: (da.h / 100) * pagePxH }}
+                                                                        position={{ x: 0, y: 0 }}
+                                                                        onDragStop={(_: any, d: any) => {
+                                                                            updateAnnotation(da.id, {
+                                                                                x: da.x + (d.x / pagePxW) * 100,
+                                                                                y: da.y + (d.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
+                                                                            updateAnnotation(da.id, {
+                                                                                w: (parseInt(ref.style.width) / pagePxW) * 100,
+                                                                                h: (parseInt(ref.style.height) / pagePxH) * 100,
+                                                                                x: da.x + (pos.x / pagePxW) * 100,
+                                                                                y: da.y + (pos.y / pagePxH) * 100,
+                                                                            } as any);
+                                                                        }}
+                                                                        disableDragging={tool !== "select"}
+                                                                        enableResizing={tool === "select"}
+                                                                        handleStyles={selectedId === da.id ? HANDLE_STYLES : {}}
+                                                                        className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        style={{ position: "relative" }}
+                                                                        onClick={(e: any) => { e.stopPropagation(); setSelectedId(da.id); }}
+                                                                    >
+                                                                        <div className="w-full h-full relative group">
+                                                                            <svg width="100%" height="100%" style={{ overflow: "hidden" }} preserveAspectRatio="none">
+                                                                                {da.paths.map((path, idx) => {
+                                                                                    if (path.length < 2) return null;
+                                                                                    const svgPath = path.map((p, ix) => `${ix === 0 ? 'M' : 'L'} ${p.x * ((da.w / 100) * pagePxW)} ${p.y * ((da.h / 100) * pagePxH)}`).join(" ");
+                                                                                    return (
+                                                                                        <path
+                                                                                            key={idx}
+                                                                                            d={svgPath}
+                                                                                            fill="none"
+                                                                                            stroke={da.color}
+                                                                                            strokeWidth={da.isHighlight ? da.lineWidth * 4 : da.lineWidth}
+                                                                                            strokeOpacity={da.isHighlight ? 0.35 : 1}
+                                                                                            strokeLinecap="round"
+                                                                                            strokeLinejoin="round"
+                                                                                        />
+                                                                                    );
+                                                                                })}
+                                                                            </svg>
+                                                                            {selectedId === da.id && (
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                    <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                        <IconCopy size={12} />
+                                                                                    </button>
+                                                                                    <button onClick={() => deleteAnnotation(da.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                        <IconX size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </Rnd>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: Properties panel */}
+                    <div className="hidden lg:flex flex-col bg-white border-l border-[#E0DED9] w-[270px] shrink-0">
+                        <div className="px-4 py-4 border-b border-[#E0DED9]">
+                            <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                                <IconForms size={16} className="text-black" />
+                                Properties
+                            </h3>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+                            {/* Text settings */}
+                            {(tool === "text" || selectedAnn?.type === "text") && (
+                                <div className="flex flex-col gap-4">
+                                    {/* Font picker with search */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Font</label>
+                                        <div className="relative">
+                                            <div
+                                                className="flex items-center justify-between bg-[#f5f4f0] border border-[#E0DED9] rounded-xl px-2.5 py-1.5 cursor-pointer hover:bg-[#e8e6e3] transition-colors"
+                                                onMouseDown={e => e.preventDefault()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowFontList(!showFontList);
+                                                    setShowFontSizeList(false);
+                                                    setFontSearch("");
+                                                }}
+                                            >
+                                                <span style={{ fontFamily: selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontFamily : textFont }} className="text-xs font-medium text-brand-dark truncate">
+                                                    {selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontFamily : textFont}
+                                                </span>
+                                                <IconChevronDown size={14} className="text-brand-sage shrink-0" />
+                                            </div>
+                                            {showFontList && (
+                                                <div
+                                                    className="absolute top-full mt-1 left-0 right-0 bg-white border border-[#E0DED9] rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <div className="p-2 border-b border-[#E0DED9]">
+                                                        <div className="flex items-center gap-1.5 bg-[#f5f4f0] rounded-lg px-2 py-1.5">
+                                                            <IconSearch size={12} className="text-brand-sage shrink-0" />
+                                                            <input
+                                                                autoFocus
+                                                                type="text"
+                                                                placeholder="Search..."
+                                                                className="flex-1 bg-transparent text-xs font-medium outline-none text-brand-dark placeholder:text-brand-sage"
+                                                                value={fontSearch}
+                                                                onChange={e => setFontSearch(e.target.value)}
+                                                            />
                                                         </div>
-                                                    );
-                                                }
-                                                return null;
-                                            })}
+                                                    </div>
+                                                    <div className="overflow-y-auto custom-scrollbar">
+                                                        {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).map(f => (
+                                                            <button
+                                                                key={f}
+                                                                onMouseDown={e => e.preventDefault()}
+                                                                onClick={() => {
+                                                                    setTextFont(f);
+                                                                    setFontSearch("");
+                                                                    setShowFontList(false);
+                                                                    if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontFamily: f } as any);
+                                                                }}
+                                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-[#f5f4f0] transition-colors ${textFont === f ? "bg-black text-white hover:bg-black font-bold" : "text-brand-dark"}`}
+                                                                style={{ fontFamily: f }}
+                                                            >
+                                                                {f}
+                                                            </button>
+                                                        ))}
+                                                        {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).length === 0 && (
+                                                            <div className="p-3 text-center text-xs text-brand-sage font-medium">No results found</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                    </div>
+
+                                    {/* Font size */}
+                                    <div className="flex flex-col gap-2 relative">
+                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Font Size</label>
+                                        <div className="flex flex-col gap-2 relative">
+                                            <input
+                                                type="text"
+                                                className="w-full bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-2.5 text-sm font-bold focus:ring-2 focus:ring-black/20 focus:border-black outline-none transition-all placeholder:text-[#ccc]"
+                                                placeholder="Size..."
+                                                value={fontSizeInputText}
+                                                onMouseDown={e => e.stopPropagation()}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setShowFontSizeList(!showFontSizeList);
+                                                    setShowFontList(false);
+                                                }}
+                                                onBlur={() => {
+                                                    // Ensure valid number on blur if empty
+                                                    if (!fontSizeInputText) {
+                                                        const defaultVal = 24;
+                                                        setFontSizeInputText(defaultVal.toString());
+                                                        setTextFontSize(defaultVal);
+                                                        if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: defaultVal } as any);
+                                                    }
+                                                }}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    // Allow decimal values or empty string
+                                                    if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                        setFontSizeInputText(val); // Keep local state exactly what user typed (including '.')
+                                                        const num = parseFloat(val);
+                                                        if (!isNaN(num)) {
+                                                            setTextFontSize(num);
+                                                            if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: num } as any);
+                                                        } else if (val === "") {
+                                                            // For empty string, update logically to 0 but keep it empty visually
+                                                            setTextFontSize(0);
+                                                            if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: 0 } as any);
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            {/* Popular sizes dropdown (grid) */}
+                                            {showFontSizeList && (
+                                                <div 
+                                                    className="absolute top-full mt-1 left-0 right-0 p-2 bg-white border border-[#E0DED9] rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <div className="grid grid-cols-5 gap-1">
+                                                        {POPULAR_FONT_SIZES.map(s => {
+                                                            const currentSize = selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontSize : textFontSize;
+                                                            return (
+                                                                <button
+                                                                    key={s}
+                                                                    onMouseDown={e => {
+                                                                        e.preventDefault();
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        setTextFontSize(s);
+                                                                        if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: s } as any);
+                                                                        setShowFontSizeList(false);
+                                                                    }}
+                                                                    className={`text-[10px] font-bold py-1.5 rounded-lg border transition-all ${
+                                                                        currentSize === s
+                                                                        ? "bg-black text-white border-black"
+                                                                        : "bg-[#f5f4f0] text-brand-sage border-[#E0DED9] hover:text-brand-dark hover:bg-[#e8e6e3]"
+                                                                    }`}
+                                                                >
+                                                                    {s}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Color */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Color</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {COLORS.map(c => (
+                                                <button
+                                                    key={c}
+                                                    onMouseDown={e => e.preventDefault()}
+                                                    onClick={() => { setTextColor(c); if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { color: c } as any); }}
+                                                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${textColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
+                                                    style={{ background: c }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Bold/Italic/Underline */}
+                                    <div className="flex gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                                        {([
+                                            { id: "bold", icon: IconBold },
+                                            { id: "italic", icon: IconItalic },
+                                            { id: "underline", icon: IconUnderline },
+                                        ] as const).map(btn => {
+                                            const isOn = selectedAnn?.type === "text"
+                                                ? (selectedAnn as any)[btn.id]
+                                                : btn.id === "bold" ? textBold : btn.id === "italic" ? textItalic : textUnderline;
+                                            return (
+                                                <button
+                                                    key={btn.id}
+                                                    onMouseDown={e => e.preventDefault()}
+                                                    onClick={() => {
+                                                        const v = !isOn;
+                                                        if (btn.id === "bold") setTextBold(v);
+                                                        else if (btn.id === "italic") setTextItalic(v);
+                                                        else setTextUnderline(v);
+                                                        if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { [btn.id]: v } as any);
+                                                    }}
+                                                    className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-all ${isOn ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]" : "text-brand-sage hover:text-brand-dark"}`}
+                                                >
+                                                    <btn.icon size={16} />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+
+                                </div>
+                            )}
+
+                            {/* Selected individual component actions */}
+                            {selectedAnn && (
+                                <div className="flex flex-col gap-1.5 pt-2 border-t border-[#E0DED9]">
+                                    <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Actions</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onMouseDown={e => e.preventDefault()}
+                                            onClick={() => duplicateAnnotation(selectedAnn.id)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9] text-xs font-bold text-brand-dark hover:bg-[#E0DED9] transition-all"
+                                        >
+                                            <IconCopy size={14} /> Duplicate
+                                        </button>
+                                        <button
+                                            onMouseDown={e => e.preventDefault()}
+                                            onClick={() => deleteAnnotation(selectedAnn.id)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-600 hover:bg-red-100 transition-all"
+                                        >
+                                            <IconTrash size={14} /> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Draw settings */}
+                            {(["draw", "highlight", "whiteout"].includes(tool) || selectedAnn?.type === "draw") && (() => {
+                                const isWhiteout = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color === "#ffffff" : tool === "whiteout";
+                                const currentLineWidth = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).lineWidth : drawWidth;
+                                const currentColor = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color : drawColor;
+
+                                return (
+                                    <div className="flex flex-col gap-4">
+                                        {isWhiteout && (
+                                            <div className="bg-red-50 border border-red-200 p-2.5 rounded-xl text-[11px] text-red-700 font-medium leading-relaxed">
+                                                <strong className="font-bold">Warning:</strong> Whiteout covers information visually but does not fully remove it. Do not use for redacting sensitive or important information.
+                                            </div>
+                                        )}
+                                        {!isWhiteout && (
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Brush Color</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {COLORS.map(c => (
+                                                        <button
+                                                            key={c}
+                                                            onClick={() => {
+                                                                setDrawColor(c);
+                                                                if (selectedAnn?.id && selectedAnn.type === "draw") {
+                                                                    updateAnnotation(selectedAnn.id, { color: c } as any);
+                                                                }
+                                                            }}
+                                                            className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${currentColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
+                                                            style={{ background: c }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Thickness: {currentLineWidth}px</label>
+                                            <input
+                                                type="range"
+                                                min={1}
+                                                max={24}
+                                                className="w-full accent-black"
+                                                value={currentLineWidth}
+                                                onChange={e => {
+                                                    const v = Number(e.target.value);
+                                                    setDrawWidth(v);
+                                                    if (selectedAnn?.id && selectedAnn.type === "draw") {
+                                                        updateAnnotation(selectedAnn.id, { lineWidth: v } as any);
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 );
-                            })}
+                            })()}
+
+                            {!selectedAnn && tool === "select" && (
+                                <div className="mt-16 text-center px-4">
+                                    <div className="w-14 h-14 bg-[#f5f4f0] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E0DED9]">
+                                        <IconCursorText size={22} className="text-brand-sage" />
+                                    </div>
+                                    <p className="text-xs font-bold text-brand-dark">Nothing selected</p>
+                                    <p className="text-[11px] text-brand-sage mt-1">Click an object to edit its properties.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Save button pinned to bottom */}
+                        <div className="p-4 border-t border-[#E0DED9] bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+                            <button
+                                onClick={savePdf}
+                                disabled={isSaving}
+                                className="w-full py-3.5 rounded-xl bg-black text-white text-sm font-bold hover:bg-[#222] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-black/15 active:scale-[0.98]"
+                            >
+                                {isSaving ? <IconLoader2 size={18} className="animate-spin" /> : <IconDownload size={18} />}
+                                {isSaving ? "Saving…" : "Save Changes"}
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Right: Properties panel */}
-                <div className="hidden lg:flex flex-col bg-white border-l border-[#E0DED9] w-[270px] shrink-0">
-                    <div className="px-4 py-4 border-b border-[#E0DED9]">
-                        <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
-                            <IconForms size={16} className="text-black" />
-                            Properties
-                        </h3>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
-                        {/* Text settings */}
-                        {(tool === "text" || selectedAnn?.type === "text") && (
-                            <div className="flex flex-col gap-4">
-                                {/* Font picker with search */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Font</label>
-                                    <div className="relative">
-                                        <div
-                                            className="flex items-center justify-between bg-[#f5f4f0] border border-[#E0DED9] rounded-xl px-2.5 py-1.5 cursor-pointer hover:bg-[#e8e6e3] transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setShowFontList(!showFontList);
-                                                setFontSearch("");
-                                            }}
-                                        >
-                                            <span style={{ fontFamily: selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontFamily : textFont }} className="text-xs font-medium text-brand-dark truncate">
-                                                {selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontFamily : textFont}
-                                            </span>
-                                            <IconChevronDown size={14} className="text-brand-sage shrink-0" />
-                                        </div>
-                                        {showFontList && (
-                                            <div
-                                                className="absolute top-full mt-1 left-0 right-0 bg-white border border-[#E0DED9] rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden"
-                                                onClick={e => e.stopPropagation()}
-                                            >
-                                                <div className="p-2 border-b border-[#E0DED9]">
-                                                    <div className="flex items-center gap-1.5 bg-[#f5f4f0] rounded-lg px-2 py-1.5">
-                                                        <IconSearch size={12} className="text-brand-sage shrink-0" />
-                                                        <input
-                                                            autoFocus
-                                                            type="text"
-                                                            placeholder="Search..."
-                                                            className="flex-1 bg-transparent text-xs font-medium outline-none text-brand-dark placeholder:text-brand-sage"
-                                                            value={fontSearch}
-                                                            onChange={e => setFontSearch(e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="overflow-y-auto custom-scrollbar">
-                                                    {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).map(f => (
-                                                        <button
-                                                            key={f}
-                                                            onMouseDown={e => e.preventDefault()}
-                                                            onClick={() => {
-                                                                setTextFont(f);
-                                                                setFontSearch("");
-                                                                setShowFontList(false);
-                                                                if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontFamily: f } as any);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-[#f5f4f0] transition-colors ${textFont === f ? "bg-black text-white hover:bg-black font-bold" : "text-brand-dark"}`}
-                                                            style={{ fontFamily: f }}
-                                                        >
-                                                            {f}
-                                                        </button>
-                                                    ))}
-                                                    {GOOGLE_FONTS.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).length === 0 && (
-                                                        <div className="p-3 text-center text-xs text-brand-sage font-medium">No results found</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-brand-sage">Current: <span style={{ fontFamily: textFont }} className="font-medium">{textFont}</span></p>
-                                </div>
-
-                                {/* Font size */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Font Size</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-2.5 text-sm font-bold focus:ring-2 focus:ring-black/20 focus:border-black outline-none transition-all"
-                                        value={selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).fontSize : textFontSize}
-                                        onChange={e => {
-                                            const v = Number(e.target.value);
-                                            setTextFontSize(v);
-                                            if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: v } as any);
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Color */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Color</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {COLORS.map(c => (
-                                            <button
-                                                key={c}
-                                                onClick={() => { setTextColor(c); if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { color: c } as any); }}
-                                                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${textColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
-                                                style={{ background: c }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Bold/Italic/Underline */}
-                                <div className="flex gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
-                                    {([
-                                        { id: "bold", icon: IconBold },
-                                        { id: "italic", icon: IconItalic },
-                                        { id: "underline", icon: IconUnderline },
-                                    ] as const).map(btn => {
-                                        const isOn = selectedAnn?.type === "text"
-                                            ? (selectedAnn as any)[btn.id]
-                                            : btn.id === "bold" ? textBold : btn.id === "italic" ? textItalic : textUnderline;
-                                        return (
-                                            <button
-                                                key={btn.id}
-                                                onClick={() => {
-                                                    const v = !isOn;
-                                                    if (btn.id === "bold") setTextBold(v);
-                                                    else if (btn.id === "italic") setTextItalic(v);
-                                                    else setTextUnderline(v);
-                                                    if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { [btn.id]: v } as any);
-                                                }}
-                                                className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-all ${isOn ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]" : "text-brand-sage hover:text-brand-dark"}`}
-                                            >
-                                                <btn.icon size={16} />
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-
-                            </div>
-                        )}
-
-                        {/* Selected individual component actions */}
-                        {selectedAnn && (
-                            <div className="flex flex-col gap-1.5 pt-2 border-t border-[#E0DED9]">
-                                <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Actions</label>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => duplicateAnnotation(selectedAnn.id)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9] text-xs font-bold text-brand-dark hover:bg-[#E0DED9] transition-all"
-                                    >
-                                        <IconCopy size={14} /> Duplicate
-                                    </button>
-                                    <button
-                                        onClick={() => deleteAnnotation(selectedAnn.id)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-600 hover:bg-red-100 transition-all"
-                                    >
-                                        <IconTrash size={14} /> Delete
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Draw settings */}
-                        {(["draw", "highlight", "whiteout"].includes(tool) || selectedAnn?.type === "draw") && (() => {
-                            const isWhiteout = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color === "#ffffff" : tool === "whiteout";
-                            const currentLineWidth = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).lineWidth : drawWidth;
-                            const currentColor = selectedAnn?.type === "draw" ? (selectedAnn as DrawAnnotation).color : drawColor;
-                            
-                            return (
-                                <div className="flex flex-col gap-4">
-                                    {isWhiteout && (
-                                        <div className="bg-red-50 border border-red-200 p-2.5 rounded-xl text-[11px] text-red-700 font-medium leading-relaxed">
-                                            <strong className="font-bold">Warning:</strong> Whiteout covers information visually but does not fully remove it. Do not use for redacting sensitive or important information.
-                                        </div>
-                                    )}
-                                    {!isWhiteout && (
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Brush Color</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {COLORS.map(c => (
-                                                    <button
-                                                        key={c}
-                                                        onClick={() => {
-                                                            setDrawColor(c);
-                                                            if (selectedAnn?.id && selectedAnn.type === "draw") {
-                                                                updateAnnotation(selectedAnn.id, { color: c } as any);
-                                                            }
-                                                        }}
-                                                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${currentColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
-                                                        style={{ background: c }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Thickness: {currentLineWidth}px</label>
-                                        <input 
-                                            type="range" 
-                                            min={1} 
-                                            max={24} 
-                                            className="w-full accent-black" 
-                                            value={currentLineWidth} 
-                                            onChange={e => {
-                                                const v = Number(e.target.value);
-                                                setDrawWidth(v);
-                                                if (selectedAnn?.id && selectedAnn.type === "draw") {
-                                                    updateAnnotation(selectedAnn.id, { lineWidth: v } as any);
-                                                }
-                                            }} 
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {!selectedAnn && tool === "select" && (
-                            <div className="mt-16 text-center px-4">
-                                <div className="w-14 h-14 bg-[#f5f4f0] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E0DED9]">
-                                    <IconCursorText size={22} className="text-brand-sage" />
-                                </div>
-                                <p className="text-xs font-bold text-brand-dark">Nothing selected</p>
-                                <p className="text-[11px] text-brand-sage mt-1">Click an object to edit its properties.</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Save button pinned to bottom */}
-                    <div className="p-4 border-t border-[#E0DED9] bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-                        <button
-                            onClick={savePdf}
-                            disabled={isSaving}
-                            className="w-full py-3.5 rounded-xl bg-black text-white text-sm font-bold hover:bg-[#222] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-black/15 active:scale-[0.98]"
-                        >
-                            {isSaving ? <IconLoader2 size={18} className="animate-spin" /> : <IconDownload size={18} />}
-                            {isSaving ? "Saving…" : "Save Changes"}
-                        </button>
-                    </div>
-                </div>
+                <input ref={imgInputRef} type="file" className="hidden" accept="image/*" onChange={onImageFileChange} />
             </div>
-
-            <input ref={imgInputRef} type="file" className="hidden" accept="image/*" onChange={onImageFileChange} />
-        </div>
+        </>
     );
 }

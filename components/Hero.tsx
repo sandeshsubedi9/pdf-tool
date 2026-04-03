@@ -25,6 +25,12 @@ export default function Hero() {
         router.push("/edit-pdf");
     };
 
+    const handleStartWithBlankPage = () => {
+        FileStore.clearFile("edit_pdf_main");
+        sessionStorage.setItem("edit_pdf_blank", "true");
+        router.push("/edit-pdf");
+    };
+
     return (
         <section
             id="hero"
@@ -161,6 +167,15 @@ export default function Hero() {
                                 />
                             </div>
 
+                            {/* Card Footer for Blank Page */}
+                            <div 
+                                onClick={handleStartWithBlankPage} 
+                                className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border bg-[#faf9f7] cursor-pointer hover:bg-[#f2f0e9] transition-colors"
+                            >
+                                <span className="text-xs font-medium text-brand-sage">
+                                    Start with a blank page
+                                </span>
+                            </div>
                         </div>
 
                         {/* Floating stats chips */}

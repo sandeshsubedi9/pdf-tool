@@ -67,11 +67,16 @@ def _resolve_fitz_font(family: str, bold: bool, italic: bool) -> str:
 
 
 def _hex_to_rgb(hex_color: str) -> tuple:
-    h = hex_color.lstrip("#")
-    if len(h) == 3:
-        h = "".join(c * 2 for c in h)
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return r / 255.0, g / 255.0, b / 255.0
+    try:
+        if not isinstance(hex_color, str) or not hex_color:
+            return 0.0, 0.0, 0.0
+        h = hex_color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return r / 255.0, g / 255.0, b / 255.0
+    except (ValueError, IndexError, TypeError):
+        return 0.0, 0.0, 0.0
 
 
 def _rgb_to_hex(r: float, g: float, b: float) -> str:
