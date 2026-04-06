@@ -459,6 +459,63 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     const [extractedOriginals, setExtractedOriginals] = useState<Map<string, any>>(new Map());
     const [originalFile, setOriginalFile] = useState<File | null>(null);
+    const [redactedIdsByPage, setRedactedIdsByPage] = useState<Record<number, string[]>>({});
+    const [fetchingPages, setFetchingPages] = useState<Set<number>>(new Set());
+
+    const requestRedactOriginal = async (id: string, pageIndex: number) => {
+        const orig = extractedOriginals.get(id);
+        if (!orig || !originalFile) return;
+
+        setRedactedIdsByPage(prev => {
+            const pageIdList = prev[pageIndex] || [];
+            if (pageIdList.includes(id)) return prev;
+
+            const newList = [...pageIdList, id];
+            
+            const redactions = newList.map(redactId => {
+                const o = extractedOriginals.get(redactId);
+                return {
+                    orig_x0: o?.orig_x0 ?? o?.origX0,
+                    orig_y0: o?.orig_y0 ?? o?.origY0,
+                    orig_x1: o?.orig_x1 ?? o?.origX1,
+                    orig_y1: o?.orig_y1 ?? o?.origY1,
+                };
+            });
+
+            // Fire and forget clean background fetch
+            const formData = new FormData();
+            formData.append("file", originalFile, originalFile.name);
+            formData.append("page_number", pageIndex.toString());
+            formData.append("redactions", JSON.stringify(redactions));
+            // 1.5 scale of 72 DPI is 108 dpi rendering in python service
+            formData.append("dpi", "108");
+
+            setFetchingPages(p => new Set(p).add(pageIndex));
+            fetch("/api/edit-pdf/render-clean-page", { method: "POST", body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.dataUrl) {
+                        setPages(p => {
+                            const newPages = [...p];
+                            if (newPages[pageIndex - 1]) {
+                                newPages[pageIndex - 1] = { ...newPages[pageIndex - 1], dataUrl: data.dataUrl };
+                            }
+                            return newPages;
+                        });
+                    }
+                })
+                .catch(e => console.error("Failed to fetch clean page", e))
+                .finally(() => {
+                    setFetchingPages(p => {
+                        const next = new Set(p);
+                        next.delete(pageIndex);
+                        return next;
+                    });
+                });
+
+            return { ...prev, [pageIndex]: newList };
+        });
+    };
 
     const [zoom, setZoom] = useState(1.0);
     const [showZoomMenu, setShowZoomMenu] = useState(false);
@@ -882,7 +939,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         const ann: TextAnnotation = {
                             id: `pjs_${i}_${spanIdx}`,
                             type: "text",
-                            page: i,
+                            page: i + 1,
                             x: (canvasX / vp.width) * 100,
                             y: (canvasY / vp.height) * 100,
                             w: (clusterWidthPx / vp.width) * 100,
@@ -1010,6 +1067,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         setAnnotations(prev => prev.map(a => a.id === id ? { ...a, ...patch } as Annotation : a));
     };
     const deleteAnnotation = (id: string) => {
+        const ann = annotations.find(a => a.id === id);
+        if (ann && (ann as any).isExisting) {
+            requestRedactOriginal(id, ann.page);
+        }
         setAnnotations(prev => prev.filter(a => a.id !== id));
         setSelectedId(null);
     };
@@ -1792,21 +1853,25 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                     ta.color === _orig.color &&
                                                                     ta.bold === _orig.bold &&
                                                                     ta.italic === _orig.italic &&
-                                                                    Math.abs(ta.fontSize - (_orig.fontSize || 0)) <= 0.1
+                                                                    Math.abs(ta.fontSize - (_orig.fontSize || 0)) <= 0.1 &&
+                                                                    Math.abs(ta.x - (_orig.x || 0)) <= 0.1 &&
+                                                                    Math.abs(ta.y - (_orig.y || 0)) <= 0.1
                                                                 ))
                                                             );
+                                                            const isRedacted = (redactedIdsByPage[i + 1] || []).includes(ta.id);
+                                                            const isFetching = fetchingPages.has(i + 1);
                                                             return (
-                                                                <div
-                                                                    key={ta.id}
-                                                                    data-annotation="true"
-                                                                    className="absolute"
-                                                                    style={{
-                                                                        left: `${ta.x}%`,
-                                                                        top: `${ta.y}%`,
-                                                                        zIndex: 20,
-                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                                    }}
-                                                                >
+                                                                    <div
+                                                                        key={ta.id}
+                                                                        data-annotation="true"
+                                                                        className="absolute"
+                                                                        style={{
+                                                                            left: `${ta.x}%`,
+                                                                            top: `${ta.y}%`,
+                                                                            zIndex: 20,
+                                                                            pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                        }}
+                                                                    >
                                                                     <Rnd
                                                                         key={`${ta.id}-${zoom}`}
                                                                         data-annotation="true"
@@ -1814,12 +1879,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         // Let the text box expand dynamically based on content.
                                                                         // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
                                                                         size={{ width: "auto", height: "auto" }}
-                                                                        position={{ x: 0, y: 0 }}
+                                                                        onDragStart={() => {
+                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
+                                                                        }}
                                                                         onDragStop={(_: any, d: any) => {
                                                                             updateAnnotation(ta.id, {
                                                                                 x: ta.x + (d.x / pagePxW) * 100,
                                                                                 y: ta.y + (d.y / pagePxH) * 100,
                                                                             } as any);
+                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
                                                                         }}
                                                                         onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
                                                                             updateAnnotation(ta.id, {
@@ -1828,6 +1896,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 x: ta.x + (pos.x / pagePxW) * 100,
                                                                                 y: ta.y + (pos.y / pagePxH) * 100,
                                                                             } as any);
+                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
                                                                         }}
                                                                         disableDragging={tool !== "select" || ta.editing}
                                                                         enableResizing={false}
@@ -1837,16 +1906,23 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();
                                                                             setSelectedId(ta.id);
+                                                                            // Do not enter editing mode automatically on first click if existing
+                                                                            if (!ta.isExisting) updateAnnotation(ta.id, { editing: true } as any);
+                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
+                                                                        }}
+                                                                        onDoubleClick={(e: any) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedId(ta.id);
                                                                             updateAnnotation(ta.id, { editing: true } as any);
+                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
                                                                         }}
                                                                     >
                                                                         <div className="w-full h-full relative group" style={{ display: "grid" }}>
-                                                                            {/* Hidden measuring span that naturally pushes the container bounds without wrapping */}
                                                                             <div
                                                                                 style={{
                                                                                     gridArea: "1 / 1 / 2 / 2",
                                                                                     visibility: "hidden",
-                                                                                    whiteSpace: "pre-wrap", // Naturally wrap when hitting edge
+                                                                                    whiteSpace: "pre-wrap",
                                                                                     wordBreak: "break-word",
                                                                                     fontFamily: ta.fontFamily,
                                                                                     fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
@@ -1859,9 +1935,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                             </div>
 
                                                                             {ta.editing ? (
-                                                                                // contentEditable div renders identically to the display div below —
-                                                                                // same font metrics, same line-height, same CSS box model.
-                                                                                // This eliminates the jarring size/position shift on click.
                                                                                 <TextEditBox
                                                                                     initialText={ta.text}
                                                                                     onUpdate={(text) => updateAnnotation(ta.id, { text } as any)}
@@ -1871,9 +1944,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         whiteSpace: "pre-wrap",
                                                                                         wordBreak: "break-word",
                                                                                         overflow: "visible",
-                                                                                        // Opaque white totally hides the original PDF text underneath so you 
-                                                                                        // don't see double/ghosting text while typing. New text has no ghost, so it is transparent.
-                                                                                        background: ta.isExisting ? "#ffffff" : "transparent",
+                                                                                        background: (ta.isExisting && isFetching) ? "#ffffff" : "transparent",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
                                                                                         color: ta.color,
@@ -1883,26 +1954,22 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         textAlign: ta.align,
                                                                                         lineHeight: ta.isExisting ? 1 : 1.3,
                                                                                         minWidth: `${rndW}px`,
-                                                                                        maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`, // Strictly never stretch past right edge of page
+                                                                                        maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`,
                                                                                     }}
                                                                                 />
                                                                             ) : (
                                                                                 <div
                                                                                     style={{
                                                                                         gridArea: "1 / 1 / 2 / 2",
-                                                                                        // Match same spacing & styles
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                        // If unmodified: transparent → real PDF canvas text shows through.
-                                                                                        // If modified: show new text on SOLID white background so user sees their change 
-                                                                                        // without the original ghost text bleeding through. New text is always transparent.
-                                                                                        color: isUnmodified ? "transparent" : ta.color,
-                                                                                        background: ta.isExisting ? (isUnmodified ? "transparent" : "#ffffff") : "transparent",
+                                                                                        color: (isUnmodified && !isRedacted) ? "transparent" : ta.color,
+                                                                                        background: "transparent",
                                                                                         fontWeight: ta.bold ? "bold" : "normal",
                                                                                         fontStyle: ta.italic ? "italic" : "normal",
                                                                                         textDecoration: ta.underline ? "underline" : "none",
                                                                                         textAlign: ta.align,
-                                                                                        cursor: ta.isExisting ? "text" : (tool === "select" ? "move" : "default"),
+                                                                                        cursor: tool === "select" ? (ta.editing ? "text" : (selectedId === ta.id ? "move" : "pointer")) : "default",
                                                                                         lineHeight: ta.isExisting ? 1 : 1.3,
                                                                                         whiteSpace: "pre",
                                                                                         overflow: "visible",
@@ -1928,19 +1995,21 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                         }
                                                         if (ann.type === "image") {
                                                             const ia = ann as ImageAnnotation;
+                                                            const _origId = extractedOriginals.get(ia.id);
+                                                            const isRedactedId = (redactedIdsByPage[i + 1] || []).includes(ia.id);
                                                             return (
-                                                                <div
-                                                                    key={ia.id}
-                                                                    data-annotation="true"
-                                                                    className="absolute"
-                                                                    style={{
-                                                                        left: `${ia.x}%`,
-                                                                        top: `${ia.y}%`,
-                                                                        zIndex: 20,
-                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                                    }}
-                                                                >
-                                                                    <Rnd
+                                                                    <div
+                                                                        key={ia.id}
+                                                                        data-annotation="true"
+                                                                        className="absolute"
+                                                                        style={{
+                                                                            left: `${ia.x}%`,
+                                                                            top: `${ia.y}%`,
+                                                                            zIndex: 20,
+                                                                            pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                        }}
+                                                                    >
+                                                                        <Rnd
                                                                         key={`${ia.id}-${zoom}`}
                                                                         data-annotation="true"
                                                                         bounds={`#edit-page-${i}`}
@@ -1951,6 +2020,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 x: ia.x + (d.x / pagePxW) * 100,
                                                                                 y: ia.y + (d.y / pagePxH) * 100,
                                                                             } as any);
+                                                                            if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
                                                                         onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
                                                                             updateAnnotation(ia.id, {
@@ -1959,16 +2029,24 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 x: ia.x + (pos.x / pagePxW) * 100,
                                                                                 y: ia.y + (pos.y / pagePxH) * 100,
                                                                             } as any);
+                                                                            if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
                                                                         disableDragging={tool !== "select"}
                                                                         enableResizing={tool === "select"}
                                                                         handleStyles={selectedId === ia.id ? HANDLE_STYLES : {}}
                                                                         className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
                                                                         style={{ position: "relative" }}
-                                                                        onClick={(e: any) => { e.stopPropagation(); setSelectedId(ia.id); }}
+                                                                        onDragStart={() => {
+                                                                            if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
+                                                                        }}
+                                                                        onClick={(e: any) => { 
+                                                                            e.stopPropagation(); 
+                                                                            setSelectedId(ia.id); 
+                                                                            if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
+                                                                        }}
                                                                     >
                                                                         <div className="w-full h-full relative group">
-                                                                            <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" alt="" />
+                                                                            <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" style={{ opacity: (!isRedactedId && ia.isExisting) ? 0 : 1 }} alt="" />
                                                                             {selectedId === ia.id && (
                                                                                 <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
                                                                                     <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">

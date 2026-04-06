@@ -29,7 +29,7 @@ from services.crop_service import crop_pdf
 from services.translate_service import translate_pdf
 from services.ocr_service import ocr_pdf
 from services.url_to_pdf_service import convert_url_to_pdf, get_rendered_html
-from services.edit_pdf_service import extract_pdf_content, apply_pdf_edits
+from services.edit_pdf_service import extract_pdf_content, apply_pdf_edits, render_clean_page
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -780,3 +780,24 @@ async def apply_edits_endpoint(
     except Exception as e:
         logger.error(f"Error applying PDF edits: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to apply edits: {str(e)}")
+
+
+@app.post("/edit/render-clean-page")
+async def render_clean_page_endpoint(
+    file: UploadFile = File(...),
+    page_number: int = Form(...),
+    redactions: str = Form("[]"),
+    dpi: int = Form(108),  # 1.5 scale of 72 DPI matches frontend SCALE=1.5
+):
+    """
+    Renders a specific page to a base64 png dataUrl, applying any redactions (whiteouts) first.
+    """
+    try:
+        data_url = await render_clean_page(file, page_number, redactions, dpi)
+        return JSONResponse(content={"dataUrl": data_url})
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Error rendering clean page: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to render clean page: {str(e)}")
+

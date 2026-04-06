@@ -309,8 +309,8 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
             item.get("orig_x0", 0), item.get("orig_y0", 0),
             item.get("orig_x1", 0), item.get("orig_y1", 0)
         )
-        # Add redaction annotation (whiteout)
-        page.add_redact_annot(rect, fill=(1, 1, 1))  # white fill
+        # Add redaction annotation (removes text/images without white fill)
+        page.add_redact_annot(rect)
 
     # ── Process modifications: whiteout original, then draw new ──────────
     for item in modified:
@@ -319,12 +319,12 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
             continue
         page = doc[page_idx]
 
-        # Whiteout original position
+        # Redact original position
         rect = fitz.Rect(
             item.get("orig_x0", 0), item.get("orig_y0", 0),
             item.get("orig_x1", 0), item.get("orig_y1", 0)
         )
-        page.add_redact_annot(rect, fill=(1, 1, 1))
+        page.add_redact_annot(rect)
 
     # Apply all redactions at once (per page)
     for page_idx in range(len(doc)):
@@ -439,3 +439,44 @@ def _draw_image_block(page, item: dict, pw: float, ph: float):
         page.insert_image(img_rect, stream=img_bytes)
     except Exception as e:
         logger.error(f"Image insertion failed: {e}")
+
+async def render_clean_page(file: UploadFile, page_number: int, redactions_json: str, dpi: int = 150) -> str:
+    """
+    Renders a specific page to a base64 Data URL, first applying any redactions.
+    redactions_json is a list of bounding boxes (PDF coordinates):
+    [ { "orig_x0": ..., "orig_y0": ..., "orig_x1": ..., "orig_y1": ... }, ... ]
+    """
+    pdf_bytes = await file.read()
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+    page_idx = page_number - 1
+    if page_idx < 0 or page_idx >= len(doc):
+        raise ValueError("Invalid page number")
+        
+    page = doc[page_idx]
+
+    try:
+        redactions = json.loads(redactions_json)
+    except Exception:
+        redactions = []
+
+    for item in redactions:
+        x0, y0 = item.get("orig_x0", 0), item.get("orig_y0", 0)
+        x1, y1 = item.get("orig_x1", 0), item.get("orig_y1", 0)
+        rect = fitz.Rect(x0, y0, x1, y1)
+        # We redact without fill so it acts as an eraser for text/images but leaves background
+        page.add_redact_annot(rect)
+
+    page.apply_redactions()
+
+    # Render out exactly as the initial load does
+    scale = dpi / 72.0
+    matrix = fitz.Matrix(scale, scale)
+    pix = page.get_pixmap(matrix=matrix)
+    
+    # We want PNG for lossless, matching initial render format
+    png_bytes = pix.tobytes("png")
+    b64 = base64.b64encode(png_bytes).decode("utf-8")
+    doc.close()
+    
+    return f"data:image/png;base64,{b64}"
