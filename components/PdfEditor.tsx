@@ -1784,7 +1784,17 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                             const rndH = (ta.h / 100) * pagePxH;
                                                             // When text hasn't been changed yet, the overlay is invisible
                                                             // so the real PDF text rendered on the canvas shows through.
-                                                            const isUnmodified = ta.isExisting && ta.text === ta.originalText;
+                                                            const _orig = extractedOriginals.get(ta.id);
+                                                            const isUnmodified = ta.isExisting && (
+                                                                ta.text === ta.originalText &&
+                                                                (!_orig || (
+                                                                    ta.fontFamily === _orig.fontFamily &&
+                                                                    ta.color === _orig.color &&
+                                                                    ta.bold === _orig.bold &&
+                                                                    ta.italic === _orig.italic &&
+                                                                    Math.abs(ta.fontSize - (_orig.fontSize || 0)) <= 0.1
+                                                                ))
+                                                            );
                                                             return (
                                                                 <div
                                                                     key={ta.id}
