@@ -471,7 +471,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             if (pageIdList.includes(id)) return prev;
 
             const newList = [...pageIdList, id];
-            
+
             const redactions = newList.map(redactId => {
                 const o = extractedOriginals.get(redactId);
                 return {
@@ -939,7 +939,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         const ann: TextAnnotation = {
                             id: `pjs_${i}_${spanIdx}`,
                             type: "text",
-                            page: i + 1,
+                            page: i,
                             x: (canvasX / vp.width) * 100,
                             y: (canvasY / vp.height) * 100,
                             w: (clusterWidthPx / vp.width) * 100,
@@ -1609,11 +1609,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                 <button
                                     onMouseDown={e => e.preventDefault()}
                                     onClick={e => {
-                                    e.stopPropagation();
-                                    setShowZoomMenu(v => !v);
-                                    setShowFontList(false);
-                                    setShowFontSizeList(false);
-                                }}
+                                        e.stopPropagation();
+                                        setShowZoomMenu(v => !v);
+                                        setShowFontList(false);
+                                        setShowFontSizeList(false);
+                                    }}
                                     className="px-2 py-1 text-xs font-bold text-brand-dark hover:bg-white rounded-lg transition-all min-w-[46px] text-center"
                                 >
                                     {ZOOM_LABELS[zoom] ?? `${Math.round(zoom * 100)}%`}
@@ -1861,17 +1861,17 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                             const isRedacted = (redactedIdsByPage[i + 1] || []).includes(ta.id);
                                                             const isFetching = fetchingPages.has(i + 1);
                                                             return (
-                                                                    <div
-                                                                        key={ta.id}
-                                                                        data-annotation="true"
-                                                                        className="absolute"
-                                                                        style={{
-                                                                            left: `${ta.x}%`,
-                                                                            top: `${ta.y}%`,
-                                                                            zIndex: 20,
-                                                                            pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                                        }}
-                                                                    >
+                                                                <div
+                                                                    key={ta.id}
+                                                                    data-annotation="true"
+                                                                    className="absolute"
+                                                                    style={{
+                                                                        left: `${ta.x}%`,
+                                                                        top: `${ta.y}%`,
+                                                                        zIndex: 20,
+                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                    }}
+                                                                >
                                                                     <Rnd
                                                                         key={`${ta.id}-${zoom}`}
                                                                         data-annotation="true"
@@ -1880,9 +1880,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
                                                                         size={{ width: "auto", height: "auto" }}
                                                                         onDragStart={() => {
-                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
+                                                                            // Do nothing on drag start. Redact only on drag stop.
                                                                         }}
                                                                         onDragStop={(_: any, d: any) => {
+                                                                            if (d.x === 0 && d.y === 0) return; // Prevent firing on simple click
                                                                             updateAnnotation(ta.id, {
                                                                                 x: ta.x + (d.x / pagePxW) * 100,
                                                                                 y: ta.y + (d.y / pagePxH) * 100,
@@ -1908,7 +1909,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                             setSelectedId(ta.id);
                                                                             // Do not enter editing mode automatically on first click if existing
                                                                             if (!ta.isExisting) updateAnnotation(ta.id, { editing: true } as any);
-                                                                            if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
                                                                         }}
                                                                         onDoubleClick={(e: any) => {
                                                                             e.stopPropagation();
@@ -1944,7 +1944,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         whiteSpace: "pre-wrap",
                                                                                         wordBreak: "break-word",
                                                                                         overflow: "visible",
-                                                                                        background: (ta.isExisting && isFetching) ? "#ffffff" : "transparent",
+                                                                                        background: (ta.isExisting && (isFetching || !isRedacted)) ? "#ffffff" : "transparent",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
                                                                                         color: ta.color,
@@ -1963,7 +1963,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         gridArea: "1 / 1 / 2 / 2",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                        color: (isUnmodified && !isRedacted) ? "transparent" : ta.color,
+                                                                                        color: (isUnmodified && !isRedacted && selectedId !== ta.id) ? "transparent" : ta.color,
                                                                                         background: "transparent",
                                                                                         fontWeight: ta.bold ? "bold" : "normal",
                                                                                         fontStyle: ta.italic ? "italic" : "normal",
@@ -1998,18 +1998,18 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                             const _origId = extractedOriginals.get(ia.id);
                                                             const isRedactedId = (redactedIdsByPage[i + 1] || []).includes(ia.id);
                                                             return (
-                                                                    <div
-                                                                        key={ia.id}
-                                                                        data-annotation="true"
-                                                                        className="absolute"
-                                                                        style={{
-                                                                            left: `${ia.x}%`,
-                                                                            top: `${ia.y}%`,
-                                                                            zIndex: 20,
-                                                                            pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
-                                                                        }}
-                                                                    >
-                                                                        <Rnd
+                                                                <div
+                                                                    key={ia.id}
+                                                                    data-annotation="true"
+                                                                    className="absolute"
+                                                                    style={{
+                                                                        left: `${ia.x}%`,
+                                                                        top: `${ia.y}%`,
+                                                                        zIndex: 20,
+                                                                        pointerEvents: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "auto",
+                                                                    }}
+                                                                >
+                                                                    <Rnd
                                                                         key={`${ia.id}-${zoom}`}
                                                                         data-annotation="true"
                                                                         bounds={`#edit-page-${i}`}
@@ -2039,9 +2039,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         onDragStart={() => {
                                                                             if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
-                                                                        onClick={(e: any) => { 
-                                                                            e.stopPropagation(); 
-                                                                            setSelectedId(ia.id); 
+                                                                        onClick={(e: any) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedId(ia.id);
                                                                             if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
                                                                     >
@@ -2268,7 +2268,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                             />
                                             {/* Popular sizes dropdown (grid) */}
                                             {showFontSizeList && (
-                                                <div 
+                                                <div
                                                     className="absolute top-full mt-1 left-0 right-0 p-2 bg-white border border-[#E0DED9] rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150"
                                                     onClick={e => e.stopPropagation()}
                                                 >
@@ -2286,11 +2286,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { fontSize: s } as any);
                                                                         setShowFontSizeList(false);
                                                                     }}
-                                                                    className={`text-[10px] font-bold py-1.5 rounded-lg border transition-all ${
-                                                                        currentSize === s
-                                                                        ? "bg-black text-white border-black"
-                                                                        : "bg-[#f5f4f0] text-brand-sage border-[#E0DED9] hover:text-brand-dark hover:bg-[#e8e6e3]"
-                                                                    }`}
+                                                                    className={`text-[10px] font-bold py-1.5 rounded-lg border transition-all ${currentSize === s
+                                                                            ? "bg-black text-white border-black"
+                                                                            : "bg-[#f5f4f0] text-brand-sage border-[#E0DED9] hover:text-brand-dark hover:bg-[#e8e6e3]"
+                                                                        }`}
                                                                 >
                                                                     {s}
                                                                 </button>
