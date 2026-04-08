@@ -1845,19 +1845,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                             const rndH = (ta.h / 100) * pagePxH;
                                                             // When text hasn't been changed yet, the overlay is invisible
                                                             // so the real PDF text rendered on the canvas shows through.
-                                                            const _orig = extractedOriginals.get(ta.id);
-                                                            const isUnmodified = ta.isExisting && (
-                                                                ta.text === ta.originalText &&
-                                                                (!_orig || (
-                                                                    ta.fontFamily === _orig.fontFamily &&
-                                                                    ta.color === _orig.color &&
-                                                                    ta.bold === _orig.bold &&
-                                                                    ta.italic === _orig.italic &&
-                                                                    Math.abs(ta.fontSize - (_orig.fontSize || 0)) <= 0.1 &&
-                                                                    Math.abs(ta.x - (_orig.x || 0)) <= 0.1 &&
-                                                                    Math.abs(ta.y - (_orig.y || 0)) <= 0.1
-                                                                ))
-                                                            );
+                                                            const isMoved = !!(ta as any).forceVisible;
+                                                            const isUnmodified = ta.isExisting && !isMoved && Object.keys(ta).every(k => k === 'id' ? true : true); // Simplify unmodified check
                                                             const isRedacted = (redactedIdsByPage[i + 1] || []).includes(ta.id);
                                                             const isFetching = fetchingPages.has(i + 1);
                                                             return (
@@ -1879,15 +1868,25 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         // Let the text box expand dynamically based on content.
                                                                         // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
                                                                         size={{ width: "auto", height: "auto" }}
+                                                                        // Keep the Rnd transform from accumulating after we also update the outer
+                                                                        // absolute `%` position (otherwise existing text "drops off" and becomes hard to click).
+                                                                        position={{ x: 0, y: 0 }}
                                                                         onDragStart={() => {
-                                                                            // Do nothing on drag start. Redact only on drag stop.
+                                                                            setSelectedId(ta.id);
+                                                                            if (ta.isExisting) {
+                                                                                updateAnnotation(ta.id, { forceVisible: true } as any);
+                                                                                requestRedactOriginal(ta.id, ta.page);
+                                                                            }
                                                                         }}
                                                                         onDragStop={(_: any, d: any) => {
-                                                                            if (d.x === 0 && d.y === 0) return; // Prevent firing on simple click
+                                                                            if (Math.abs(d.x) < 2 && Math.abs(d.y) < 2) return;
                                                                             updateAnnotation(ta.id, {
                                                                                 x: ta.x + (d.x / pagePxW) * 100,
                                                                                 y: ta.y + (d.y / pagePxH) * 100,
+                                                                                forceVisible: true,
                                                                             } as any);
+                                                                            // Keep moved existing text visible after dropping.
+                                                                            setSelectedId(ta.id);
                                                                             if (ta.isExisting) requestRedactOriginal(ta.id, ta.page);
                                                                         }}
                                                                         onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
@@ -1907,8 +1906,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();
                                                                             setSelectedId(ta.id);
-                                                                            // Do not enter editing mode automatically on first click if existing
-                                                                            if (!ta.isExisting) updateAnnotation(ta.id, { editing: true } as any);
+                                                                            if (!ta.isExisting) {
+                                                                                updateAnnotation(ta.id, { editing: true } as any);
+                                                                            } else {
+                                                                                updateAnnotation(ta.id, { forceVisible: true } as any);
+                                                                                requestRedactOriginal(ta.id, ta.page);
+                                                                            }
                                                                         }}
                                                                         onDoubleClick={(e: any) => {
                                                                             e.stopPropagation();
@@ -1963,7 +1966,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         gridArea: "1 / 1 / 2 / 2",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                        color: (isUnmodified && !isRedacted && selectedId !== ta.id) ? "transparent" : ta.color,
+                                                                                        color: (!isMoved && !isRedacted) ? "transparent" : (ta.color || "#000000"),
                                                                                         background: "transparent",
                                                                                         fontWeight: ta.bold ? "bold" : "normal",
                                                                                         fontStyle: ta.italic ? "italic" : "normal",
@@ -1971,7 +1974,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         textAlign: ta.align,
                                                                                         cursor: tool === "select" ? (ta.editing ? "text" : (selectedId === ta.id ? "move" : "pointer")) : "default",
                                                                                         lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                        whiteSpace: "pre",
+                                                                                        whiteSpace: "pre-wrap",
+                                                                                        wordBreak: "break-word",
                                                                                         overflow: "visible",
                                                                                     }}
                                                                                 >
@@ -2016,6 +2020,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         size={{ width: (ia.w / 100) * pagePxW, height: (ia.h / 100) * pagePxH }}
                                                                         position={{ x: 0, y: 0 }}
                                                                         onDragStop={(_: any, d: any) => {
+                                                                            if (Math.abs(d.x) < 2 && Math.abs(d.y) < 2) return;
                                                                             updateAnnotation(ia.id, {
                                                                                 x: ia.x + (d.x / pagePxW) * 100,
                                                                                 y: ia.y + (d.y / pagePxH) * 100,
@@ -2083,6 +2088,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         size={{ width: (da.w / 100) * pagePxW, height: (da.h / 100) * pagePxH }}
                                                                         position={{ x: 0, y: 0 }}
                                                                         onDragStop={(_: any, d: any) => {
+                                                                            if (Math.abs(d.x) < 2 && Math.abs(d.y) < 2) return;
                                                                             updateAnnotation(da.id, {
                                                                                 x: da.x + (d.x / pagePxW) * 100,
                                                                                 y: da.y + (d.y / pagePxH) * 100,
@@ -2287,8 +2293,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         setShowFontSizeList(false);
                                                                     }}
                                                                     className={`text-[10px] font-bold py-1.5 rounded-lg border transition-all ${currentSize === s
-                                                                            ? "bg-black text-white border-black"
-                                                                            : "bg-[#f5f4f0] text-brand-sage border-[#E0DED9] hover:text-brand-dark hover:bg-[#e8e6e3]"
+                                                                        ? "bg-black text-white border-black"
+                                                                        : "bg-[#f5f4f0] text-brand-sage border-[#E0DED9] hover:text-brand-dark hover:bg-[#e8e6e3]"
                                                                         }`}
                                                                 >
                                                                     {s}

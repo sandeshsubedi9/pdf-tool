@@ -29,7 +29,7 @@ export default function RotatePdfPage() {
             title="Rotate PDF"
             description="Rotate PDF pages individually or all together. Correct upside-down pages interactively."
             icon={<IconRotateClockwise2 size={28} stroke={1.5} />}
-            accentColor="#059669" // Using Edit category color (emerald)
+            accentColor="#047C58"
         >
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
                 <FileUpload

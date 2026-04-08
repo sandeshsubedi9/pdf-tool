@@ -94,6 +94,7 @@ const NAV_ITEMS = [
             { label: "Split PDF",     href: "/split-pdf",            icon: IconScissors,    ...OR },
             { label: "Remove Pages",  href: "/remove-pages",         icon: IconFileMinus,   ...OR },
             { label: "Extract Pages", href: "/split-pdf?mode=extract", icon: IconCrop,      ...OR },
+            { label: "Rotate PDF",    href: "/rotate-pdf",           icon: IconRotateClockwise2, ...OR },
             { label: "Organise Pages",href: "/organise-pdf",         icon: IconStack,       ...OR },
         ],
     },
@@ -111,7 +112,6 @@ const NAV_ITEMS = [
         href: "#edit",
         children: [
             { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
-            { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
             { label: "Crop PDF",      href: "/crop-pdf",   icon: IconCrop,             ...ED },
             { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
             { label: "Translate PDF", href: "/translate-pdf",     icon: IconLanguage,         ...ED },
@@ -140,6 +140,7 @@ const NAV_ITEMS = [
                     { label: "Split PDF",      href: "/split-pdf",              icon: IconScissors,    ...OR },
                     { label: "Remove Pages",   href: "/remove-pages",           icon: IconFileMinus,   ...OR },
                     { label: "Extract Pages",  href: "/split-pdf?mode=extract", icon: IconCrop,        ...OR },
+                    { label: "Rotate PDF",     href: "/rotate-pdf",             icon: IconRotateClockwise2, ...OR },
                     { label: "Organise Pages", href: "/organise-pdf",           icon: IconStack,       ...OR },
                 ],
             },
@@ -177,7 +178,6 @@ const NAV_ITEMS = [
                 title: "Edit", bg: ED.bg, iconColor: ED.iconColor,
                 items: [
                     { label: "Edit PDF",      href: "/edit-pdf",   icon: IconPencil,           ...ED },
-                    { label: "Rotate PDF",    href: "/rotate-pdf", icon: IconRotateClockwise2, ...ED },
                     { label: "Crop PDF",      href: "/crop-pdf",   icon: IconCrop,             ...ED },
                     { label: "Page Numbers",  href: "/page-number-pdf", icon: IconListNumbers,  ...ED },
                     { label: "Translate PDF", href: "/translate-pdf",     icon: IconLanguage,         ...ED },
