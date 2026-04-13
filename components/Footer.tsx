@@ -5,13 +5,20 @@ import { IconFileText, IconBrandTwitter, IconBrandLinkedin, IconBrandGithub } fr
 const LINKS = {
     Tools: ["Merge PDF", "Split PDF", "Compress PDF", "PDF to Word", "PDF to JPG", "Sign PDF", "Protect PDF", "Unlock PDF"],
     Convert: ["Word to PDF", "Excel to PDF", "JPG to PDF", "PowerPoint to PDF", "HTML to PDF", "ePub to PDF"],
+    Legal: [
+        { label: "Terms of Service", href: "/terms" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Disclaimer", href: "/disclaimer" },
+        { label: "Copyright & DMCA", href: "/dmca" },
+        { label: "Acceptable Use", href: "/acceptable-use" },
+        { label: "Cookie Policy", href: "/cookies" },
+        { label: "Accessibility", href: "/accessibility" },
+    ],
     Company: [
         { label: "About Us", href: "#" },
-        { label: "Blog", href: "#" },
+        { label: "Blog", href: "/blog" },
         { label: "Careers", href: "#" },
-        { label: "Privacy Policy", href: "/privacy" },
-        { label: "Terms of Service", href: "/terms" },
-        { label: "Contact", href: "#" }
+        { label: "Contact", href: "#" },
     ],
 };
 
@@ -22,8 +29,8 @@ export default function Footer() {
             style={{ background: "var(--brand-brown)", color: "#C9C4B5" }}
             className="pt-16 pb-8 px-5 md:px-8"
         >
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-[#4a3010]">
+            <div className="max-w-max mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-[#4a3010]">
                     {/* Brand block */}
                     <div className="flex flex-col gap-4">
                         <a href="/" className="flex items-center gap-2">
@@ -72,8 +79,7 @@ export default function Footer() {
                                         <li key={label}>
                                             <a
                                                 href={href}
-                                                className="text-sm hover:text-white transition-colors"
-                                                style={{ color: "#A09888" }}
+                                                className="text-sm text-[#A09888] hover:text-[#047C58] transition-colors"
                                             >
                                                 {label}
                                             </a>

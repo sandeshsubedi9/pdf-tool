@@ -41,11 +41,11 @@ def _resolve_fitz_font(family: str, bold: bool, italic: bool) -> str:
     base = FONT_MAP.get(family, "helv")
     if base == "helv":
         if bold and italic:
-            return "hebo"
+            return "hebi"  # Helvetica-BoldOblique
         elif bold:
-            return "hebo"
+            return "hebo"  # Helvetica-Bold
         elif italic:
-            return "heob"
+            return "heit"  # Helvetica-Oblique (was "heob" — invalid alias!)
         return "helv"
     elif base == "tiro":
         if bold and italic:
@@ -326,7 +326,7 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         )
         page.add_redact_annot(rect)
 
-    # Apply all redactions at once (per page)
+    # Apply all redactions (deletions and modifications only — whiteout is paint-over, not redaction)
     for page_idx in range(len(doc)):
         page = doc[page_idx]
         page.apply_redactions()
@@ -340,10 +340,13 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         pw = page.rect.width
         ph = page.rect.height
 
-        if item.get("type") == "text":
+        item_type = item.get("type")
+        if item_type == "text":
             _draw_text_block(page, item, pw, ph)
-        elif item.get("type") == "image":
+        elif item_type == "image":
             _draw_image_block(page, item, pw, ph)
+        elif item_type == "draw":
+            _draw_annotation_block(page, item, pw, ph)
 
     # ── Draw newly added items ───────────────────────────────────────────
     for item in added:
@@ -354,10 +357,13 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         pw = page.rect.width
         ph = page.rect.height
 
-        if item.get("type") == "text":
+        item_type = item.get("type")
+        if item_type == "text":
             _draw_text_block(page, item, pw, ph)
-        elif item.get("type") == "image":
+        elif item_type == "image":
             _draw_image_block(page, item, pw, ph)
+        elif item_type == "draw":
+            _draw_annotation_block(page, item, pw, ph)
 
     out_bytes = doc.tobytes(garbage=4, deflate=True)
     doc.close()
@@ -367,7 +373,12 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
 
 
 def _draw_text_block(page, item: dict, pw: float, ph: float):
-    """Draw a text block onto the page."""
+    """Draw a text block onto the page.
+    
+    PyMuPDF coordinate system: Y=0 at the TOP, increases downward.
+    Frontend coordinate system: percentages from top-left.
+    Direct mapping: x = (x_pct/100)*pw, y = (y_pct/100)*ph. No matrix needed.
+    """
     text = item.get("text", "")
     if not text.strip():
         return
@@ -377,43 +388,46 @@ def _draw_text_block(page, item: dict, pw: float, ph: float):
     w = (float(item.get("w_pct") or 0) / 100) * pw
     h = (float(item.get("h_pct") or 0) / 100) * ph
 
-    font_size = item.get("fontSize", 12)
+    font_size = float(item.get("fontSize", 12))
     font_family = item.get("fontFamily", "Helvetica")
     color_hex = item.get("color", "#000000")
     bold = item.get("bold", False)
     italic = item.get("italic", False)
+    underline = item.get("underline", False)
 
     fitz_font = _resolve_fitz_font(font_family, bold, italic)
     color = _hex_to_rgb(color_hex)
 
-    # Use a massive boundary to match the frontend `whiteSpace: "pre"` dynamic sizing behavior. 
-    # This guarantees PyMuPDF never silently truncates text that extends past the original `w` threshold.
-    text_rect = fitz.Rect(x, y, x + 10000, y + 10000)
+    # insert_text baseline is at y + font_size (top of glyph box to baseline)
+    baseline_y = y + font_size
+    insert_pt = fitz.Point(x, baseline_y)
 
     try:
-        # Use insert_textbox for multi-line text with wrapping
-        page.insert_textbox(
-            text_rect,
-            text,
-            fontname=fitz_font,
-            fontsize=font_size,
-            color=color,
-            align=fitz.TEXT_ALIGN_LEFT,
-        )
-    except Exception as e:
-        logger.warning(f"insert_textbox failed, falling back to insert_text: {e}")
-        # Fallback: simple text insert at top-left of rect
-        insert_pt = fitz.Point(x, y + font_size)
-        try:
+        # Use insert_text — direct single-line placement, no clipping issues
+        lines = text.split("\n")
+        line_height = font_size * 1.2
+        curr_y = baseline_y
+        fitz_font_obj = fitz.Font(fitz_font)
+        for line_txt in lines:
             page.insert_text(
-                insert_pt,
-                text,
+                fitz.Point(x, curr_y),
+                line_txt,
                 fontname=fitz_font,
                 fontsize=font_size,
                 color=color,
             )
-        except Exception as e2:
-            logger.error(f"Text insertion failed completely: {e2}")
+            if underline:
+                lw = fitz_font_obj.text_length(line_txt, fontsize=font_size)
+                ul_y = curr_y + font_size * 0.15
+                page.draw_line(
+                    fitz.Point(x, ul_y),
+                    fitz.Point(x + lw, ul_y),
+                    color=color,
+                    width=max(0.5, font_size * 0.05)
+                )
+            curr_y += line_height
+    except Exception as e:
+        logger.error(f"Text insertion failed: {e}")
 
 
 def _draw_image_block(page, item: dict, pw: float, ph: float):
@@ -428,7 +442,6 @@ def _draw_image_block(page, item: dict, pw: float, ph: float):
     h = (float(item.get("h_pct") or 0) / 100) * ph
 
     try:
-        # Parse data URL
         if "," in data_url:
             b64_data = data_url.split(",", 1)[1]
         else:
@@ -439,6 +452,85 @@ def _draw_image_block(page, item: dict, pw: float, ph: float):
         page.insert_image(img_rect, stream=img_bytes)
     except Exception as e:
         logger.error(f"Image insertion failed: {e}")
+
+
+def _draw_annotation_block(page, item: dict, pw: float, ph: float):
+    """
+    Render a freehand draw / highlight / whiteout stroke onto the page.
+
+    The frontend stores paths as a list of lists of {x, y} points where
+    each coordinate is a fraction (0..1) of the bounding box, and the
+    bounding box itself is expressed as percentages of the page dimensions.
+
+    PDF coordinate space has Y=0 at the BOTTOM of the page, so we flip Y.
+    """
+    paths = item.get("paths", [])
+    if not paths:
+        return
+
+    color_hex = item.get("color", "#000000")
+    line_width = float(item.get("lineWidth", 2))
+    is_highlight = bool(item.get("isHighlight", False))
+    is_whiteout = (color_hex.lower().replace(" ", "") == "#ffffff")
+
+    # Bounding box in PDF points — direct percentage mapping, no matrix transforms
+    bx = (float(item.get("x_pct") or 0) / 100) * pw
+    by = (float(item.get("y_pct") or 0) / 100) * ph
+    bw = (float(item.get("w_pct") or 0) / 100) * pw
+    bh = (float(item.get("h_pct") or 0) / 100) * ph
+
+    stroke_color = _hex_to_rgb(color_hex)
+
+    for path in paths:
+        if len(path) < 2:
+            continue
+
+        # Convert relative [0..1] path points → absolute PDF coordinates.
+        # Frontend: Y=0 top, increases down. PyMuPDF: Y=0 top, increases down.
+        # Direct mapping is correct — no Y inversion needed.
+        points = [
+            fitz.Point(
+                bx + pt["x"] * bw,
+                by + pt["y"] * bh,
+            )
+            for pt in path
+        ]
+
+        try:
+            shape = page.new_shape()
+            shape.draw_polyline(points)
+
+            if is_whiteout:
+                # Solid white stroke to cover underlying content
+                shape.finish(
+                    color=(1.0, 1.0, 1.0),
+                    fill=None,
+                    width=line_width,
+                    closePath=False,
+                    stroke_opacity=1.0,
+                )
+            elif is_highlight:
+                # Semi-transparent coloured stroke
+                shape.finish(
+                    color=stroke_color,
+                    fill=None,
+                    width=line_width,
+                    closePath=False,
+                    stroke_opacity=0.35,
+                )
+            else:
+                # Normal pen stroke
+                shape.finish(
+                    color=stroke_color,
+                    fill=None,
+                    width=line_width,
+                    closePath=False,
+                    stroke_opacity=1.0,
+                )
+
+            shape.commit()
+        except Exception as e:
+            logger.warning(f"Draw stroke rendering failed: {e}")
 
 async def render_clean_page(file: UploadFile, page_number: int, redactions_json: str, dpi: int = 150) -> str:
     """

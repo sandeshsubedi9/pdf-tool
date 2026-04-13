@@ -3,6 +3,9 @@
 import React, {
     useState,
     useRef,
+
+
+
     useEffect,
     ChangeEvent,
     useCallback,
@@ -34,6 +37,7 @@ import {
     IconRotateClockwise,
     IconGripVertical,
     IconFilePlus,
+    IconSquare,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
 import Navbar from "@/components/Navbar";
@@ -151,6 +155,24 @@ const HANDLE_STYLES = {
     left: { ...HANDLE_STYLE, cursor: "w-resize" },
 };
 
+function getVisibleColor(hexColor: string | undefined): string {
+    if (!hexColor || hexColor === "transparent") return "#000000";
+    try {
+        let cleanHex = hexColor.replace("#", "");
+        if (cleanHex.length === 3) cleanHex = cleanHex.split("").map(c => c + c).join("");
+        if (cleanHex.length !== 6) return "#000000";
+
+        const r = parseInt(cleanHex.slice(0, 2), 16);
+        const g = parseInt(cleanHex.slice(2, 4), 16);
+        const b = parseInt(cleanHex.slice(4, 6), 16);
+
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        return luma > 200 ? "#000000" : hexColor;
+    } catch {
+        return "#000000";
+    }
+}
+
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
 // ─── Inline contentEditable text editor ────────────────────────────────────
@@ -257,29 +279,46 @@ function DrawCanvas({
             const ctx = c.getContext("2d")!;
             const path = currentPath.current;
             if (path.length < 2) return;
-            const prev = path[path.length - 2];
-            const cur = path[path.length - 1];
-            ctx.beginPath();
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
+
             if (tool === "highlight") {
+                // ── Highlight: redraw the WHOLE path each frame so that
+                //    alpha stays a flat 0.35 (no segment accumulation darkening).
+                //    This matches the committed SVG overlay exactly.
+                ctx.clearRect(0, 0, c.width, c.height);
+                ctx.save();
                 ctx.globalAlpha = 0.35;
                 ctx.strokeStyle = drawColor;
                 ctx.lineWidth = drawWidth * 4;
-            } else if (tool === "whiteout") {
-                ctx.globalAlpha = 1;
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = drawWidth * 4;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.beginPath();
+                ctx.moveTo(path[0].x * c.width, path[0].y * c.height);
+                for (let pi = 1; pi < path.length; pi++) {
+                    ctx.lineTo(path[pi].x * c.width, path[pi].y * c.height);
+                }
+                ctx.stroke();
+                ctx.restore();
             } else {
+                // ── Draw / Whiteout: incremental segment rendering is fine
+                //    because opacity is always 1 (no accumulation artefact).
+                const prev = path[path.length - 2];
+                const cur = path[path.length - 1];
+                ctx.beginPath();
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
                 ctx.globalAlpha = 1;
-                ctx.strokeStyle = drawColor;
-                ctx.lineWidth = drawWidth;
+                if (tool === "whiteout") {
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = drawWidth * 4;
+                } else {
+                    ctx.strokeStyle = drawColor;
+                    ctx.lineWidth = drawWidth;
+                }
+                ctx.moveTo(prev.x * c.width, prev.y * c.height);
+                ctx.lineTo(cur.x * c.width, cur.y * c.height);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
             }
-            ctx.moveTo(prev.x * c.width, prev.y * c.height);
-            ctx.lineTo(cur.x * c.width, cur.y * c.height);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-            ctx.globalCompositeOperation = "source-over";
         }
 
         function handleUp() {
@@ -318,7 +357,7 @@ function DrawCanvas({
                     page,
                     paths: [relPath],
                     color: tool === "whiteout" ? "#ffffff" : drawColor,
-                    lineWidth: tool === "whiteout" ? drawWidth * 4 : drawWidth,
+                    lineWidth: effectiveDrawWidth,
                     isHighlight: tool === "highlight",
                     x: minX * 100,
                     y: minY * 100,
@@ -466,13 +505,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         const orig = extractedOriginals.get(id);
         if (!orig || !originalFile) return;
 
-        setRedactedIdsByPage(prev => {
-            const pageIdList = prev[pageIndex] || [];
-            if (pageIdList.includes(id)) return prev;
+        // Check if already redacted
+        const alreadyRedacted = (redactedIdsByPage[pageIndex] || []).includes(id);
+        if (alreadyRedacted) return;
 
-            const newList = [...pageIdList, id];
+        setFetchingPages(p => new Set(p).add(pageIndex));
 
-            const redactions = newList.map(redactId => {
+        const redactionsForPage = (prevRedactions: string[]) => {
+            const newList = [...prevRedactions, id];
+            return newList.map(redactId => {
                 const o = extractedOriginals.get(redactId);
                 return {
                     orig_x0: o?.orig_x0 ?? o?.origX0,
@@ -481,40 +522,45 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     orig_y1: o?.orig_y1 ?? o?.origY1,
                 };
             });
+        };
 
-            // Fire and forget clean background fetch
-            const formData = new FormData();
-            formData.append("file", originalFile, originalFile.name);
-            formData.append("page_number", pageIndex.toString());
-            formData.append("redactions", JSON.stringify(redactions));
-            // 1.5 scale of 72 DPI is 108 dpi rendering in python service
-            formData.append("dpi", "108");
+        const currentRedactions = redactedIdsByPage[pageIndex] || [];
+        const redactionPayload = redactionsForPage(currentRedactions);
 
-            setFetchingPages(p => new Set(p).add(pageIndex));
-            fetch("/api/edit-pdf/render-clean-page", { method: "POST", body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.dataUrl) {
-                        setPages(p => {
-                            const newPages = [...p];
-                            if (newPages[pageIndex - 1]) {
-                                newPages[pageIndex - 1] = { ...newPages[pageIndex - 1], dataUrl: data.dataUrl };
-                            }
-                            return newPages;
-                        });
-                    }
-                })
-                .catch(e => console.error("Failed to fetch clean page", e))
-                .finally(() => {
-                    setFetchingPages(p => {
-                        const next = new Set(p);
-                        next.delete(pageIndex);
-                        return next;
+        const formData = new FormData();
+        formData.append("file", originalFile, originalFile.name);
+        formData.append("page_number", pageIndex.toString());
+        formData.append("redactions", JSON.stringify(redactionPayload));
+        formData.append("dpi", "108");
+
+        fetch("/api/edit-pdf/render-clean-page", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.dataUrl) {
+                    setPages(p => {
+                        const newPages = [...p];
+                        if (newPages[pageIndex - 1]) {
+                            newPages[pageIndex - 1] = { ...newPages[pageIndex - 1], dataUrl: data.dataUrl };
+                        }
+                        return newPages;
                     });
-                });
 
-            return { ...prev, [pageIndex]: newList };
-        });
+                    // ONLY set it as redacted once the new page image with the "whiteout" is actually applied to the state
+                    setRedactedIdsByPage(prev => {
+                        const pageIdList = prev[pageIndex] || [];
+                        if (pageIdList.includes(id)) return prev;
+                        return { ...prev, [pageIndex]: [...pageIdList, id] };
+                    });
+                }
+            })
+            .catch(e => console.error("Failed to fetch clean page", e))
+            .finally(() => {
+                setFetchingPages(p => {
+                    const next = new Set(p);
+                    next.delete(pageIndex);
+                    return next;
+                });
+            });
     };
 
     const [zoom, setZoom] = useState(1.0);
@@ -633,7 +679,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     useEffect(() => {
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = `https://fonts.googleapis.com/css2?family=${GOOGLE_FONTS.map(f => f.replace(/ /g, "+")).join("&family=")}&display=swap`;
+        const googleOnlyFonts = GOOGLE_FONTS.filter(f =>
+            !["Helvetica", "Arial", "Georgia", "Times New Roman", "Courier New"].includes(f)
+        );
+        link.href = `https://fonts.googleapis.com/css2?${googleOnlyFonts
+            .map(f => `family=${f.replace(/ /g, "+")}:ital,wght@0,400;0,700;1,400;1,700`)
+            .join("&")}&display=swap`;
         document.head.appendChild(link);
         return () => { document.head.removeChild(link); };
     }, []);
@@ -861,16 +912,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                         // Try to extract color
                         let sColor = "#000000";
-                        if (span.color && Array.isArray(span.color) && span.color.length >= 3) {
+                        if (textColorMap[span.originalIndex]) {
+                            sColor = textColorMap[span.originalIndex];
+                        } else if (span.color && Array.isArray(span.color) && span.color.length >= 3) {
                             const [cr, cg, cb] = span.color;
                             // Check if color is not just transparent black ([0,0,0,0])
                             if (span.color.length === 3 || span.color[3] > 0) {
-                                sColor = `#${Math.round(cr * 255).toString(16).padStart(2, "0")}${Math.round(cg * 255).toString(16).padStart(2, "0")}${Math.round(cb * 255).toString(16).padStart(2, "0")}`;
-                            } else if (textColorMap[span.originalIndex]) {
-                                sColor = textColorMap[span.originalIndex];
+                                const cScale = (cr > 1 || cg > 1 || cb > 1 || (cr === 0 && cg === 0 && cb === 0)) ? 1 : 255;
+                                sColor = `#${Math.round(cr * cScale).toString(16).padStart(2, "0")}${Math.round(cg * cScale).toString(16).padStart(2, "0")}${Math.round(cb * cScale).toString(16).padStart(2, "0")}`;
                             }
-                        } else if (textColorMap[span.originalIndex]) {
-                            sColor = textColorMap[span.originalIndex];
                         }
 
                         // Try to merge into an existing cluster
@@ -1064,7 +1114,31 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     // ─── Annotation helpers ──────────────────────────────────────────────────
     const updateAnnotation = (id: string, patch: Partial<Annotation>) => {
-        setAnnotations(prev => prev.map(a => a.id === id ? { ...a, ...patch } as Annotation : a));
+        setAnnotations(prev => prev.map(a => {
+            if (a.id === id) {
+                const newAnn = { ...a, ...patch } as any;
+                // Auto-trigger cleanup on style variations for existing text
+                if (newAnn.type === "text" && newAnn.isExisting && !newAnn.forceVisible) {
+                    const orig = extractedOriginals.get(id);
+                    if (orig) {
+                        const styleFields = ["color", "fontSize", "fontFamily", "bold", "italic", "underline", "align"];
+                        let styledModified = false;
+                        for (const field of styleFields) {
+                            if (newAnn[field] !== orig[field]) {
+                                styledModified = true;
+                                break;
+                            }
+                        }
+                        if (styledModified) {
+                            newAnn.forceVisible = true;
+                            requestRedactOriginal(id, newAnn.page);
+                        }
+                    }
+                }
+                return newAnn as Annotation;
+            }
+            return a;
+        }));
     };
     const deleteAnnotation = (id: string) => {
         const ann = annotations.find(a => a.id === id);
@@ -1077,12 +1151,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const duplicateAnnotation = (id: string) => {
         const ann = annotations.find(a => a.id === id);
         if (!ann) return;
-        let copy: Annotation;
-        copy = {
-            ...ann,
+
+        // Strip tracking properties so the duplicate is treated as a brand new element
+        const { isExisting, origX0, origY0, origX1, origY1, originalText, pdfTransform, pdfPageWidth, pdfPageHeight, ...rest } = ann as any;
+
+        const copy = {
+            ...rest,
             id: uid(),
-            x: (ann as any).x + 3,
-            y: (ann as any).y + 3,
+            x: rest.x + 3,
+            y: rest.y + 3,
             isNew: ann.type === "text" ? true : undefined
         } as Annotation;
         setAnnotations(prev => [...prev, copy]);
@@ -1103,19 +1180,21 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-        const newText: TextAnnotation = {
-            id: uid(), type: "text", page: pageIndex + 1,
-            x, y,
-            w: 20,  // 20% of page width
-            h: 5,   // 5% of page height
-            text: "New Text Box",
-            fontSize: textFontSize, fontFamily: textFont, color: textColor,
-            bold: textBold, italic: textItalic, underline: textUnderline,
-            align: textAlign, editing: true, isNew: true,
-        };
-        setAnnotations(prev => [...prev, newText]);
-        setSelectedId(newText.id);
-        setTool("select");
+        if (tool === "text") {
+            const newText: TextAnnotation = {
+                id: uid(), type: "text", page: pageIndex + 1,
+                x, y,
+                w: 20,  // 20% of page width
+                h: 5,   // 5% of page height
+                text: "New Text Box",
+                fontSize: textFontSize, fontFamily: textFont, color: textColor,
+                bold: textBold, italic: textItalic, underline: textUnderline,
+                align: textAlign, editing: true, isNew: true,
+            };
+            setAnnotations(prev => [...prev, newText]);
+            setSelectedId(newText.id);
+            setTool("select");
+        }
     }
 
     function onImageFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -1153,7 +1232,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             extractedOriginals.forEach((orig, id) => {
                 if (!currentExistingIds.has(id)) {
                     deleted.push({
-                        page: orig.page_number || annotations.find(a => a.id === id)?.page || 1,
+                        // text annotations use `page`, image annotations from backend use `page_number`
+                        page: orig.page ?? orig.page_number ?? 1,
                         // text annotations store coords as camelCase (origX0); image annotations
                         // come from backend as snake_case (orig_x0) — handle both
                         orig_x0: orig.orig_x0 ?? orig.origX0,
@@ -1177,10 +1257,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     const ia = ann as ImageAnnotation;
                     const textChanged = ann.type === "text" && ta.text !== ta.originalText;
                     const posChanged = ann.type === "text"
-                        ? (Math.abs(ta.x - orig.x_pct) > 0.1 || Math.abs(ta.y - orig.y_pct) > 0.1)
+                        ? (Math.abs(ta.x - orig.x) > 0.1 || Math.abs(ta.y - orig.y) > 0.1)
                         : (Math.abs(ia.x - orig.x_pct) > 0.1 || Math.abs(ia.y - orig.y_pct) > 0.1);
                     const sizeChanged = ann.type === "text"
-                        ? (Math.abs(ta.w - orig.w_pct) > 0.1 || Math.abs(ta.h - orig.h_pct) > 0.1)
+                        ? (Math.abs(ta.w - orig.w) > 0.1 || Math.abs(ta.h - orig.h) > 0.1)
                         : (Math.abs(ia.w - orig.w_pct) > 0.1 || Math.abs(ia.h - orig.h_pct) > 0.1);
 
                     const propChanged = ann.type === "text" && (
@@ -1188,6 +1268,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         ta.color !== orig.color ||
                         ta.bold !== orig.bold ||
                         ta.italic !== orig.italic ||
+                        ta.underline !== orig.underline ||
                         Math.abs(ta.fontSize - (orig.fontSize || 0)) > 0.1
                     );
 
@@ -1213,6 +1294,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             editItem.color = ta.color;
                             editItem.bold = ta.bold;
                             editItem.italic = ta.italic;
+                            editItem.underline = ta.underline;
                         } else {
                             editItem.dataUrl = ia.dataUrl;
                         }
@@ -1234,7 +1316,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         addItem.w_pct = da.w;
                         addItem.h_pct = da.h;
                         addItem.color = da.color;
-                        addItem.lineWidth = da.lineWidth;
+                        addItem.lineWidth = da.lineWidth / 1.5; // canvas px → PDF pts (da.lineWidth already has ×4 for highlight/whiteout)
                         addItem.isHighlight = da.isHighlight;
                         addItem.paths = da.paths;
                     } else if (ann.type === "text") {
@@ -1243,11 +1325,18 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         addItem.w_pct = ta.w;
                         addItem.h_pct = ta.h;
                         addItem.text = ta.text;
-                        addItem.fontSize = ta.fontSize / 1.5;
+                        addItem.fontSize = ta.fontSize / 1.5; // MUST divide by 1.5 to map Canvas px to PDF pt!
                         addItem.fontFamily = ta.fontFamily;
                         addItem.color = ta.color;
                         addItem.bold = ta.bold;
                         addItem.italic = ta.italic;
+                        addItem.underline = ta.underline;
+                    } else if (ann.type === "redact") {
+                        const ra = ann as RedactAnnotation;
+                        addItem.x_pct = ra.x;
+                        addItem.y_pct = ra.y;
+                        addItem.w_pct = ra.w;
+                        addItem.h_pct = ra.h;
                     } else {
                         addItem.x_pct = ia.x;
                         addItem.y_pct = ia.y;
@@ -1258,126 +1347,47 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     added.push(addItem);
                 }
             }
-
-            const hasExistingEdits = modified.length > 0 || deleted.length > 0;
-            const fileToUse = originalFile || file;
-
-            if (hasExistingEdits) {
-                // Use Python backend for whiteout + redraw
-                const editsPayload = JSON.stringify({ modified, deleted, added });
-                const formData = new FormData();
-                formData.append("file", fileToUse, fileToUse.name);
-                formData.append("edits", editsPayload);
-
-                const res = await fetch("/api/edit-pdf/apply", { method: "POST", body: formData });
-                if (!res.ok) {
-                    const errBody = await res.json().catch(() => ({}));
-                    throw new Error(errBody.error || "Failed to apply edits");
-                }
-
-                const blob = await res.blob();
-                const outName = res.headers.get("X-Original-Filename") || `edited_${fileToUse.name}`;
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = outName;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
-            } else if (added.length > 0 && (pdfArrayBuffer || isBlankMode)) {
-                // Only new annotations — use pdf-lib (original approach, faster)
-                const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-
-                let pdfDoc;
-                if (pdfArrayBuffer) {
-                    pdfDoc = await PDFDocument.load(pdfArrayBuffer.slice(0));
-                } else {
-                    // Start from scratch for blank mode
-                    pdfDoc = await PDFDocument.create();
-                    for (let i = 0; i < numPages; i++) {
-                        pdfDoc.addPage([595.28, 841.89]); // A4 in points
-                    }
-                }
-                const pdfPages = pdfDoc.getPages();
-                const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-                const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-                const helveticaBoldOblique = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
-
-                for (const ann of annotations) {
-                    if ((ann as any).isExisting) continue;
-                    const pdfPage = pdfPages[ann.page - 1];
-                    if (!pdfPage) continue;
-                    const { width: pw, height: ph } = pdfPage.getSize();
-
-                    if (ann.type === "text") {
-                        const ta = ann as TextAnnotation;
-                        const xPt = (ta.x / 100) * pw;
-                        const yPt = ph - ((ta.y / 100) * ph) - ta.fontSize;
-                        let font = helvetica;
-                        if (ta.bold && ta.italic) font = helveticaBoldOblique;
-                        else if (ta.bold) font = helveticaBold;
-                        else if (ta.italic) font = helveticaOblique;
-                        const hexToRgb = (hex: string) => {
-                            const r = parseInt(hex.slice(1, 3), 16) / 255;
-                            const g = parseInt(hex.slice(3, 5), 16) / 255;
-                            const b = parseInt(hex.slice(5, 7), 16) / 255;
-                            return rgb(r, g, b);
-                        };
-                        pdfPage.drawText(ta.text, { x: xPt, y: yPt, size: ta.fontSize, font, color: hexToRgb(ta.color) });
-                    } else if (ann.type === "image") {
-                        const ia = ann as ImageAnnotation;
-                        const xPt = (ia.x / 100) * pw;
-                        const wPt = (ia.w / 100) * pw;
-                        const hPt = (ia.h / 100) * ph;
-                        const yPt = ph - ((ia.y / 100) * ph) - hPt;
-                        const base64 = ia.dataUrl.split(",")[1];
-                        const imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-                        const embeddedImg = ia.dataUrl.startsWith("data:image/png")
-                            ? await pdfDoc.embedPng(imgBytes)
-                            : await pdfDoc.embedJpg(imgBytes);
-                        pdfPage.drawImage(embeddedImg, { x: xPt, y: yPt, width: wPt, height: hPt });
-                    } else if (ann.type === "draw") {
-                        const da = ann as DrawAnnotation;
-                        const xPt = (da.x / 100) * pw;
-                        const yPtTop = (da.y / 100) * ph;
-                        const wPt = (da.w / 100) * pw;
-                        const hPt = (da.h / 100) * ph;
-
-                        const hexToRgb = (hex: string) => {
-                            const r = parseInt(hex.slice(1, 3), 16) / 255;
-                            const g = parseInt(hex.slice(3, 5), 16) / 255;
-                            const b = parseInt(hex.slice(5, 7), 16) / 255;
-                            return rgb(r, g, b);
-                        };
-
-                        for (const path of da.paths) {
-                            if (path.length < 2) continue;
-                            const svgPath = path.map((p, ix) =>
-                                `${ix === 0 ? 'M' : 'L'} ${xPt + p.x * wPt} ${ph - (yPtTop + p.y * hPt)}`
-                            ).join(" ");
-
-                            pdfPage.drawSvgPath(svgPath, {
-                                color: undefined,
-                                borderColor: hexToRgb(da.color),
-                                borderWidth: da.isHighlight ? da.lineWidth * 4 : da.lineWidth,
-                            });
-                        }
-                    }
-                }
-
-                const pdfBytes = await pdfDoc.save();
-                const blob = new Blob([pdfBytes as any], { type: "application/pdf" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = file ? `edited_${file.name}` : `document.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+            let targetFile: File | Blob;
+            let targetName = "document.pdf";
+            
+            if (originalFile || file) {
+                const f = originalFile || file;
+                targetFile = f!;
+                targetName = f!.name;
+            } else if (pdfArrayBuffer) {
+                targetFile = new Blob([pdfArrayBuffer], { type: "application/pdf" });
             } else {
-                showEditorToast("No changes to save.", "info");
+                // Must generate the blank PDF to send to Python backend
+                const { PDFDocument } = await import("pdf-lib");
+                const pdfDoc = await PDFDocument.create();
+                for (let i = 0; i < numPages; i++) {
+                    pdfDoc.addPage([595.28, 841.89]); // A4 in points
+                }
+                const pdfBytes = await pdfDoc.save();
+                targetFile = new Blob([pdfBytes], { type: "application/pdf" });
+                targetName = "blank_document.pdf";
             }
+
+            const editsPayload = JSON.stringify({ modified, deleted, added });
+            const formData = new FormData();
+            formData.append("file", targetFile, targetName);
+            formData.append("edits", editsPayload);
+
+            const res = await fetch("/api/edit-pdf/apply", { method: "POST", body: formData });
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(errBody.error || "Failed to apply edits");
+            }
+
+            const blob = await res.blob();
+            const outName = res.headers.get("X-Original-Filename") || `edited_${targetName}`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = outName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
         } catch (err) {
             // Log a sanitized error to the console (prevents backend stack trace leaks)
             console.error("Save Error: Failed to generate the edited document on the server.");
@@ -1545,6 +1555,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                     key={btn.id}
                                     onClick={() => {
                                         setTool(btn.id as Tool);
+                                        if (btn.id !== "select") {
+                                            setSelectedId(null);
+                                        }
                                         if (btn.id === "image") imgInputRef.current?.click();
                                     }}
                                     className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${tool === btn.id ? "bg-white text-brand-dark shadow-sm border border-[#E0DED9]/60" : "text-brand-sage hover:text-brand-dark hover:bg-white/50"}`}
@@ -1873,9 +1886,13 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         position={{ x: 0, y: 0 }}
                                                                         onDragStart={() => {
                                                                             setSelectedId(ta.id);
-                                                                            if (ta.isExisting) {
-                                                                                updateAnnotation(ta.id, { forceVisible: true } as any);
-                                                                                requestRedactOriginal(ta.id, ta.page);
+                                                                        }}
+                                                                        onDrag={(_: any, d: any) => {
+                                                                            if (Math.abs(d.x) > 2 || Math.abs(d.y) > 2) {
+                                                                                if (ta.isExisting && !(ta as any).forceVisible) {
+                                                                                    updateAnnotation(ta.id, { forceVisible: true } as any);
+                                                                                    requestRedactOriginal(ta.id, ta.page);
+                                                                                }
                                                                             }
                                                                         }}
                                                                         onDragStop={(_: any, d: any) => {
@@ -1906,12 +1923,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();
                                                                             setSelectedId(ta.id);
-                                                                            if (!ta.isExisting) {
-                                                                                updateAnnotation(ta.id, { editing: true } as any);
-                                                                            } else {
-                                                                                updateAnnotation(ta.id, { forceVisible: true } as any);
-                                                                                requestRedactOriginal(ta.id, ta.page);
-                                                                            }
+                                                                            if (!ta.isExisting) updateAnnotation(ta.id, { editing: true } as any);
                                                                         }}
                                                                         onDoubleClick={(e: any) => {
                                                                             e.stopPropagation();
@@ -1932,6 +1944,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     fontWeight: ta.bold ? "bold" : "normal",
                                                                                     fontStyle: ta.italic ? "italic" : "normal",
                                                                                     lineHeight: ta.isExisting ? 1 : 1.3,
+                                                                                    // Ghost sizer drives the grid track width from text content.
+                                                                                    // For existing boxes: keep rndW as minimum (they have PDF bounding boxes).
+                                                                                    // For new boxes: NO minWidth — size purely from text content.
+                                                                                    // maxWidth = distance to page right edge so text wraps before overflowing.
+                                                                                    ...(ta.isExisting ? { minWidth: `${rndW}px` } : {}),
+                                                                                    maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`,
                                                                                 }}
                                                                             >
                                                                                 {ta.text + " "}
@@ -1946,18 +1964,24 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     style={{
                                                                                         whiteSpace: "pre-wrap",
                                                                                         wordBreak: "break-word",
-                                                                                        overflow: "visible",
-                                                                                        background: (ta.isExisting && (isFetching || !isRedacted)) ? "#ffffff" : "transparent",
+                                                                                        overflow: "hidden",
+                                                                                        background: (ta.isExisting && !isRedacted) ? "#ffffff" : "transparent",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                        color: ta.color,
+                                                                                        color: getVisibleColor(ta.color),
                                                                                         fontWeight: ta.bold ? "bold" : "normal",
                                                                                         fontStyle: ta.italic ? "italic" : "normal",
                                                                                         textDecoration: ta.underline ? "underline" : "none",
                                                                                         textAlign: ta.align,
                                                                                         lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                        minWidth: `${rndW}px`,
-                                                                                        maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`,
+                                                                                        // Fill the grid track set by the ghost sizer — no competing min/maxWidth.
+                                                                                        // For existing PDF boxes, keep the rndW minimum (bounding box from PDF).
+                                                                                        // For new boxes: width is purely content-driven via the ghost sizer track.
+                                                                                        width: "100%",
+                                                                                        ...(ta.isExisting ? {
+                                                                                            minWidth: `${rndW}px`,
+                                                                                            maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`,
+                                                                                        } : {}),
                                                                                     }}
                                                                                 />
                                                                             ) : (
@@ -1966,8 +1990,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         gridArea: "1 / 1 / 2 / 2",
                                                                                         fontFamily: ta.fontFamily,
                                                                                         fontSize: ta.isExisting ? `${ta.fontSize * (pagePxW / pg.width)}px` : `${ta.fontSize * zoom}px`,
-                                                                                        color: (!isMoved && !isRedacted) ? "transparent" : (ta.color || "#000000"),
-                                                                                        background: "transparent",
+                                                                                        color: (ta.isExisting && !isMoved && !isRedacted && selectedId !== ta.id && !ta.editing) ? "transparent" : getVisibleColor(ta.color),
+                                                                                        background: (ta.isExisting && !isRedacted && (isMoved || selectedId === ta.id || ta.editing)) ? "#ffffff" : "transparent",
+
                                                                                         fontWeight: ta.bold ? "bold" : "normal",
                                                                                         fontStyle: ta.italic ? "italic" : "normal",
                                                                                         textDecoration: ta.underline ? "underline" : "none",
@@ -2120,7 +2145,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                             d={svgPath}
                                                                                             fill="none"
                                                                                             stroke={da.color}
-                                                                                            strokeWidth={da.isHighlight ? da.lineWidth * 4 : da.lineWidth}
+                                                                                            strokeWidth={da.lineWidth}
                                                                                             strokeOpacity={da.isHighlight ? 0.35 : 1}
                                                                                             strokeLinecap="round"
                                                                                             strokeLinejoin="round"
@@ -2164,6 +2189,21 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+                            {/* Whiteout warning */}
+                            {(tool === "whiteout" || (selectedAnn?.type === "draw" && (selectedAnn as DrawAnnotation).color.toLowerCase() === "#ffffff")) && (
+                                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-amber-500 text-lg leading-none">⚠️</span>
+                                        <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Paint-over only</span>
+                                    </div>
+                                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                                        Whiteout <span className="font-bold">paints white</span> over content. The original text is still inside the PDF file.
+                                    </p>
+                                    <p className="text-[11px] text-amber-600 leading-relaxed">
+                                        To permanently remove sensitive information, use the <span className="font-bold underline">Redact PDF</span> tool instead.
+                                    </p>
+                                </div>
+                            )}
                             {/* Text settings */}
                             {(tool === "text" || selectedAnn?.type === "text") && (
                                 <div className="flex flex-col gap-4">
@@ -2311,15 +2351,18 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                     <div className="flex flex-col gap-1.5">
                                         <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Color</label>
                                         <div className="flex flex-wrap gap-2">
-                                            {COLORS.map(c => (
-                                                <button
-                                                    key={c}
-                                                    onMouseDown={e => e.preventDefault()}
-                                                    onClick={() => { setTextColor(c); if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { color: c } as any); }}
-                                                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${textColor === c ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
-                                                    style={{ background: c }}
-                                                />
-                                            ))}
+                                            {COLORS.map(c => {
+                                                const currentC = selectedAnn?.type === "text" ? (selectedAnn as TextAnnotation).color : textColor;
+                                                return (
+                                                    <button
+                                                        key={c}
+                                                        onMouseDown={e => e.preventDefault()}
+                                                        onClick={() => { setTextColor(c); if (selectedAnn?.id) updateAnnotation(selectedAnn.id, { color: c } as any); }}
+                                                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${currentC?.toLowerCase() === c.toLowerCase() ? "border-brand-teal scale-110" : "border-transparent shadow-sm"}`}
+                                                        style={{ background: c }}
+                                                    />
+                                                )
+                                            })}
                                         </div>
                                     </div>
 
@@ -2387,11 +2430,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                                 return (
                                     <div className="flex flex-col gap-4">
-                                        {isWhiteout && (
-                                            <div className="bg-red-50 border border-red-200 p-2.5 rounded-xl text-[11px] text-red-700 font-medium leading-relaxed">
-                                                <strong className="font-bold">Warning:</strong> Whiteout covers information visually but does not fully remove it. Do not use for redacting sensitive or important information.
-                                            </div>
-                                        )}
                                         {!isWhiteout && (
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-[11px] font-bold text-brand-sage uppercase tracking-wider">Brush Color</label>

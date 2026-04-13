@@ -84,41 +84,28 @@ async function embedRedactionsToPdf(
     rects: RedactionRect[],
     pageDimensions: { width: number; height: number }[]
 ): Promise<Uint8Array> {
-    const { PDFDocument, rgb } = await import("pdf-lib");
-    const ab = await file.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(ab);
-    const pages = pdfDoc.getPages();
+    const payloadParams = JSON.stringify(
+        rects.map((rect) => ({
+            page: rect.pageIndex + 1,
+            x_pct: rect.x,
+            y_pct: rect.y,
+            w_pct: rect.w,
+            h_pct: rect.h
+        }))
+    );
 
-    for (const rect of rects) {
-        const page = pages[rect.pageIndex];
-        if (!page) continue;
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("redactions", payloadParams);
 
-        const pdfW = page.getWidth();
-        const pdfH = page.getHeight();
-
-        // Convert % to PDF coordinates
-        const x = (rect.x / 100) * pdfW;
-        const w = (rect.w / 100) * pdfW;
-        const h = (rect.h / 100) * pdfH;
-        // PDF y is from bottom, flip
-        const y = pdfH - (rect.y / 100) * pdfH - h;
-
-        // Draw solid black rectangle — content underneath is overwritten
-        page.drawRectangle({
-            x,
-            y,
-            width: w,
-            height: h,
-            color: rgb(0, 0, 0),
-            opacity: 1,
-        });
+    const res = await fetch("/api/redact-pdf/apply", { method: "POST", body: formData });
+    if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || "Failed to apply secure redactions");
     }
 
-    // Save with compression; the underneath content is NOT removed from the
-    // raw PDF stream by pdf-lib but is visually fully covered with an opaque
-    // black overlay.  For stronger redaction the server-side approach should
-    // be used, but for a front-end-only tool this is the best available.
-    return pdfDoc.save() as any;
+    const blob = await res.blob();
+    return new Uint8Array(await blob.arrayBuffer());
 }
 
 // ─── Page Thumbnail Sidebar ─────────────────────────────────────────────────────

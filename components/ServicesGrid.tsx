@@ -85,7 +85,7 @@ const SERVICES: Service[] = [
     { path: "/sign-pdf", title: "Sign PDF", description: "Draw, type or upload your signature.", icon: IconWriting, category: "Security" },
     { path: "/watermark-pdf", title: "Watermark", description: "Stamp a text or image watermark onto pages.", icon: IconDroplet, category: "Security" },
     { path: "/redact-pdf", title: "Redact PDF", description: "Permanently black out sensitive content.", icon: IconEraser, category: "Security" },
-    { id: "compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Security" },
+    { path: "/compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Security" },
 
     // ── Extras
     { id: "scan-to-pdf", title: "Scan to PDF", description: "Use your camera to scan a document to PDF.", icon: IconScan, category: "Extras" },

@@ -126,7 +126,7 @@ const NAV_ITEMS = [
             { label: "Sign PDF",     href: "/sign-pdf",    icon: IconWriting,  ...SE },
             { label: "Watermark",    href: "/watermark-pdf", icon: IconDroplet, ...SE },
             { label: "Redact PDF",   href: "/redact-pdf",  icon: IconEraser,   ...SE },
-            { label: "Compare PDF",  href: "#",            icon: IconEye,      ...SE },
+            { label: "Compare PDF",  href: "/compare-pdf", icon: IconEye,      ...SE },
         ],
     },
     {
@@ -191,7 +191,7 @@ const NAV_ITEMS = [
                     { label: "Sign PDF",    href: "/sign-pdf",    icon: IconWriting,  ...SE },
                     { label: "Watermark",   href: "/watermark-pdf", icon: IconDroplet, ...SE },
                     { label: "Redact PDF",  href: "/redact-pdf",  icon: IconEraser,   ...SE },
-                    { label: "Compare PDF", href: "#",            icon: IconEye,      ...SE },
+                    { label: "Compare PDF", href: "/compare-pdf", icon: IconEye,      ...SE },
                 ],
             },
             {

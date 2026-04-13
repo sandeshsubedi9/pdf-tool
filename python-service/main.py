@@ -30,6 +30,8 @@ from services.translate_service import translate_pdf
 from services.ocr_service import ocr_pdf
 from services.url_to_pdf_service import convert_url_to_pdf, get_rendered_html
 from services.edit_pdf_service import extract_pdf_content, apply_pdf_edits, render_clean_page
+from services.redact_pdf_service import apply_redactions_standalone
+from services.compare_pdf_service import compare_pdfs
 import fitz  # PyMuPDF
 
 logging.basicConfig(level=logging.INFO)
@@ -799,5 +801,55 @@ async def render_clean_page_endpoint(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Error rendering clean page: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to render clean page: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to render page: {str(e)}")
 
+@app.post("/redact/apply")
+async def redact_apply_endpoint(
+    file: UploadFile = File(...),
+    redactions: str = Form("[]"),
+):
+    """
+    Apply mathematical redactions to a PDF.
+    redactions: JSON array of box objects {page, x_pct, y_pct, w_pct, h_pct}
+    """
+    try:
+        redacted_bytes, output_filename = await apply_redactions_standalone(file, redactions)
+
+        logger.info(f"Applied standalone redactions to '{file.filename}' → '{output_filename}'")
+
+        return StreamingResponse(
+            io.BytesIO(redacted_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{output_filename}"',
+                "X-Original-Filename": output_filename,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error applying redactions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to apply redactions: {str(e)}")
+
+
+@app.post("/compare/pdf")
+async def compare_pdf_endpoint(
+    file_a: UploadFile = File(...),
+    file_b: UploadFile = File(...),
+):
+    """
+    Compare two PDF files and return word-level diff data with normalised bounding boxes.
+    file_a: The original (base) PDF.
+    file_b: The modified (new) PDF.
+    Returns JSON with page-by-page deletions and additions.
+    """
+    try:
+        result = await compare_pdfs(file_a, file_b)
+        logger.info(
+            f"Compared '{file_a.filename}' vs '{file_b.filename}': "
+            f"{result['summary']['total_deleted_words']} deletions, "
+            f"{result['summary']['total_added_words']} additions across "
+            f"{len(result['summary']['changed_pages'])} changed pages."
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"Error comparing PDFs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to compare PDFs: {str(e)}")
