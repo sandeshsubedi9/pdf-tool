@@ -19,9 +19,6 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Position = "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR";
 type WatermarkTab = "text" | "image";
@@ -398,8 +395,6 @@ export default function WatermarkApplyPage() {
     const [pageRange, setPageRange] = useState("all");
     const [rangeError, setRangeError] = useState<string | null>(null);
 
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
-
     // Page range real-time validation
     useEffect(() => {
         if (totalPages > 0) {
@@ -480,7 +475,7 @@ export default function WatermarkApplyPage() {
         setIsProcessing(true);
         setError(null);
 
-        execute(async () => {
+        (async () => {
             try {
                 const formData = new FormData();
                 formData.append("file", file, file.name);
@@ -524,7 +519,7 @@ export default function WatermarkApplyPage() {
             } finally {
                 setIsProcessing(false);
             }
-        });
+        })();
     };
 
     // ── Loading screen ────────────────────────────────────────────────────────

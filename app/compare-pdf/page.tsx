@@ -6,8 +6,6 @@ import React, {
     useEffect,
 } from "react";
 import Navbar from "@/components/Navbar";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
 import { motion, AnimatePresence } from "motion/react";
 
 import {
@@ -287,7 +285,6 @@ function PageViewer({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ComparePdfPage() {
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
     const [fileA, setFileA] = useState<File | null>(null);
     const [fileB, setFileB] = useState<File | null>(null);
 
@@ -354,7 +351,7 @@ export default function ComparePdfPage() {
     const runCompare = useCallback(async () => {
         if (!fileA || !fileB) return;
 
-        execute(async () => {
+        (async () => {
             setStep("processing");
             setError(null);
 
@@ -393,7 +390,7 @@ export default function ComparePdfPage() {
                 setError(err?.message || "An unexpected error occurred.");
                 setStep("upload");
             }
-        });
+        })();
     }, [fileA, fileB, renderPages, execute]);
 
     // ── Derived page list ────────────────────────────────────────────────────
@@ -441,11 +438,6 @@ export default function ComparePdfPage() {
                 className="min-h-screen flex flex-col relative overflow-hidden pt-16"
                 style={{ background: "var(--brand-white)" }}
             >
-                <RateLimitModal
-                    open={!!limitResult && !limitResult.allowed}
-                    limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                    onClose={clearLimitResult}
-                />
                 <Navbar />
 
                 {/* Background accents */}

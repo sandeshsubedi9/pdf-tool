@@ -32,9 +32,6 @@ import { FileUpload } from "@/components/ui/file-upload";
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SignatureType = "typed" | "drawn" | "image";
@@ -862,8 +859,6 @@ export default function SignPdfSignPage() {
     const [placedSignatures, setPlacedSignatures] = useState<PlacedSignature[]>([]);
     const [isExporting, setIsExporting] = useState(false);
 
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
-
     // Load file
     useEffect(() => {
         if (hasInit.current) return;
@@ -1114,7 +1109,7 @@ export default function SignPdfSignPage() {
             return;
         }
         setIsExporting(true);
-        execute(async () => {
+        (async () => {
             const toastId = toast.loading("Embedding signatures into PDF…");
             try {
                 const bytes = await embedSignaturesIntoPdf(file, placedSignatures, pages);
@@ -1127,7 +1122,7 @@ export default function SignPdfSignPage() {
             } finally {
                 setIsExporting(false);
             }
-        });
+        })();
     };
 
     // Loading screen
@@ -1474,11 +1469,6 @@ export default function SignPdfSignPage() {
                     />
                 )
             }
-            <RateLimitModal
-                open={!!rateLimitResult}
-                resetAt={rateLimitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
         </div >
     );
 }

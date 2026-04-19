@@ -14,9 +14,6 @@ import {
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 const LANGUAGES = [
     { label: "Arabic", code: "ar" },
     { label: "Bulgarian", code: "bg" },
@@ -58,8 +55,6 @@ export default function TranslatePdfToolPage() {
     const [langOpen, setLangOpen] = useState(false);
     const [pageCount, setPageCount] = useState<number | null>(null);
 
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
-
     // Load file from FileStore and get page count
     useEffect(() => {
         if (hasInitialized.current) return;
@@ -99,7 +94,7 @@ export default function TranslatePdfToolPage() {
         if (!file) return;
         setIsProcessing(true);
 
-        execute(async () => {
+        (async () => {
             const toastId = toast.loading("Processing translation...");
 
             try {
@@ -144,7 +139,7 @@ export default function TranslatePdfToolPage() {
             } finally {
                 setIsProcessing(false);
             }
-        });
+        })();
     };
 
     if (success) {
@@ -296,11 +291,6 @@ export default function TranslatePdfToolPage() {
                     </div>
                 </div>
             </main>
-            <RateLimitModal
-                open={!!rateLimitResult}
-                resetAt={rateLimitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
         </div>
     );
 }

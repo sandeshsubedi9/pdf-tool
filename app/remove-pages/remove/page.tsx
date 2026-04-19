@@ -13,9 +13,6 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function parsePageRanges(input: string, maxPage: number): Set<number> {
     const pages = new Set<number>();
@@ -105,8 +102,6 @@ export default function RemovePagesToolPage() {
     const [removedPages, setRemovedPages] = useState<Set<number>>(new Set());
     const [inputValue, setInputValue] = useState("");
     const [inputError, setInputError] = useState<string | null>(null);
-
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
 
     // ── Load file from FileStore ─────────────────────────────────────────────
     useEffect(() => {
@@ -200,7 +195,7 @@ export default function RemovePagesToolPage() {
         setIsProcessing(true);
         setGlobalError(null);
 
-        execute(async () => {
+        (async () => {
             try {
                 const { PDFDocument } = await import("pdf-lib");
                 
@@ -227,7 +222,7 @@ export default function RemovePagesToolPage() {
             } finally {
                 setIsProcessing(false);
             }
-        });
+        })();
     };
 
     // ── Render States ────────────────────────────────────────────────────────
@@ -392,11 +387,6 @@ export default function RemovePagesToolPage() {
                     </div>
                 </aside>
             </div>
-            <RateLimitModal
-                open={!!rateLimitResult}
-                resetAt={rateLimitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
         </div>
     );
 }

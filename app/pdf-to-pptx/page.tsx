@@ -9,16 +9,12 @@ import {
 } from "@tabler/icons-react";
 import { pdfToPptx, downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 export default function PdfToPptxPage() {
     const [files, setFiles] = useState<File[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
-    const handleConvert = () => execute(async () => {
+    const handleConvert = async () => {
         if (files.length === 0) return;
         setIsProcessing(true);
         setSuccess(false);
@@ -48,7 +44,7 @@ export default function PdfToPptxPage() {
         } finally {
             setIsProcessing(false);
         }
-    });
+    };
 
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
@@ -102,11 +98,6 @@ export default function PdfToPptxPage() {
             icon={<IconPresentation size={28} stroke={1.5} />}
             accentColor="#C43E1C" // PowerPoint orange
         >
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
                 {!success ? (
                     <>

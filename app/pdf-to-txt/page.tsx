@@ -5,16 +5,12 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { IconFileCode, IconLoader2, IconCheck } from "@tabler/icons-react";
 import { pdfToTxt, downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 export default function PdfToTxtPage() {
     const [files, setFiles] = useState<File[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
-    const handleConvert = () => execute(async () => {
+    const handleConvert = async () => {
         if (files.length === 0) return;
         setIsProcessing(true);
         setSuccess(false);
@@ -36,7 +32,7 @@ export default function PdfToTxtPage() {
         } finally {
             setIsProcessing(false);
         }
-    });
+    };
 
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
@@ -90,11 +86,6 @@ export default function PdfToTxtPage() {
             icon={<IconFileCode size={28} stroke={1.5} />}
             accentColor="#6B7280" // neutral grey
         >
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
                 {!success ? (
                     <>

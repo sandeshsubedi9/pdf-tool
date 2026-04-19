@@ -18,13 +18,9 @@ import {
 import { unlockPdf, UnlockResult, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 export default function UnlockPdfActionPage() {
     const router = useRouter();
     const hasInitialized = useRef(false);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     const [file, setFile] = useState<File | null>(null);
     const [pageCount, setPageCount] = useState<number | null>(null);
@@ -75,7 +71,7 @@ export default function UnlockPdfActionPage() {
         });
     }, [router]);
 
-    const handleUnlock = () => execute(async () => {
+    const handleUnlock = async () => {
         if (!file) return;
         if (!password) {
             toast.error("Please enter the password.");
@@ -94,7 +90,7 @@ export default function UnlockPdfActionPage() {
         } finally {
             setStatus((prev) => prev === "unlocking" ? "idle" : prev);
         }
-    });
+    };
 
     const handleDownload = () => {
         if (!result) return;
@@ -122,11 +118,6 @@ export default function UnlockPdfActionPage() {
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             {/* Dot grid */}

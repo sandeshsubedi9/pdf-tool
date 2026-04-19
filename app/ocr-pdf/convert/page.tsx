@@ -17,9 +17,6 @@ import {
 import { ocrPdf, OcrResult, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ── Supported Tesseract language options ──────────────────────────────────────
 const LANGUAGES = [
     { value: "eng",         label: "English" },
@@ -53,7 +50,6 @@ export default function OcrPdfConvertPage() {
     const [result, setResult] = useState<OcrResult | null>(null);
     const [language, setLanguage] = useState("eng");
     const [force, setForce] = useState(false);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // Load file from FileStore
     useEffect(() => {
@@ -82,7 +78,7 @@ export default function OcrPdfConvertPage() {
         });
     }, [router]);
 
-    const handleRun = () => execute(async () => {
+    const handleRun = async () => {
         if (!file) return;
         setStatus("processing");
         const toastId = toast.loading("Running OCR — this may take a moment…");
@@ -101,7 +97,7 @@ export default function OcrPdfConvertPage() {
         } finally {
             setStatus("idle"); // or whatever appropriate
         }
-    });
+    };
 
     const handleDownload = () => {
         if (!result) return;
@@ -114,7 +110,7 @@ export default function OcrPdfConvertPage() {
         router.push("/ocr-pdf");
     };
 
-    const handleForceRun = () => execute(async () => {
+    const handleForceRun = async () => {
         setForce(true);
         // Need to wait for state update, so call directly with force=true
         if (!file) return;
@@ -128,7 +124,7 @@ export default function OcrPdfConvertPage() {
         } finally {
             // handle finally if needed
         }
-    });
+    };
 
     const ACCENT = "#d97706";
     const ACCENT_BG = "#fff8ed";
@@ -150,11 +146,6 @@ export default function OcrPdfConvertPage() {
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             {/* Dot grid background */}

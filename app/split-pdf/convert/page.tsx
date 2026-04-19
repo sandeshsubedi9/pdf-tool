@@ -14,9 +14,6 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob, downloadZip, pdfToImages, splitPdf, PdfRange } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uid() {
@@ -93,7 +90,6 @@ function SplitPdfConvertContent() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // Options UI Top Level
     const [topMode, setTopMode] = useState<"split" | "extract">(modeParam === "extract" ? "extract" : "split");
@@ -241,7 +237,7 @@ function SplitPdfConvertContent() {
         })()
         : [];
 
-    const handleTransform = () => execute(async () => {
+    const handleTransform = async () => {
         if (!file) return;
 
         let rangesToProcess: PdfRange[] = [];
@@ -309,7 +305,7 @@ function SplitPdfConvertContent() {
         } finally {
             setIsProcessing(false);
         }
-    });
+    };
 
     // Evaluate if a page is selected in extract mode
     const isPageHighlighted = (pageNum: number) => {
@@ -375,11 +371,6 @@ function SplitPdfConvertContent() {
 
     return (
         <div className="h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             {/* Dot background */}

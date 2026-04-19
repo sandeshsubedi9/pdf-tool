@@ -17,9 +17,6 @@ import {
 import toast from "react-hot-toast";
 import { downloadZip, downloadDataUrl } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 /* ─── Types ─── */
 interface ExtractedImage {
     name: string;
@@ -141,7 +138,6 @@ export default function ExtractImagesPage() {
     const [error, setError] = useState<string | null>(null);
     const [noImages, setNoImages] = useState(false);
     const [fileName, setFileName] = useState("document");
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     useEffect(() => {
         const file = FileStore.getFile("current_pdf");
@@ -200,12 +196,12 @@ export default function ExtractImagesPage() {
     const clearAll = () => setSelected(new Set());
     const allSelected = images.length > 0 && selected.size === images.length;
 
-    const downloadImage = (item: ExtractedImage) => execute(async () => {
+    const downloadImage = (item: ExtractedImage) => (async () => {
         downloadDataUrl(item.dataUrl, item.name);
         toast.success(`Downloaded ${item.name}`);
-    });
+    })();
 
-    const downloadSelected = () => execute(async () => {
+    const downloadSelected = async () => {
         if (selected.size === 0) {
             toast.error("Please select at least one image.");
             return;
@@ -228,9 +224,9 @@ export default function ExtractImagesPage() {
         } finally {
             setIsDownloading(false);
         }
-    });
+    };
 
-    const downloadAll = () => execute(async () => {
+    const downloadAll = async () => {
         if (images.length === 0) return;
         if (images.length === 1) {
             downloadImage(images[0]);
@@ -249,15 +245,10 @@ export default function ExtractImagesPage() {
         } finally {
             setIsDownloading(false);
         }
-    });
+    };
 
     return (
         <div className="h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             <div aria-hidden className="pointer-events-none absolute inset-0"

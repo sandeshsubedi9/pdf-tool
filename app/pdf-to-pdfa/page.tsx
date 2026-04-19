@@ -12,9 +12,6 @@ import {
 import { pdfToPdfa, downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
 import { motion } from "motion/react";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 type Level = "1b" | "2b" | "3b";
 
 const LEVELS: {
@@ -91,8 +88,6 @@ export default function PdfToPdfaPage() {
     const [success, setSuccess] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<Level>("1b");
 
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
-
     const selectedInfo = LEVELS.find((l) => l.value === selectedLevel)!;
 
     const handleConvert = async () => {
@@ -100,7 +95,7 @@ export default function PdfToPdfaPage() {
         setIsProcessing(true);
         setSuccess(false);
 
-        execute(async () => {
+        (async () => {
             const toastId = toast.loading(`Converting to PDF/A-${selectedLevel.toUpperCase()}...`);
 
             try {
@@ -117,7 +112,7 @@ export default function PdfToPdfaPage() {
             } finally {
                 setIsProcessing(false);
             }
-        });
+        })();
     };
 
     return (
@@ -303,11 +298,6 @@ export default function PdfToPdfaPage() {
                     </motion.div>
                 </div>
             </main>
-            <RateLimitModal
-                open={!!rateLimitResult}
-                resetAt={rateLimitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
         </div>
     );
 }

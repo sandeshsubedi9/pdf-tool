@@ -14,9 +14,6 @@ import {
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ── Types ────────────────────────────────────────────────────────────────────
 type Position = "TL" | "TC" | "TR" | "ML" | "MC" | "MR" | "BL" | "BC" | "BR";
 type MarginPreset = "narrow" | "recommended" | "wide";
@@ -61,7 +58,6 @@ export default function PageNumberToolPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     // ── Settings state ───────────────────────────────────────────────────────
     const [position, setPosition] = useState<Position>("BC");
@@ -146,7 +142,7 @@ export default function PageNumberToolPage() {
     };
 
     // ── Export ───────────────────────────────────────────────────────────────
-    const handleApply = () => execute(async () => {
+    const handleApply = async () => {
         if (!file) return;
         setIsProcessing(true);
         setError(null);
@@ -189,7 +185,7 @@ export default function PageNumberToolPage() {
         } finally {
             setIsProcessing(false);
         }
-    });
+    };
 
     // ── Loading screen ───────────────────────────────────────────────────────
     if (isLoading && thumbnails.length === 0) {
@@ -248,11 +244,6 @@ export default function PageNumberToolPage() {
 
     return (
         <div className="h-screen flex flex-col bg-[#F7F6F3] pt-[64px] overflow-hidden">
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             {/* ── Toolbar ─────────────────────────────────────────────────── */}

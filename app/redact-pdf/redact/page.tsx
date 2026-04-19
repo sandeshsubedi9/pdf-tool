@@ -28,9 +28,6 @@ import {
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
 import toast from "react-hot-toast";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface RedactionRect {
@@ -512,8 +509,6 @@ export default function RedactPdfPage() {
     const [showZoomMenu, setShowZoomMenu] = useState(false);
     const [showWholePageModal, setShowWholePageModal] = useState(false);
 
-    const { execute, limitResult: rateLimitResult, clearLimitResult } = useRateLimitedAction();
-
     // Drawing state
     const drawing = useRef(false);
     const drawStart = useRef<{ x: number; y: number } | null>(null);
@@ -690,7 +685,7 @@ export default function RedactPdfPage() {
             return;
         }
         setIsExporting(true);
-        execute(async () => {
+        (async () => {
             const toastId = toast.loading("Applying redactions to PDF…");
             try {
                 const bytes = await embedRedactionsToPdf(file, redactions, pages);
@@ -717,7 +712,7 @@ export default function RedactPdfPage() {
             } finally {
                 setIsExporting(false);
             }
-        });
+        })();
     };
 
     // ── Zoom helpers ──────────────────────────────────────────────────────────
@@ -1226,11 +1221,6 @@ export default function RedactPdfPage() {
                     onApply={applyWholePageRedactions}
                 />
             )}
-            <RateLimitModal
-                open={!!rateLimitResult}
-                resetAt={rateLimitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
         </div>
     );
 }

@@ -16,9 +16,6 @@ import {
 import { downloadBlob, mergePdfs } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import { FileUpload } from "@/components/ui/file-upload";
-import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PdfItem {
@@ -107,7 +104,6 @@ export default function MergePdfConvertPage() {
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
 
     useEffect(() => {
         if (hasInitialized.current) return;
@@ -152,7 +148,7 @@ export default function MergePdfConvertPage() {
         setPdfs((prev) => prev.filter((i) => i.id !== id));
     };
 
-    const handleMerge = () => execute(async () => {
+    const handleMerge = async () => {
         if (pdfs.length < 2) {
             setError("Please add at least 2 PDFs to merge.");
             return;
@@ -175,7 +171,7 @@ export default function MergePdfConvertPage() {
         } finally {
             setIsProcessing(false);
         }
-    });
+    };
 
     if (isLoading) {
         return (
@@ -224,11 +220,6 @@ export default function MergePdfConvertPage() {
 
     return (
         <div className="h-screen flex flex-col relative overflow-hidden pt-16" style={{ background: "var(--brand-white)" }}>
-            <RateLimitModal
-                open={!!limitResult && !limitResult.allowed}
-                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
-                onClose={clearLimitResult}
-            />
             <Navbar />
 
             <div aria-hidden className="pointer-events-none absolute inset-0"
