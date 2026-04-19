@@ -856,7 +856,6 @@ export default function SignPdfSignPage() {
     const [currentPage, setCurrentPage] = useState(0);
     const [pageJump, setPageJump] = useState("1"); // Added pageJump state
     const [isLoading, setIsLoading] = useState(true);
-    const [sidebarTab, setSidebarTab] = useState<"fields" | "digital">("fields");
     const [showModal, setShowModal] = useState(false);
     const [editingSignature, setEditingSignature] = useState<SavedSignature | null>(null);
     const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([]);
@@ -1319,25 +1318,8 @@ export default function SignPdfSignPage() {
                         </h3>
                     </div>
 
-                    {/* Tabs: Fields / Digital */}
-                    <div className="flex border-b border-[#E0DED9] bg-[#fcfbf9]">
-                        <button
-                            onClick={() => setSidebarTab("fields")}
-                            className={`flex-1 py-3.5 text-[13px] font-bold text-center transition-all cursor-pointer border-b-2 ${sidebarTab === "fields" ? "border-[#047C58] text-[#047C58] bg-white" : "border-transparent text-brand-sage hover:text-brand-dark"}`}
-                        >
-                            Simple Signature
-                        </button>
-                        <button
-                            onClick={() => setSidebarTab("digital")}
-                            className={`flex-1 py-3.5 text-[13px] font-bold text-center transition-all cursor-pointer border-b-2 ${sidebarTab === "digital" ? "border-[#047C58] text-[#047C58] bg-white" : "border-transparent text-brand-sage hover:text-brand-dark"}`}
-                        >
-                            Digital Signature
-                        </button>
-                    </div>
-
-                    {sidebarTab === "fields" && (
-                        <div className="flex-1 flex flex-col min-h-0">
-                            {/* Legal Warning Banner inside tab */}
+                    <div className="flex-1 flex flex-col min-h-0">
+                        {/* Legal Warning Banner */}
                             <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex gap-2">
                                 <IconAlertTriangle size={14} className="shrink-0 text-amber-500 mt-0.5" />
                                 <p className="text-[10px] leading-relaxed text-amber-900 font-medium">
@@ -1457,25 +1439,8 @@ export default function SignPdfSignPage() {
                                 </button>
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {sidebarTab === "digital" && (
-                        <div className="flex-1 p-6 flex flex-col items-center justify-center gap-4 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-[#f0ede4] flex items-center justify-center text-brand-sage">
-                                <IconWriting size={28} stroke={1.5} />
-                            </div>
-                            <div>
-                                <p className="text-base font-bold text-brand-dark">Digital Signatures</p>
-                                <p className="text-sm text-brand-sage mt-1.5 leading-relaxed">
-                                    Cryptographically secure digital signatures are coming soon. These will be legally binding and verifiable.
-                                </p>
-                            </div>
-                            <div className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
-                                Coming Soon
-                            </div>
-                        </div>
-                    )}
-                </div>
 
                 {/* Mobile signing panel (bottom sheet) */}
                 <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[#E0DED9] px-4 py-3 flex items-center gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
