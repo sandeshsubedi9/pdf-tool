@@ -402,7 +402,7 @@ export default function HtmlToPdfPage() {
             <div className="min-h-screen flex flex-col bg-[#F8F9FA]">
                 <RateLimitModal
                     open={!!limitResult && !limitResult.allowed}
-                    resetAt={limitResult?.resetAt ?? 0}
+                    limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                     onClose={clearLimitResult}
                 />
                 <Navbar />
@@ -695,16 +695,61 @@ export default function HtmlToPdfPage() {
     // ─────────────────────────────────────────────────────────────────────────
     // Render: Input
     // ─────────────────────────────────────────────────────────────────────────
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Save web content for offline use with SandeshPDF’s HTML to PDF tool. Convert URLs or HTML code into clean, printable PDF documents.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span><strong>Web Archiving:</strong> Save articles, reports, or invoices from websites.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span><strong>Print Optimization:</strong> Remove ads and sidebars for a clean reading experience.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span><strong>Code Conversion:</strong> Paste raw HTML code to generate a PDF.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span><strong>Offline Access:</strong> View web content without an internet connection.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span>Research: Save online articles for reference.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span>Invoicing: Convert web-generated invoices to PDF for records.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#F97316]" />
+                    <span>Documentation: Archive web pages for compliance or proof.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Capture the web with our HTML to PDF converter.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="HTML to PDF"
-            description="Convert any webpage URL, HTML file, or raw HTML code into a professional PDF document instantly."
+            title="HTML to PDF - Convert Web Pages to Downloadable Documents"
+            description={descriptionContent}
             icon={<IconWorld size={28} stroke={1.5} />}
             accentColor="#F97316"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="flex flex-col gap-4">
@@ -927,3 +972,4 @@ export default function HtmlToPdfPage() {
         </ToolLayout>
     );
 }
+

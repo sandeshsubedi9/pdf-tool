@@ -52,16 +52,61 @@ export default function PdfToEpubPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Reading PDFs on small screens can be tough. SandeshPDF’s PDF to ePub tool converts your documents into reflowable ePub format, perfect for Kindles, iPads, and other e-readers.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span><strong>Reflowable Text:</strong> Adjusts text size and layout for any screen size.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span><strong>E-Reader Compatible:</strong> Works seamlessly with Kindle, Apple Books, and Kobo.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span><strong>Chapter Detection:</strong> Preserves document structure for easy navigation.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span><strong>Portable Format:</strong> Create lightweight files for mobile reading.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span>Read on the go: Convert manuals or books for mobile devices.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span>Self-Publishing: Prepare drafts for e-book distribution.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#5B4FCF]" />
+                    <span>Accessibility: Improve readability for users with visual impairments.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Enjoy reading anywhere with our PDF to ePub converter.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PDF to EPUB"
-            description="Transform your PDF documents into reflowable EPUB e-books, perfectly formatted for e-readers like Kindle, Kobo, and Apple Books."
+            title="PDF to ePub - Convert Documents for E-Readers"
+            description={descriptionContent}
             icon={<IconBook size={28} stroke={1.5} />}
             accentColor={EPUB_COLOR}
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -123,3 +168,4 @@ export default function PdfToEpubPage() {
         </ToolLayout>
     );
 }
+

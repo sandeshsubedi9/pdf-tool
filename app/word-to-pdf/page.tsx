@@ -45,16 +45,61 @@ export default function WordToPdfPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Finalize your documents with SandeshPDF’s Word to PDF tool. Convert Microsoft Word files into professional, secure PDFs that look the same on every device.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Format Locking:</strong> Preserve fonts, images, and layout exactly as intended.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Universal Compatibility:</strong> Ensure recipients see the document correctly on any device.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Security Options:</strong> Optional password protection during conversion.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Professional Finish:</strong> Ideal for resumes, proposals, and official letters.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Job Applications: Submit resumes that won’t shift formatting.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Client Proposals: Send polished, uneditable documents.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Official Forms: Distribute standardized forms for filling out.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Lock in your design with the best Word to PDF converter online.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert Word to PDF"
-            description="Make DOC and DOCX files easy to read by converting them to PDF."
+            title="Word to PDF - Convert Word Docs to Secure PDFs"
+            description={descriptionContent}
             icon={<IconFileArrowRight size={28} stroke={1.5} />}
             accentColor="#1A56DB"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -108,3 +153,4 @@ export default function WordToPdfPage() {
         </ToolLayout>
     );
 }
+

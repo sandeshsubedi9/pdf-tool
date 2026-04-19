@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * components/FingerprintProvider.tsx
@@ -86,7 +86,7 @@ export function FingerprintProvider({ children }: { children: React.ReactNode })
       try {
         const visitorId = await getVisitorId();
 
-        // POST to init-session — sets the HttpOnly cookie.
+        // POST to init-session - sets the HttpOnly cookie.
         // The server will IGNORE this if a cookie already exists,
         // so repeated visits don't reset the rate-limit window.
         await fetch("/api/init-session", {
@@ -118,7 +118,7 @@ export function FingerprintProvider({ children }: { children: React.ReactNode })
         setStatus(data as LimitStatus);
       }
     } catch {
-      // Silently ignore — status will remain null
+      // Silently ignore - status will remain null
     }
   }, []);
 
@@ -140,8 +140,8 @@ export function FingerprintProvider({ children }: { children: React.ReactNode })
 
       return data;
     } catch {
-      // Network error — fail open (allow the request but log a warning)
-      console.warn("[FingerprintProvider] enforceLimit network error — failing open");
+      // Network error - fail open (allow the request but log a warning)
+      console.warn("[FingerprintProvider] enforceLimit network error - failing open");
       return {
         allowed: true,
         remaining: 0,
@@ -158,3 +158,4 @@ export function FingerprintProvider({ children }: { children: React.ReactNode })
     </RateLimitContext.Provider>
   );
 }
+

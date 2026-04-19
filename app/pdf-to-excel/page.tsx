@@ -49,16 +49,61 @@ export default function PdfToExcelPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Extract data from PDFs effortlessly with SandeshPDF’s PDF to Excel tool. Perfect for financial reports and data analysis, our PDF to XLSX converter turns static tables into editable spreadsheets.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span><strong>Data Extraction:</strong> Accurately pull tables and rows from PDF to Excel.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span><strong>Editable Cells:</strong> Sort, filter, and calculate data immediately after conversion.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span><strong>Format Retention:</strong> Keep column structures and number formats consistent.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span><strong>Time-Saver:</strong> Avoid manual data entry from printed reports.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span>Analyze financial statements: Convert bank statements or invoices to Excel.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span>Process survey results: Extract data tables for statistical analysis.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1D6F42]" />
+                    <span>Migrate data: Move legacy PDF data into modern spreadsheet systems.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Transform your data with the best PDF to Excel converter free tool available.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PDF to Excel"
-            description="Extract tables and data from your PDF into a fully editable Excel spreadsheet (.xlsx)."
+            title="PDF to Excel - Extract Tables and Data into Spreadsheets"
+            description={descriptionContent}
             icon={<IconTable size={28} stroke={1.5} />}
             accentColor="#1D6F42"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -107,3 +152,4 @@ export default function PdfToExcelPage() {
         </ToolLayout>
     );
 }
+

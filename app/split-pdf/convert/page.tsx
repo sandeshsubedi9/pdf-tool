@@ -377,7 +377,7 @@ function SplitPdfConvertContent() {
         <div className="h-screen flex flex-col relative overflow-hidden" style={{ background: "var(--brand-white)" }}>
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <Navbar />
@@ -843,3 +843,4 @@ export default function SplitPdfConvertPage() {
         </Suspense>
     );
 }
+

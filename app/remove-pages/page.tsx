@@ -24,10 +24,52 @@ export default function RemovePagesPdfPage() {
         router.push("/remove-pages/remove");
     };
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4 text-brand-sage leading-relaxed">
+            <p>
+                Sometimes you just need to clean up a document. PDFTool’s Remove Pages tool allows you to delete pages from PDF files quickly and securely. Whether it’s a blank page, a draft cover, or sensitive information, you can remove PDF pages with a single click.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span><strong>Selective Deletion:</strong> Choose specific page numbers to remove while keeping the rest intact.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span><strong>Batch Removal:</strong> Delete multiple non-consecutive pages in one go.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span><strong>Instant Preview:</strong> See exactly which pages will be removed before processing.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span><strong>Preserve Quality:</strong> The remaining pages retain their original resolution and formatting.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span>Remove blank pages that were accidentally scanned.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    <span>Delete draft covers or watermarked versions before final submission.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#059669]" />
+                    Clean up resumes by removing outdated experience sections.
+                </li>
+            </ul>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Remove Pages"
-            description="Select and remove pages you don't need from your PDF document."
+            title="Remove Pages - Delete Unwanted Content from Your PDF"
+            description={descriptionContent}
             icon={<IconFileMinus size={28} stroke={1.5} />}
             accentColor="#059669" // Using Edit category color (emerald)
         >

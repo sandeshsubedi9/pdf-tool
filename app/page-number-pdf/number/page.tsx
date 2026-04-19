@@ -250,7 +250,7 @@ export default function PageNumberToolPage() {
         <div className="h-screen flex flex-col bg-[#F7F6F3] pt-[64px] overflow-hidden">
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <Navbar />
@@ -750,3 +750,4 @@ function PageThumb({
         </motion.div>
     );
 }
+

@@ -45,7 +45,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "motion/react";
 import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
-import { RateLimitModal } from "@/components/RateLimitModal";
+import { RateLimitModal } from "./RateLimitModal";
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 // ─── Inline contentEditable text editor ────────────────────────────────────
 // A contentEditable div renders text IDENTICALLY to a regular display div.
 // Unlike <textarea>, it has no browser-specific padding, size quirks, or
-// font-weight inheritance issues — eliminating jarring size/position shifts.
+// font-weight inheritance issues - eliminating jarring size/position shifts.
 
 interface TextEditBoxProps {
     initialText: string;
@@ -194,7 +195,7 @@ function TextEditBox({ initialText, style, onUpdate, onBlur, selectAll }: TextEd
     React.useEffect(() => {
         const el = ref.current;
         if (!el) return;
-        // Set content directly via DOM — avoids React re-render cursor-jump issue
+        // Set content directly via DOM - avoids React re-render cursor-jump issue
         el.textContent = initialText;
         el.focus();
 
@@ -210,7 +211,7 @@ function TextEditBox({ initialText, style, onUpdate, onBlur, selectAll }: TextEd
             sel?.removeAllRanges();
             sel?.addRange(range);
         } catch { /* ignore selection errors in restricted environments */ }
-    }, []); // Only on mount — do NOT add deps or cursor will jump on every keystroke
+    }, []); // Only on mount - do NOT add deps or cursor will jump on every keystroke
 
     return (
         <div
@@ -762,7 +763,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     canvas.height = vp.height;
                     const ctx = canvas.getContext("2d")!;
 
-                    // Render the full page including text — this gives a pixel-perfect
+                    // Render the full page including text - this gives a pixel-perfect
                     // canvas image identical to what PDF viewers produce.
                     await page.render({ canvasContext: ctx, viewport: vp } as any).promise;
 
@@ -893,7 +894,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             else if (/^sans-serif$/i.test(cssFontFamily)) sFontInfo.family = "Helvetica";
                             else if (/^monospace$/i.test(cssFontFamily)) sFontInfo.family = "Courier New";
                             else if (cssFontFamily && !/^(sans-serif|serif|monospace)$/i.test(cssFontFamily)) {
-                                // pdf.js gave us a specific family — use it directly
+                                // pdf.js gave us a specific family - use it directly
                                 sFontInfo.family = cssFontFamily;
                             }
 
@@ -1235,7 +1236,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         // text annotations use `page`, image annotations from backend use `page_number`
                         page: orig.page ?? orig.page_number ?? 1,
                         // text annotations store coords as camelCase (origX0); image annotations
-                        // come from backend as snake_case (orig_x0) — handle both
+                        // come from backend as snake_case (orig_x0) - handle both
                         orig_x0: orig.orig_x0 ?? orig.origX0,
                         orig_y0: orig.orig_y0 ?? orig.origY0,
                         orig_x1: orig.orig_x1 ?? orig.origX1,
@@ -1300,7 +1301,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         }
                         modified.push(editItem);
                     }
-                    // If nothing changed, skip — leave original as-is
+                    // If nothing changed, skip - leave original as-is
                 } else if (!isExisting) {
                     // New annotation (text, image, or draw)
                     const ta = ann as TextAnnotation;
@@ -1316,7 +1317,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         addItem.w_pct = da.w;
                         addItem.h_pct = da.h;
                         addItem.color = da.color;
-                        addItem.lineWidth = da.lineWidth / 1.5; // canvas px → PDF pts (da.lineWidth already has ×4 for highlight/whiteout)
+                        addItem.lineWidth = da.lineWidth / 1.5; // canvas px → PDF pts (da.lineWidth already has �-4 for highlight/whiteout)
                         addItem.isHighlight = da.isHighlight;
                         addItem.paths = da.paths;
                     } else if (ann.type === "text") {
@@ -1403,10 +1404,55 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     // ─── Upload screen ────────────────────────────────────────────────────────
     if (!file && !isBlankMode) {
+        const editDescriptionContent = (
+            <div className="flex flex-col gap-5 mt-4">
+                <p className="text-brand-sage leading-relaxed">
+                    Make changes without the original source file using SandeshPDF’s Edit PDF tool. Our online PDF editor lets you fix typos, update dates, replace images, and adjust layouts directly in your browser.
+                </p>
+                <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+                <ul className="flex flex-col gap-2.5">
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span><strong>Text Editing:</strong> Add, delete, or modify text with font matching.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span><strong>Image Manipulation:</strong> Replace, resize, or move images within the document.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span><strong>Link Editing:</strong> Update or add hyperlinks to your PDF.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span><strong>No Software Needed:</strong> Edit PDF online without installing Adobe Acrobat.</span>
+                    </li>
+                </ul>
+                <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+                <ul className="flex flex-col gap-2.5">
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span>Contract Updates: Fix minor errors in signed agreements.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span>Resume Tweaks: Update contact info or skills quickly.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                        <span>Form Corrections: Fill in missing details on static forms.</span>
+                    </li>
+                </ul>
+                <p className="text-sm font-medium text-brand-dark mt-2">
+                    Take control of your documents with our free PDF editor online.
+                </p>
+            </div>
+        );
+
         return (
             <ToolLayout
-                title="Edit PDF"
-                description="Add text, images, drawings and highlights to your PDF."
+                title="Edit PDF - Modify Text, Images, and Layouts Directly"
+                description={editDescriptionContent}
                 icon={<IconPencil size={28} />}
                 accentColor="#047C58"
             >
@@ -1467,9 +1513,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             >
                 <RateLimitModal
                     open={!!limitResult && !limitResult.allowed}
+                    limit={limitResult?.limit}
                     resetAt={limitResult?.resetAt ?? 0}
                     onClose={clearLimitResult}
                 />
+
+
                 {/* ── In-editor toast notification (replaces browser alert) ── */}
                 <AnimatePresence>
                     {editorToast && (
@@ -1509,7 +1558,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                 {/* ── SECONDARY NAVBAR ── */}
                 <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
-
                     {/* LEFT: Back + file info */}
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="pr-4 border-r border-[#E0DED9] shrink-0">
@@ -1946,7 +1994,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                     lineHeight: ta.isExisting ? 1 : 1.3,
                                                                                     // Ghost sizer drives the grid track width from text content.
                                                                                     // For existing boxes: keep rndW as minimum (they have PDF bounding boxes).
-                                                                                    // For new boxes: NO minWidth — size purely from text content.
+                                                                                    // For new boxes: NO minWidth - size purely from text content.
                                                                                     // maxWidth = distance to page right edge so text wraps before overflowing.
                                                                                     ...(ta.isExisting ? { minWidth: `${rndW}px` } : {}),
                                                                                     maxWidth: `${pagePxW - (ta.x / 100) * pagePxW}px`,
@@ -1974,7 +2022,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                         textDecoration: ta.underline ? "underline" : "none",
                                                                                         textAlign: ta.align,
                                                                                         lineHeight: ta.isExisting ? 1 : 1.3,
-                                                                                        // Fill the grid track set by the ghost sizer — no competing min/maxWidth.
+                                                                                        // Fill the grid track set by the ghost sizer - no competing min/maxWidth.
                                                                                         // For existing PDF boxes, keep the rndW minimum (bounding box from PDF).
                                                                                         // For new boxes: width is purely content-driven via the ghost sizer track.
                                                                                         width: "100%",
@@ -2501,3 +2549,5 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         </>
     );
 }
+
+

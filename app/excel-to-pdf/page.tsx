@@ -45,16 +45,61 @@ export default function ExcelToPdfPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Share your data securely with SandeshPDF’s Excel to PDF tool. Convert complex Excel spreadsheets into fixed-layout PDFs, perfect for reporting and printing.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span><strong>Layout Stability:</strong> Prevent cells from shifting when viewed on other devices.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span><strong>Print-Ready:</strong> Optimize sheets for A4 or Letter printing.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span><strong>Sheet Selection:</strong> Choose specific worksheets to include in the PDF.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span><strong>Data Protection:</strong> Prevent accidental edits to formulas and data.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span>Financial Reports: Share quarterly earnings or budgets securely.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span>Invoices: Send finalized bills that cannot be altered.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#047C58]" />
+                    <span>Data Sharing: Distribute read-only versions of datasets.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Present your data professionally with our Excel to PDF converter.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert Excel to PDF"
-            description="Turn spreadsheets into polished PDF files for easy viewing and sharing."
+            title="Excel to PDF - Turn Spreadsheets into Professional Reports"
+            description={descriptionContent}
             icon={<IconTable size={28} stroke={1.5} />}
             accentColor="#047C58"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -109,3 +154,4 @@ export default function ExcelToPdfPage() {
         </ToolLayout>
     );
 }
+

@@ -24,7 +24,6 @@ import {
     IconTrash,
     IconGripVertical,
     IconCalendar,
-    IconUser,
     IconSignature,
     IconChevronUp,
     IconChevronDown,
@@ -69,6 +68,7 @@ type ModalTab = "typed" | "drawn" | "image";
 // ─── Signature fonts (cursive/handwriting Google Fonts) ──────────────────────
 
 const SIG_FONTS = [
+    { name: "Inter", url: "https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap", label: "Normal (Inter)" },
     { name: "Dancing Script", url: "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" },
     { name: "Pacifico", url: "https://fonts.googleapis.com/css2?family=Pacifico&display=swap" },
     { name: "Great Vibes", url: "https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" },
@@ -511,16 +511,21 @@ function SignatureModal({
                                             >
                                                 {selectedFont === i && <IconCheck size={10} color="white" stroke={3} />}
                                             </span>
-                                            <span
-                                                style={{
-                                                    fontFamily: `'${font.name}', cursive`,
-                                                    fontSize: "1.35rem",
-                                                    color: selectedColor,
-                                                    lineHeight: 1,
-                                                }}
-                                            >
-                                                {displayText || (activePreview === "signature" ? "Your Name" : "YN")}
-                                            </span>
+                                            <div className="flex flex-col items-start gap-0.5">
+                                                {font.label && (
+                                                    <span className="text-[10px] font-semibold text-brand-sage uppercase tracking-wider">{font.label}</span>
+                                                )}
+                                                <span
+                                                    style={{
+                                                        fontFamily: i === 0 ? `'Inter', sans-serif` : `'${font.name}', cursive`,
+                                                        fontSize: "1.35rem",
+                                                        color: selectedColor,
+                                                        lineHeight: 1,
+                                                    }}
+                                                >
+                                                    {displayText || (activePreview === "signature" ? "Your Name" : "YN")}
+                                                </span>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
@@ -892,6 +897,7 @@ export default function SignPdfSignPage() {
 
 
     const handleSaveSignature = (sig: SavedSignature) => {
+        const isEdit = !!editingSignature;
         setSavedSignatures((prev) => {
             const exists = prev.find((p) => p.id === sig.id);
             if (exists) {
@@ -907,7 +913,11 @@ export default function SignPdfSignPage() {
 
         setShowModal(false);
         setEditingSignature(null);
-        if (editingSignature) toast.success("Signature updated");
+        if (isEdit) {
+            toast.success("Signature updated!");
+        } else {
+            toast.success("Signature added! Drag it onto the PDF or click to place it.", { duration: 4000, icon: "✍️" });
+        }
     };
 
     const handleDeleteSignature = (e: React.MouseEvent, id: string) => {
@@ -1140,7 +1150,7 @@ export default function SignPdfSignPage() {
     const currentPageSigs = placedSignatures.filter((p) => p.pageIndex === currentPage);
 
     return (
-        <div className="h-[calc(100vh-64px)] flex flex-col pt-16" style={{ background: "#fdfdfb" }}>
+        <div className="h-screen flex flex-col pt-16" style={{ background: "#fdfdfb" }}>
             <Navbar />
 
             {/* ── Secondary Full-Width Header ── */}
@@ -1396,65 +1406,42 @@ export default function SignPdfSignPage() {
                                     </div>
                                 )}
 
-                                {/* Quick add fields */}
+                                {/* Quick add fields — Date only */}
                                 <div>
                                     <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-3">Quick Add Fields</p>
-                                    <div className="space-y-2.5">
-                                        {([
-                                            { icon: <IconUser size={16} />, label: "Name", desc: "Drag your full name" },
-                                            { icon: <IconCalendar size={16} />, label: "Date", desc: "Drag current date" },
-                                            { icon: <IconTypography size={16} />, label: "Text", desc: "Drag custom text" },
-                                        ] as const).map((field) => (
-                                            <button
-                                                key={field.label}
-                                                draggable
-                                                onDragStart={(e) => {
-                                                    e.dataTransfer.setData("application/json", JSON.stringify({ type: "field", content: field.label }));
-                                                    e.dataTransfer.effectAllowed = "copy";
-                                                }}
-                                                onClick={() => {
-                                                    let dataUrl: string;
-                                                    let actualContent = "";
-                                                    if (field.label === "Date") {
-                                                        actualContent = new Date().toLocaleDateString("en-US");
-                                                        dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 32);
-                                                    } else if (field.label === "Name") {
-                                                        if (savedSignatures.length === 0) {
-                                                            toast.error("Add the signature first");
-                                                            return;
-                                                        }
-                                                        const nameSig = savedSignatures[0];
-                                                        if (nameSig && nameSig.type === "typed") {
-                                                            actualContent = nameSig.label;
-                                                            dataUrl = nameSig.dataUrl;
-                                                        } else {
-                                                            actualContent = "Full Name";
-                                                            dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 40);
-                                                        }
-                                                    } else {
-                                                        actualContent = "Enter text";
-                                                        dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 32);
-                                                    }
-                                                    const tempSig = { id: uid(), type: "typed" as const, dataUrl, label: field.label };
-                                                    placeSignatureInView(tempSig, true, field.label, actualContent);
-                                                }}
-                                                className="w-full flex items-center gap-2 p-2 rounded-xl border border-[#E0DED9] bg-white hover:border-[#047C58]/40 hover:bg-[#e6f4ef]/20 transition-all cursor-move group shadow-sm hover:shadow-md"
-                                            >
-                                                {/* Drag handle */}
-                                                <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors px-1">
-                                                    <IconGripVertical size={16} />
-                                                </div>
+                                    <button
+                                        draggable
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.setData("application/json", JSON.stringify({ type: "field", content: "Date" }));
+                                            e.dataTransfer.effectAllowed = "copy";
+                                        }}
+                                        onClick={() => {
+                                            const actualContent = new Date().toLocaleDateString("en-US");
+                                            const dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 32);
+                                            const tempSig = { id: uid(), type: "typed" as const, dataUrl, label: "Date" };
+                                            placeSignatureInView(tempSig, true, "Date", actualContent);
+                                        }}
+                                        className="w-full flex items-center gap-2 p-2 rounded-xl border border-[#E0DED9] bg-white hover:border-[#047C58]/40 hover:bg-[#e6f4ef]/20 transition-all cursor-move group shadow-sm hover:shadow-md"
+                                    >
+                                        <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors px-1">
+                                            <IconGripVertical size={16} />
+                                        </div>
+                                        <span className="w-10 h-10 rounded-xl bg-[#f5f4f0] group-hover:bg-[#dcf2ec] flex items-center justify-center text-brand-sage group-hover:text-[#047C58] transition-all shrink-0">
+                                            <IconCalendar size={16} />
+                                        </span>
+                                        <div className="flex-1 flex flex-col text-left items-start">
+                                            <p className="text-[13px] font-bold text-brand-dark">Date</p>
+                                            <p className="text-[11px] text-brand-sage font-medium -mt-0.5">Drag or click to add today's date</p>
+                                        </div>
+                                    </button>
+                                </div>
 
-                                                <span className="w-10 h-10 rounded-xl bg-[#f5f4f0] group-hover:bg-[#dcf2ec] flex items-center justify-center text-brand-sage group-hover:text-[#047C58] transition-all shrink-0">
-                                                    {field.icon}
-                                                </span>
-                                                <div className="flex-1 flex flex-col text-left items-start">
-                                                    <p className="text-[13px] font-bold text-brand-dark">{field.label}</p>
-                                                    <p className="text-[11px] text-brand-sage font-medium -mt-0.5">{field.desc}</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
+                                {/* Drag & Drop hint */}
+                                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9]">
+                                    <span className="text-lg shrink-0 mt-0.5">💡</span>
+                                    <p className="text-[11px] text-brand-sage leading-relaxed">
+                                        <span className="font-bold text-brand-dark">Drag &amp; drop</span> any signature or field from above directly onto the page — place it exactly where you need it.
+                                    </p>
                                 </div>
                             </div>
 

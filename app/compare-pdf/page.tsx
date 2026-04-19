@@ -6,7 +6,10 @@ import React, {
     useEffect,
 } from "react";
 import Navbar from "@/components/Navbar";
+import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
+import { RateLimitModal } from "@/components/RateLimitModal";
 import { motion, AnimatePresence } from "motion/react";
+
 import {
     IconUpload,
     IconLoader2,
@@ -284,6 +287,7 @@ function PageViewer({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ComparePdfPage() {
+    const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
     const [fileA, setFileA] = useState<File | null>(null);
     const [fileB, setFileB] = useState<File | null>(null);
 
@@ -297,7 +301,6 @@ export default function ComparePdfPage() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [showHighlights, setShowHighlights] = useState(true);
-    const [showChangesOnly, setShowChangesOnly] = useState(false);
 
     const scrollARef = useRef<HTMLDivElement>(null);
     const scrollBRef = useRef<HTMLDivElement>(null);
@@ -350,53 +353,52 @@ export default function ComparePdfPage() {
 
     const runCompare = useCallback(async () => {
         if (!fileA || !fileB) return;
-        setStep("processing");
-        setError(null);
 
-        try {
-            // Step 1: Fetch diff data from backend
-            setProcessingMsg("Extracting & comparing text…");
-            const form = new FormData();
-            form.append("file_a", fileA, fileA.name);
-            form.append("file_b", fileB, fileB.name);
+        execute(async () => {
+            setStep("processing");
+            setError(null);
 
-            const diffRes = await fetch("/api/compare-pdf", {
-                method: "POST",
-                body: form,
-            });
+            try {
+                // Step 1: Fetch diff data from backend
+                setProcessingMsg("Extracting & comparing text…");
+                const form = new FormData();
+                form.append("file_a", fileA, fileA.name);
+                form.append("file_b", fileB, fileB.name);
 
-            if (!diffRes.ok) {
-                const body = await diffRes.json().catch(() => ({}));
-                throw new Error(body.error || `Server error ${diffRes.status}`);
+                const diffRes = await fetch("/api/compare-pdf", {
+                    method: "POST",
+                    body: form,
+                });
+
+                if (!diffRes.ok) {
+                    const body = await diffRes.json().catch(() => ({}));
+                    throw new Error(body.error || `Server error ${diffRes.status}`);
+                }
+
+                const diff: DiffResult = await diffRes.json();
+                setDiffResult(diff);
+
+                // Step 2: Render both PDFs as images client-side
+                setProcessingMsg("Rendering " + fileA.name + "…");
+                const imgA = await renderPages(fileA);
+                setPagesA(imgA);
+
+                setProcessingMsg("Rendering " + fileB.name + "…");
+                const imgB = await renderPages(fileB);
+                setPagesB(imgB);
+
+                setCurrentPage(1);
+                setStep("results");
+            } catch (err: any) {
+                setError(err?.message || "An unexpected error occurred.");
+                setStep("upload");
             }
-
-            const diff: DiffResult = await diffRes.json();
-            setDiffResult(diff);
-
-            // Step 2: Render both PDFs as images client-side
-            setProcessingMsg("Rendering " + fileA.name + "…");
-            const imgA = await renderPages(fileA);
-            setPagesA(imgA);
-
-            setProcessingMsg("Rendering " + fileB.name + "…");
-            const imgB = await renderPages(fileB);
-            setPagesB(imgB);
-
-            setCurrentPage(1);
-            setStep("results");
-        } catch (err: any) {
-            setError(err?.message || "An unexpected error occurred.");
-            setStep("upload");
-        }
-    }, [fileA, fileB, renderPages]);
+        });
+    }, [fileA, fileB, renderPages, execute]);
 
     // ── Derived page list ────────────────────────────────────────────────────
 
-    const pageList = diffResult
-        ? showChangesOnly
-            ? diffResult.pages.filter((p) => p.has_changes)
-            : diffResult.pages
-        : [];
+    const pageList = diffResult ? diffResult.pages : [];
 
     const totalPages = pageList.length;
     const pageIndex = pageList.findIndex((p) => p.page_num === currentPage);
@@ -427,7 +429,6 @@ export default function ComparePdfPage() {
         setPagesB([]);
         setStep("upload");
         setError(null);
-        setShowChangesOnly(false);
         setShowHighlights(true);
     };
 
@@ -437,9 +438,14 @@ export default function ComparePdfPage() {
     if (step === "upload") {
         return (
             <div
-                className="min-h-screen flex flex-col relative overflow-hidden"
+                className="min-h-screen flex flex-col relative overflow-hidden pt-16"
                 style={{ background: "var(--brand-white)" }}
             >
+                <RateLimitModal
+                    open={!!limitResult && !limitResult.allowed}
+                    limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
+                    onClose={clearLimitResult}
+                />
                 <Navbar />
 
                 {/* Background accents */}
@@ -485,29 +491,52 @@ export default function ComparePdfPage() {
                                 </div>
                             </div>
 
-                            <h1 className="text-4xl md:text-5xl font-bold leading-[1.15] tracking-tight text-brand-dark">
-                                Compare PDF
+                            <h1 className="text-4xl md:text-5xl font-bold leading-[1.15] tracking-tight text-brand-dark max-w-md">
+                                Compare PDF - Find Differences Between Two Documents
                             </h1>
-                            <p className="text-lg text-brand-sage leading-relaxed max-w-md">
-                                Upload two PDF files and instantly see every word added,
-                                removed, or changed — highlighted in red and green, side by side.
-                            </p>
-
-                            {/* Feature pills */}
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    { icon: <IconArrowsLeftRight size={13} />, text: "Side-by-side view" },
-                                    { icon: <IconMinus size={13} style={{ color: "#ef4444" }} />, text: "Deletions in red" },
-                                    { icon: <IconPlus size={13} style={{ color: "#22c55e" }} />, text: "Additions in green" },
-                                    { icon: <IconEye size={13} />, text: "Toggle highlights" },
-                                ].map(({ icon, text }) => (
-                                    <span
-                                        key={text}
-                                        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white border border-border text-brand-dark shadow-sm"
-                                    >
-                                        {icon} {text}
-                                    </span>
-                                ))}
+                            <div className="lg:max-h-[calc(100vh-14rem)] overflow-y-auto custom-scrollbar pr-4 -mr-4 pb-12 lg:pb-0">
+                                <div className="flex flex-col gap-5 mt-4">
+                                    <p className="text-brand-sage leading-relaxed">
+                                        Spot changes instantly with SandeshPDF’s Compare PDF tool. Compare two PDF files side-by-side to highlight additions, deletions, and modifications.
+                                    </p>
+                                    <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+                                    <ul className="flex flex-col gap-2.5">
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span><strong>Visual Highlights:</strong> Color-coded changes show exactly what’s different.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span><strong>Side-by-Side View:</strong> See original and revised versions simultaneously.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span><strong>Detailed Report:</strong> Generate a summary of all changes made.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span><strong>Version Control:</strong> Essential for tracking contract revisions.</span>
+                                        </li>
+                                    </ul>
+                                    <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+                                    <ul className="flex flex-col gap-2.5">
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span>Contract Review: Verify changes made by legal teams.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span>Editing Proofing: Check drafts against final versions.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#7C3AED]" />
+                                            <span>Audit Trails: Track modifications in financial reports.</span>
+                                        </li>
+                                    </ul>
+                                    <p className="text-sm font-medium text-brand-dark mt-2">
+                                        Never miss a change with our PDF comparison tool.
+                                    </p>
+                                </div>
                             </div>
                         </motion.div>
 
@@ -590,7 +619,7 @@ export default function ComparePdfPage() {
     if (step === "processing") {
         return (
             <div
-                className="min-h-screen flex flex-col"
+                className="min-h-screen flex flex-col pt-16"
                 style={{ background: "var(--brand-white)" }}
             >
                 <Navbar />
@@ -649,7 +678,7 @@ export default function ComparePdfPage() {
 
     return (
         <div
-            className="h-screen flex flex-col overflow-hidden"
+            className="h-screen flex flex-col overflow-hidden pt-16"
             style={{ background: "var(--brand-white)" }}
         >
             <Navbar />
@@ -688,25 +717,6 @@ export default function ComparePdfPage() {
                 </div>
 
                 <div className="flex-1" />
-
-                {/* Show changes only toggle */}
-                <button
-                    id="toggle-changes-only"
-                    onClick={() => {
-                        setShowChangesOnly((v) => !v);
-                        if (!showChangesOnly && changedPageList.length > 0) {
-                            goToPage(changedPageList[0]);
-                        }
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                    style={showChangesOnly
-                        ? { background: ACCENT, borderColor: ACCENT, color: "white" }
-                        : { background: "white", borderColor: "#E0DED9", color: "#8C886B" }
-                    }
-                >
-                    <IconEye size={13} />
-                    {showChangesOnly ? "All pages" : "Changes only"}
-                </button>
 
                 {/* Highlight toggle */}
                 <button
@@ -930,3 +940,5 @@ export default function ComparePdfPage() {
         </div>
     );
 }
+
+

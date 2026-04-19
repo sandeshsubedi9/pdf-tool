@@ -45,16 +45,61 @@ export default function PptxToPdfPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Share your slides without compatibility issues using SandeshPDF’s PowerPoint to PDF tool. Convert PPTX files into universal PDFs that preserve animations as static slides and maintain design integrity.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span><strong>Design Preservation:</strong> Keep fonts, colors, and layouts intact.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span><strong>Universal Viewing:</strong> Recipients don’t need PowerPoint to view your slides.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span><strong>File Size Reduction:</strong> Often creates smaller files than the original PPT.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span><strong>Secure Distribution:</strong> Prevent unauthorized editing of your presentation.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span>Handouts: Distribute slide decks for meetings or conferences.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span>Portfolios: Showcase design work in a stable format.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C05621]" />
+                    <span>Archiving: Save final versions of presentations for records.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Make your presentations portable with our PowerPoint to PDF converter.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PowerPoint to PDF"
-            description="Save your presentation slides as a PDF for easy presenting and sharing."
+            title="PowerPoint to PDF - Convert Presentations to Shareable Files"
+            description={descriptionContent}
             icon={<IconPresentation size={28} stroke={1.5} />}
             accentColor="#C05621"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -108,3 +153,4 @@ export default function PptxToPdfPage() {
         </ToolLayout>
     );
 }
+

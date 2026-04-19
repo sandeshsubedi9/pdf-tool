@@ -25,11 +25,13 @@ import React, { useEffect, useState } from "react";
 
 interface RateLimitModalProps {
   open: boolean;
+  limit?: number; // Added to show actual limit in the text
   resetAt: number; // Unix ms
   onClose: () => void;
 }
 
-export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) {
+export function RateLimitModal({ open, limit = 3, resetAt, onClose }: RateLimitModalProps) {
+
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   // Live countdown
@@ -170,9 +172,10 @@ export function RateLimitModal({ open, resetAt, onClose }: RateLimitModalProps) 
           marginBottom: "36px",
           padding: "0 10px",
         }}>
-          To ensure high speed for everyone, we limit free tier to <strong style={{ color: "#0f172a" }}>3 files per hour</strong>.
+          To ensure high speed for everyone, we limit free tier to <strong style={{ color: "#0f172a" }}>{limit} files per hour</strong>.
           Resets in <strong style={{ color: "#f97316" }}>{minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`}</strong>.
         </p>
+
 
         {/* Divider */}
         <div style={{ height: 1, background: "#f1f5f9", marginBottom: "32px" }} />

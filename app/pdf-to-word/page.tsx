@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
 import { RateLimitModal } from "@/components/RateLimitModal";
 
+
 export default function PdfToWordPage() {
     const [files, setFiles] = useState<File[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -45,22 +46,69 @@ export default function PdfToWordPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Need to edit a PDF? SandeshPDF’s PDF to Word converter transforms your static files into fully editable Microsoft Word documents. Our PDF to DOCX converter online preserves formatting, tables, and images for seamless editing.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Accurate Conversion:</strong> Maintain fonts, layouts, and graphics during conversion.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Editable Output:</strong> Get a .docx file ready for immediate changes in Word.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Table Preservation:</strong> Keep complex tables and data structures intact.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span><strong>Fast & Free:</strong> Convert PDF to Word online without watermarks.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Update resumes: Modify your CV stored as a PDF.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Revise contracts: Edit clauses in legal agreements.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1A56DB]" />
+                    <span>Repurpose content: Turn reports into blog posts or articles.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Stop re-typing. Use our PDF to Word file converter to edit with ease.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PDF to Word"
-            description="Convert your PDF into a fully editable Word document (.docx). Preserving layout, tables, images, and fonts."
+            title="PDF to Word - Convert PDFs to Editable DOCX Documents"
+            description={descriptionContent}
             icon={<IconFileWord size={28} stroke={1.5} />}
             accentColor="#1A56DB"
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
+
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
                 {!success ? (
                     <>
                         <FileUpload
+
                             accept={{ "application/pdf": [".pdf"] }}
                             multiple={false}
                             files={files}
@@ -105,3 +153,5 @@ export default function PdfToWordPage() {
         </ToolLayout>
     );
 }
+
+

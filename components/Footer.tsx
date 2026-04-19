@@ -42,9 +42,9 @@ export default function Footer() {
                             </span>
                         </a>
                         <p className="text-sm leading-relaxed max-w-xs" style={{ color: "#A09888" }}>
-                            The fastest and simplest online tool suite for working with PDF
-                            files. Completely free, always.
+                            A fast and straightforward online tool suite for working with PDF files.
                         </p>
+
                         {/* Socials */}
                         <div className="flex gap-3 mt-1">
                             {[

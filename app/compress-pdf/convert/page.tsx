@@ -275,9 +275,10 @@ export default function CompressPdfConvertPage() {
             {/* Rate limit modal — shown automatically when enforceLimit() returns allowed=false */}
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
+
             <Navbar />
 
             {/* Dot grid */}
@@ -471,4 +472,6 @@ export default function CompressPdfConvertPage() {
         </div>
     );
 }
+
+
 

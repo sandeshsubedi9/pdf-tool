@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * components/UsageBadge.tsx
@@ -32,16 +32,16 @@ export function UsageBadge() {
   const { remaining, limit } = status;
   const pct = limit === Infinity ? 1 : remaining / limit;
 
-  let color = "#22c55e";      // green — plenty left
+  let color = "#22c55e";      // green - plenty left
   let bg = "rgba(34,197,94,0.10)";
   let border = "rgba(34,197,94,0.25)";
 
   if (pct <= 0) {
-    color = "#ef4444";        // red — exhausted
+    color = "#ef4444";        // red - exhausted
     bg = "rgba(239,68,68,0.10)";
     border = "rgba(239,68,68,0.25)";
   } else if (pct <= 0.4) {
-    color = "#f97316";        // orange — running low
+    color = "#f97316";        // orange - running low
     bg = "rgba(249,115,22,0.10)";
     border = "rgba(249,115,22,0.25)";
   }
@@ -99,3 +99,4 @@ export function UsageBadge() {
     </div>
   );
 }
+

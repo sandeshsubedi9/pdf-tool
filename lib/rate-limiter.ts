@@ -33,36 +33,48 @@ export interface RateLimitResult {
 export async function checkRateLimit(key: string, tier: UserTier = "anonymous"): Promise<RateLimitResult> {
   const cfg = LIMITS[tier];
 
-  // Premium users instantly bypass DB checks exactly
+  // Premium users instantly bypass DB checks
   if (tier === "premium") {
     return { allowed: true, remaining: Infinity, resetAt: 0, limit: Infinity };
   }
 
   await connectToDatabase();
   const now = Date.now();
-  const existing = await RateLimit.findOne({ key });
+  const windowMs = cfg.windowMs;
 
-  // 1. No record, or the 1-hour window expired
+  /*
+   * Implementation of Sliding Window in MongoDB:
+   * 1. Try to find an existing record that HAS NOT EXPIRED.
+   * 2. If it exists and count < max -> Increment count and EXTEND resetAt (Sliding).
+   * 3. If it doesn't exist or IS EXPIRED -> Upsert with count: 1 and new resetAt.
+   */
+
+  // First, find current state to see if it's expired
+  let existing = await RateLimit.findOne({ key });
+
   if (!existing || now >= existing.resetAt.getTime()) {
-    const resetDate = new Date(now + cfg.windowMs);
-    
-    if (existing) {
-      existing.count = 1;
-      existing.resetAt = resetDate;
-      await existing.save();
-    } else {
-      await RateLimit.create({ key, count: 1, resetAt: resetDate });
-    }
+    // expired or new: Reset/Create
+    const resetDate = new Date(now + windowMs);
+    const updated = await RateLimit.findOneAndUpdate(
+      { key },
+      { 
+        $set: { 
+          count: 1, 
+          resetAt: resetDate 
+        } 
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     return {
       allowed: true,
       remaining: cfg.max - 1,
-      resetAt: resetDate.getTime(),
+      resetAt: updated.resetAt.getTime(),
       limit: cfg.max,
     };
   }
 
-  // 2. Window is still active — Check count limit
+  // Record is active. Check limit.
   if (existing.count >= cfg.max) {
     return {
       allowed: false,
@@ -72,17 +84,31 @@ export async function checkRateLimit(key: string, tier: UserTier = "anonymous"):
     };
   }
 
-  // 3. Allowed — Increment count
-  existing.count += 1;
-  await existing.save();
+  // Not at limit yet. Atomic increment and sliding timer reset.
+  const updated = await RateLimit.findOneAndUpdate(
+    { key, count: { $lt: cfg.max }, resetAt: { $gt: new Date(now) } },
+    { 
+      $inc: { count: 1 }, 
+      $set: { resetAt: new Date(now + windowMs) } 
+    },
+    { new: true }
+  );
+
+  // If 'updated' is null here, it means between our 'findOne' and 'findOneAndUpdate',
+  // another request pushed it over the limit or it expired.
+  if (!updated) {
+    // Re-fetch to be sure of the state
+    return checkRateLimit(key, tier);
+  }
 
   return {
     allowed: true,
-    remaining: cfg.max - existing.count,
-    resetAt: existing.resetAt.getTime(),
+    remaining: Math.max(0, cfg.max - updated.count),
+    resetAt: updated.resetAt.getTime(),
     limit: cfg.max,
   };
 }
+
 
 /**
  * Peek at the current usage without incrementing.

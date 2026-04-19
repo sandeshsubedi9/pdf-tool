@@ -1,36 +1,41 @@
-"use client";
+﻿"use client";
 import React from "react";
 import { motion } from "motion/react";
-import { IconShieldLock, IconDeviceLaptop, IconInfinity, IconLanguage } from "@tabler/icons-react";
+import {
+    IconShieldLock,
+    IconDeviceLaptop,
+    IconFreeRights,
+    IconBolt,
+} from "@tabler/icons-react";
 
 const FEATURES = [
     {
         icon: IconShieldLock,
         title: "Your files stay private",
-        body: "All uploaded files are processed on encrypted servers and automatically deleted after one hour. We never store or share your data.",
+        body: "Every file you upload is processed securely on our backend and discarded immediately after your task completes. We do not read, store, or share your documents.",
         accent: "#047C58",
         bg: "#e6f4ef",
     },
     {
         icon: IconDeviceLaptop,
         title: "Works on any device",
-        body: "PDFTool runs fully in your browser. There is no app to download or plugin to install. Works on Mac, Windows, Linux, iPhone and Android.",
+        body: "PDFTool runs entirely in your browser. No downloads, no plugins, no OS restrictions. Works on Mac, Windows, Linux, iPhone, and Android.",
         accent: "#8C886B",
         bg: "#f0ede4",
     },
     {
-        icon: IconInfinity,
-        title: "Unlimited & always free",
-        body: "Every tool on PDFTool is free to use without limits. No watermarks, no hidden fees, and no account required.",
-        accent: "#342005",
-        bg: "#ede9de",
-    },
-    {
-        icon: IconLanguage,
-        title: "Available worldwide",
-        body: "PDFTool is available in 25+ languages, serving users from more than 180 countries around the globe.",
+        icon: IconFreeRights,
+        title: "Free, with no hidden walls",
+        body: "Most tools are completely free to use without creating an account. No watermarks on your output files, no credit card required to get started.",
         accent: "#047C58",
         bg: "#e6f4ef",
+    },
+    {
+        icon: IconBolt,
+        title: "Fast and straightforward",
+        body: "Upload, process, download - that's the whole flow. Our toolset is deliberately simple so you can finish PDF tasks in seconds, not minutes.",
+        accent: "#8C886B",
+        bg: "#f0ede4",
     },
 ];
 
@@ -53,8 +58,8 @@ export default function Features() {
                         Built for people who work with PDFs every day.
                     </h2>
                     <p className="mt-4 text-brand-sage text-lg">
-                        Fast, reliable, and thoughtfully designed so you can get things done
-                        without the hassle.
+                        Fast, reliable, and thoughtfully designed - so you can get things done
+                        without the hassle of heavy software or subscription paywalls.
                     </p>
                 </motion.div>
 
@@ -87,28 +92,8 @@ export default function Features() {
                         );
                     })}
                 </div>
-
-                {/* Stats strip */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 pt-12 border-t border-border"
-                >
-                    {[
-                        { value: "2M+", label: "Active Users" },
-                        { value: "36", label: "PDF Tools" },
-                        { value: "180+", label: "Countries" },
-                        { value: "25+", label: "Languages" },
-                    ].map((stat) => (
-                        <div key={stat.label} className="text-center">
-                            <p className="text-3xl font-bold text-brand-teal">{stat.value}</p>
-                            <p className="text-sm text-brand-sage mt-1">{stat.label}</p>
-                        </div>
-                    ))}
-                </motion.div>
             </div>
         </section>
     );
 }
+

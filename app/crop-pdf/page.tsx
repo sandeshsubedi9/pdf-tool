@@ -19,10 +19,55 @@ export default function CropPdfPage() {
         router.push("/crop-pdf/crop");
     };
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Focus on the content that matters with SandeshPDF’s Crop PDF tool. Remove white space, margins, or unwanted sections from your PDF pages to create cleaner, more professional documents.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span><strong>Custom Cropping:</strong> Define exact crop areas for each page.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span><strong>Margin Removal:</strong> Eliminate excessive white space to save paper and ink.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span><strong>Content Focus:</strong> Highlight specific sections by cropping out distractions.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span><strong>Batch Apply:</strong> Apply the same crop settings to all pages.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span>Presentation Slides: Remove speaker notes or margins for projection.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span>Forms: Trim borders for a tighter fit in folders.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#1a1a2e]" />
+                    <span>Images: Clean up scanned documents with messy edges.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Refine your layout with our PDF cropper tool.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Crop PDF"
-            description="Crop any page of your PDF to remove unwanted margins or white space. Define a crop box per page, resize or move it, then download your trimmed PDF."
+            title="Crop PDF - Trim Margins and Remove Unwanted Areas"
+            description={descriptionContent}
             icon={<IconCrop size={28} stroke={1.5} />}
             accentColor="#1a1a2e"
         >

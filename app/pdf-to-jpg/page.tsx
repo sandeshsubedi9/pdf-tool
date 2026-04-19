@@ -66,10 +66,55 @@ export default function PdfToJpgPage() {
         router.push(`/pdf-to-jpg/${mode}`);
     };
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Need to share a document as an image? SandeshPDF’s PDF to JPG tool offers a powerful two-in-one solution: instantly convert every page of your PDF into high-resolution JPG files, or extract just the embedded images and photos from inside the document without converting the text.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span><strong>Two-in-One Tool:</strong> Choose to convert entire pages to images or just extract embedded photos.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span><strong>High Resolution:</strong> Convert pages to crisp, clear images that capture every detail.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span><strong>Lossless Extraction:</strong> Pull photos out of the PDF exactly as they were originally uploaded.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span><strong>Zip Export:</strong> Download all your isolated images neatly packaged in a ZIP file.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span>Asset Recovery: Retrieve original photos from presentation slides or brochures.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span>Social Media: Convert informative PDF pages into engaging visual posts.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#EAB308]" />
+                    <span>Web Design: Repurpose document content for website carousels and portfolios.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Turn your documents into visuals with our PDF to JPG online free tool.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="PDF to JPG"
-            description="Convert PDF pages to high-quality JPG images, or extract embedded images directly from your PDF."
+            title="PDF to JPG - Convert PDF Pages to High-Quality Images"
+            description={descriptionContent}
             icon={<IconPhoto size={28} stroke={1.5} />}
             accentColor="#EAB308"
         >

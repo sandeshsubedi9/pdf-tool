@@ -200,6 +200,7 @@ const NAV_ITEMS = [
                 iconColor: "#64748b",
                 items: [
                     { label: "Extract Images", href: "/extract-images", icon: IconPhotoSearch, bg: "#f1f5f9", iconColor: "#64748b" },
+                    { label: "Search PDF", href: "/search-pdf", icon: IconSearch, bg: "#f1f5f9", iconColor: "#64748b" },
                 ],
             },
         ],

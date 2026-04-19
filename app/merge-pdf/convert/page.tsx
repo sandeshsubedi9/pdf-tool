@@ -226,7 +226,7 @@ export default function MergePdfConvertPage() {
         <div className="h-screen flex flex-col relative overflow-hidden pt-16" style={{ background: "var(--brand-white)" }}>
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <Navbar />
@@ -373,3 +373,4 @@ export default function MergePdfConvertPage() {
         </div>
     );
 }
+

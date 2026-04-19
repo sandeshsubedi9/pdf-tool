@@ -50,16 +50,61 @@ export default function PdfToPptxPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Revitalize your presentations with SandeshPDF’s PDF to PowerPoint tool. Convert static PDF slides into editable PPTX files, allowing you to update content, add animations, and customize designs.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span><strong>Slide Conversion:</strong> Turn PDF pages into individual, editable PowerPoint slides.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span><strong>Layout Preservation:</strong> Maintain original text boxes, images, and backgrounds.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span><strong>Editable Elements:</strong> Modify text, move images, and change themes easily.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span><strong>Quick Workflow:</strong> Convert PDF to PPT in seconds for immediate use.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span>Update old decks: Refresh past presentations with new data.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span>Reuse content: Extract slides from a PDF report for a meeting.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#C43E1C]" />
+                    <span>Customize designs: Add branding or animations to existing slide content.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Bring your slides to life with our PDF to PowerPoint converter online.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PDF to PowerPoint"
-            description="Turn your PDF files into polished PowerPoint presentations (.pptx) with every page as a high-resolution slide."
+            title="PDF to PowerPoint - Convert PDFs to Editable Presentations"
+            description={descriptionContent}
             icon={<IconPresentation size={28} stroke={1.5} />}
             accentColor="#C43E1C" // PowerPoint orange
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -108,3 +153,4 @@ export default function PdfToPptxPage() {
         </ToolLayout>
     );
 }
+

@@ -351,9 +351,10 @@ export default function RotatePdfToolPage() {
         <div className="h-screen flex flex-col overflow-hidden" style={{ background: "var(--brand-white)" }}>
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
+
             <Navbar />
 
             {/* Dot background */}
@@ -543,3 +544,5 @@ export default function RotatePdfToolPage() {
         </div>
     );
 }
+
+

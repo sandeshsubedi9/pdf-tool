@@ -38,16 +38,61 @@ export default function PdfToTxtPage() {
         }
     });
 
+    const descriptionContent = (
+        <div className="flex flex-col gap-5 mt-4">
+            <p className="text-brand-sage leading-relaxed">
+                Need just the words? SandeshPDF’s PDF to Text tool strips away formatting and images to extract pure text from your PDF files. Perfect for coding, data analysis, or quick copying.
+            </p>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span><strong>Raw Text Extraction:</strong> Get clean .txt files without layout clutter.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span><strong>Fast Processing:</strong> Extract text from large documents instantly.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span><strong>Copy-Paste Ready:</strong> Ideal for pasting into code editors or note apps.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span><strong>Lightweight Output:</strong> Create tiny text files from heavy PDFs.</span>
+                </li>
+            </ul>
+            <h2 className="text-xl font-bold text-brand-dark mt-2">When to Use This Tool</h2>
+            <ul className="flex flex-col gap-2.5">
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span>Data Mining: Extract content for natural language processing.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span>Coding: Pull text snippets for development projects.</span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm text-brand-sage leading-relaxed">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#6B7280]" />
+                    <span>Quick Reference: Copy terms and conditions without formatting issues.</span>
+                </li>
+            </ul>
+            <p className="text-sm font-medium text-brand-dark mt-2">
+                Get the content you need with our PDF to Text converter.
+            </p>
+        </div>
+    );
+
     return (
         <ToolLayout
-            title="Convert PDF to Text"
-            description="Extract raw unformatted text content from your PDF documents."
+            title="PDF to Text - Extract Raw Text from PDF Documents"
+            description={descriptionContent}
             icon={<IconFileCode size={28} stroke={1.5} />}
             accentColor="#6B7280" // neutral grey
         >
             <RateLimitModal
                 open={!!limitResult && !limitResult.allowed}
-                resetAt={limitResult?.resetAt ?? 0}
+                limit={limitResult?.limit} resetAt={limitResult?.resetAt ?? 0}
                 onClose={clearLimitResult}
             />
             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-border">
@@ -96,3 +141,4 @@ export default function PdfToTxtPage() {
         </ToolLayout>
     );
 }
+

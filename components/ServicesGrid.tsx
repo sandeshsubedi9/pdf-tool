@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import {
     IconFile,
     IconFileArrowRight,
-    IconFiles,
     IconScissors,
     IconArrowsJoin2,
     IconLock,
@@ -88,10 +87,8 @@ const SERVICES: Service[] = [
     { path: "/compare-pdf", title: "Compare PDF", description: "Highlight the differences between two PDFs.", icon: IconEye, category: "Security" },
 
     // ── Extras
-    { id: "scan-to-pdf", title: "Scan to PDF", description: "Use your camera to scan a document to PDF.", icon: IconScan, category: "Extras" },
     { path: "/extract-images", title: "Extract Images", description: "Pull all images out of a PDF document.", icon: IconPhotoSearch, category: "Extras" },
-    { id: "search-pdf", title: "Search PDF", description: "Find and highlight text across your PDF.", icon: IconSearch, category: "Extras" },
-    { id: "flatten-pdf", title: "Flatten PDF", description: "Merge form fields and annotations into the page.", icon: IconFiles, category: "Extras" },
+    { path: "/search-pdf", title: "Search PDF", description: "Find and highlight text across your PDF.", icon: IconSearch, category: "Extras" },
 ];
 
 const CATEGORIES = ["All", "Organise", "Optimise", "Convert", "Edit", "Security", "Extras"];
