@@ -194,12 +194,27 @@ async function embedSignaturesIntoPdf(
         const hFrac = placed.height / 100;
 
         const x = xFrac * pdfPageWidth;
-        const w = wFrac * pdfPageWidth;
-        const h = hFrac * pdfPageHeight;
-        // PDF coords: y from bottom, so flip
-        const y = pdfPageHeight - (yFrac * pdfPageHeight) - h;
+        const boxW = wFrac * pdfPageWidth;
+        const boxH = hFrac * pdfPageHeight;
 
-        page.drawImage(img, { x, y, width: w, height: h });
+        // Apply object-contain logic to prevent stretching
+        const scale = Math.min(boxW / img.width, boxH / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+
+        const offsetX = (boxW - drawW) / 2;
+        const offsetY = (boxH - drawH) / 2;
+
+        const drawX = x + offsetX;
+        // PDF coords: y from bottom, so flip
+        const drawY = pdfPageHeight - (yFrac * pdfPageHeight) - boxH + offsetY;
+
+        page.drawImage(img, {
+            x: drawX,
+            y: drawY,
+            width: drawW,
+            height: drawH,
+        });
     }
 
     return pdfDoc.save();
@@ -216,15 +231,17 @@ function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; colo
     const getPos = (e: React.MouseEvent | React.TouchEvent) => {
         const canvas = canvasRef.current!;
         const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
         if ("touches" in e) {
             return {
-                x: e.touches[0].clientX - rect.left,
-                y: e.touches[0].clientY - rect.top,
+                x: (e.touches[0].clientX - rect.left) * scaleX,
+                y: (e.touches[0].clientY - rect.top) * scaleY,
             };
         }
         return {
-            x: (e as React.MouseEvent).clientX - rect.left,
-            y: (e as React.MouseEvent).clientY - rect.top,
+            x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
+            y: ((e as React.MouseEvent).clientY - rect.top) * scaleY,
         };
     };
 
@@ -269,7 +286,49 @@ function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; colo
 
     const handleSave = () => {
         const canvas = canvasRef.current!;
-        onSave(canvas.toDataURL("image/png"));
+        const ctx = canvas.getContext("2d")!;
+        
+        // Find drawn bounds
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+        let hasPixels = false;
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const alpha = data[(y * canvas.width + x) * 4 + 3];
+                if (alpha > 0) {
+                    hasPixels = true;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+
+        if (!hasPixels) {
+            onSave(canvas.toDataURL("image/png"));
+            return;
+        }
+
+        // Add a tiny bit of padding
+        const padding = 10;
+        minX = Math.max(0, minX - padding);
+        minY = Math.max(0, minY - padding);
+        maxX = Math.min(canvas.width, maxX + padding);
+        maxY = Math.min(canvas.height, maxY + padding);
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const croppedCanvas = document.createElement("canvas");
+        croppedCanvas.width = width;
+        croppedCanvas.height = height;
+        const croppedCtx = croppedCanvas.getContext("2d")!;
+        croppedCtx.putImageData(ctx.getImageData(minX, minY, width, height), 0, 0);
+
+        onSave(croppedCanvas.toDataURL("image/png"));
     };
 
     return (

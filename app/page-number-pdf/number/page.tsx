@@ -226,7 +226,7 @@ export default function PageNumberToolPage() {
                         </p>
                         <button
                             onClick={() => router.push("/page-number-pdf")}
-                            className="bg-[#059669] text-white px-8 py-3.5 rounded-full font-semibold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg w-full"
+                            className="bg-[#047C58] text-white px-8 py-3.5 rounded-full font-semibold hover:bg-[#036245] transition-all shadow-md hover:shadow-lg w-full"
                         >
                             Number Another PDF
                         </button>
@@ -280,8 +280,8 @@ export default function PageNumberToolPage() {
             <div className="flex flex-1 overflow-hidden">
 
                 {/* Page grid */}
-                <main className="flex-1 overflow-y-auto p-6 md:p-8">
-                    <div className="max-w-5xl mx-auto flex flex-wrap justify-center gap-5 pb-24">
+                <main className="flex-1 overflow-y-auto p-2 md:p-4">
+                    <div className="w-full mx-auto flex flex-wrap justify-center gap-4 pb-12">
                         <AnimatePresence>
                             {thumbnails.map((thumb, i) => (
                                 <PageThumb
@@ -535,7 +535,7 @@ export default function PageNumberToolPage() {
                         <button
                             onClick={handleApply}
                             disabled={isProcessing}
-                            className="w-full bg-[#059669] text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-[0.98]"
+                            className="w-full bg-[#047C58] text-white py-3.5 rounded-xl font-bold hover:bg-[#036245] transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-[0.98]"
                         >
                             {isProcessing ? (
                                 <><IconLoader2 size={18} className="animate-spin" /> Processing…</>

@@ -465,7 +465,7 @@ function WholePageModal({
                                     }
                                     onApply(pages);
                                 }}
-                                className="px-6 py-2.5 text-sm font-bold bg-black text-white rounded-xl hover:bg-[#222] transition-colors cursor-pointer"
+                                className="px-6 py-2.5 text-sm font-bold bg-[#047C58] text-white rounded-xl hover:bg-[#036245] transition-colors cursor-pointer"
                             >
                                 Apply Redactions
                             </button>
@@ -755,7 +755,7 @@ export default function RedactPdfPage() {
 
     return (
         <div
-            className="h-[calc(100vh-64px)] flex flex-col pt-16"
+            className="h-screen flex flex-col pt-[64px]"
             style={{ background: "#fdfdfb" }}
         >
             <Navbar />
@@ -1023,12 +1023,11 @@ export default function RedactPdfPage() {
                         if (showZoomMenu) setShowZoomMenu(false);
                     }}
                 >
-                    <div className="py-8 flex flex-col items-center gap-8">
+                    <div className="flex flex-col items-center flex-1 w-full h-full p-2 md:p-4">
                         <div
-                            className="flex flex-col gap-10 pb-20"
+                            className="flex flex-col gap-4 pb-12 w-full max-w-none"
                             style={{
                                 width: `${Math.min(900 * zoom, 3000)}px`,
-                                maxWidth: "none",
                             }}
                         >
                             {pages.map((pg, i) => {
@@ -1172,7 +1171,7 @@ export default function RedactPdfPage() {
                         <button
                             onClick={handleExport}
                             disabled={isExporting || redactions.length === 0}
-                            className="w-full py-4 rounded-xl bg-black text-white text-[15px] font-bold hover:bg-[#222] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-black/15 active:scale-[0.98]"
+                            className="w-full py-4 rounded-xl bg-[#047C58] text-white text-[15px] font-bold hover:bg-[#036245] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-[#047C58]/15 active:scale-[0.98]"
                         >
                             {isExporting ? (
                                 <IconLoader2
@@ -1202,7 +1201,7 @@ export default function RedactPdfPage() {
                 <button
                     onClick={handleExport}
                     disabled={isExporting || redactions.length === 0}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-black text-white text-sm font-bold rounded-xl hover:bg-[#222] disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-black/20"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#047C58] text-white text-sm font-bold rounded-xl hover:bg-[#036245] disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-[#047C58]/20"
                 >
                     {isExporting ? (
                         <IconLoader2 size={15} className="animate-spin" />
