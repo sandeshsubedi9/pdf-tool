@@ -11,6 +11,7 @@ import {
     IconCheck,
     IconArrowLeft,
     IconFileTypePdf,
+    IconSettings,
 } from "@tabler/icons-react";
 import { downloadBlob, downloadZip, pdfToImages, splitPdf, PdfRange } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -105,6 +106,9 @@ function SplitPdfConvertContent() {
     // "Extract" Options
     const [extractInput, setExtractInput] = useState<string>("");
     const [mergeExtracted, setMergeExtracted] = useState(false);
+
+    // Mobile Responsive
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     // Load File & Render pages
     useEffect(() => {
@@ -526,9 +530,40 @@ function SplitPdfConvertContent() {
                     </div>
                 )}
 
-                {/* ── Right Options Sidebar ── */}
-                <div className="w-full lg:w-80 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2 lg:pb-0 pb-10">
-                    <div className="bg-white rounded-2xl border border-border shadow-sm flex flex-col gap-0">
+                {/* ── Mobile FAB ── */}
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#F97316] text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#ea580c] transition-all border-2 border-white active:scale-95"
+                    aria-label="Settings"
+                >
+                    <IconSettings size={28} stroke={1.5} />
+                </button>
+
+                {/* ── Mobile Backdrop ── */}
+                <AnimatePresence>
+                    {isMobileDrawerOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                        />
+                    )}
+                </AnimatePresence>
+
+                {/* ── Right Options Sidebar (Desktop) & Bottom Drawer (Mobile) ── */}
+                <div className={`
+                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    lg:static lg:bg-transparent lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:w-80 lg:shrink-0 lg:flex lg:overflow-y-auto lg:pr-2 lg:pb-0 custom-scrollbar
+                    ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh]" : "translate-y-full lg:max-h-full"}
+                `}>
+                    {/* Drawer drag handle */}
+                    <div className="lg:hidden flex items-center justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                    </div>
+
+                    <div className="bg-white lg:rounded-2xl lg:border lg:border-border lg:shadow-sm flex flex-col gap-0 overflow-y-auto custom-scrollbar flex-1 pb-8 lg:pb-0">
 
                         {/* Top Mode Tabs */}
                         <div className="flex border-b border-border">

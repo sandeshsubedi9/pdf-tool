@@ -10,6 +10,7 @@ import {
     IconFileMinus,
     IconCheck,
     IconX,
+    IconSettings,
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -91,7 +92,7 @@ export default function RemovePagesToolPage() {
 
     const [file, setFile] = useState<File | null>(null);
     const [pages, setPages] = useState<PageItem[]>([]);
-    
+
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -102,6 +103,9 @@ export default function RemovePagesToolPage() {
     const [removedPages, setRemovedPages] = useState<Set<number>>(new Set());
     const [inputValue, setInputValue] = useState("");
     const [inputError, setInputError] = useState<string | null>(null);
+
+    // Mobile Responsive
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     // ── Load file from FileStore ─────────────────────────────────────────────
     useEffect(() => {
@@ -140,7 +144,7 @@ export default function RemovePagesToolPage() {
                 canvas.height = viewport.height;
                 const ctx = canvas.getContext("2d")!;
                 await page.render({ canvasContext: ctx, viewport } as any).promise;
-                
+
                 loadedPages.push({
                     pageIndex: i,
                     thumbnail: canvas.toDataURL("image/jpeg", 0.8),
@@ -159,7 +163,7 @@ export default function RemovePagesToolPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setInputValue(val);
-        
+
         if (pages.length === 0) return;
 
         try {
@@ -186,7 +190,7 @@ export default function RemovePagesToolPage() {
     // ── Export ───────────────────────────────────────────────────────────────
     const handleExport = async () => {
         if (!file || pages.length === 0) return;
-        
+
         if (removedPages.size === pages.length) {
             setGlobalError("You cannot remove all pages from the PDF.");
             return;
@@ -198,7 +202,7 @@ export default function RemovePagesToolPage() {
         (async () => {
             try {
                 const { PDFDocument } = await import("pdf-lib");
-                
+
                 const ab = await file.arrayBuffer();
                 const sourceDoc = await PDFDocument.load(ab);
                 const pdfDoc = await PDFDocument.create();
@@ -212,10 +216,10 @@ export default function RemovePagesToolPage() {
 
                 const bytes = await pdfDoc.save();
                 const blob = new Blob([bytes as unknown as BlobPart], { type: "application/pdf" });
-                
+
                 const originalName = file.name.replace(/\.[^/.]+$/, "");
                 downloadBlob(blob, `${originalName}_removed.pdf`);
-                
+
                 setSuccess(true);
             } catch (err: any) {
                 setGlobalError(err?.message || "Export failed. Please try again.");
@@ -306,9 +310,9 @@ export default function RemovePagesToolPage() {
             )}
 
             {/* Split View */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
                 {/* Pages Grid */}
-                <main className="flex-1 overflow-y-auto p-6 md:p-8">
+                <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
                     <div className="max-w-6xl mx-auto flex flex-wrap justify-center gap-6 pb-24">
                         <AnimatePresence>
                             {pages.map((p) => {
@@ -326,9 +330,40 @@ export default function RemovePagesToolPage() {
                     </div>
                 </main>
 
-                {/* Right Sidebar */}
-                <aside className="w-[320px] shrink-0 border-l border-border bg-white flex flex-col h-full">
-                    <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-6">
+                {/* Mobile FAB */}
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#059669] text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-emerald-700 transition-all border-2 border-white active:scale-95"
+                    aria-label="Settings"
+                >
+                    <IconSettings size={28} stroke={1.5} />
+                </button>
+
+                {/* Mobile Backdrop */}
+                <AnimatePresence>
+                    {isMobileDrawerOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                        />
+                    )}
+                </AnimatePresence>
+
+                {/* Right Options Sidebar (Desktop) & Bottom Drawer (Mobile) */}
+                <aside className={`
+                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    lg:static lg:bg-transparent lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:w-[320px] lg:shrink-0 lg:border-l lg:border-border lg:h-full
+                    ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh]" : "translate-y-full lg:max-h-full"}
+                `}>
+                    {/* Drawer drag handle */}
+                    <div className="lg:hidden flex items-center justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-5 py-2 lg:py-6 flex flex-col gap-6 custom-scrollbar pb-8 lg:pb-6">
                         
                         <div className="flex flex-col gap-2">
                             <h3 className="text-sm font-bold text-brand-dark">Pages to Remove</h3>
@@ -372,11 +407,11 @@ export default function RemovePagesToolPage() {
                     </div>
 
                     {/* Apply Changes Button */}
-                    <div className="p-4 border-t border-border bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+                    <div className="p-4 border-t border-border bg-white lg:shadow-[0_-4px_12px_rgba(0,0,0,0.03)] shrink-0">
                         <button
                             onClick={handleExport}
                             disabled={isProcessing || !!inputError}
-                            className="w-full bg-[#059669] text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-[0.98]"
+                            className="w-full bg-[#059669] text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-[15px] active:scale-[0.98]"
                         >
                             {isProcessing ? (
                                 <><IconLoader2 size={18} className="animate-spin" /> Processing…</>
@@ -384,6 +419,7 @@ export default function RemovePagesToolPage() {
                                 <><IconDownload size={18} /> Apply Changes</>
                             )}
                         </button>
+                        <div className="lg:hidden h-safe-area-bottom w-full bg-white" />
                     </div>
                 </aside>
             </div>
@@ -417,13 +453,12 @@ function PageCard({
             style={{ width: 140 }}
         >
             <div
-                className={`relative w-full rounded-xl overflow-hidden border-2 transition-all duration-200 ${
-                    isRemoved 
-                        ? "border-red-400 opacity-60 shadow-sm" 
-                        : hovered 
-                            ? "border-red-400 shadow-xl" 
+                className={`relative w-full rounded-xl overflow-hidden border-2 transition-all duration-200 ${isRemoved
+                        ? "border-red-400 opacity-60 shadow-sm"
+                        : hovered
+                            ? "border-red-400 shadow-xl"
                             : "border-[#E0DED9] shadow-sm"
-                }`}
+                    }`}
                 style={{ aspectRatio: "0.707", background: "#f3f3f3" }}
             >
                 <img
@@ -433,28 +468,41 @@ function PageCard({
                     className="w-full h-full object-contain mix-blend-multiply"
                 />
 
-                {/* Red cross overlay when removed */}
+                {/* Red cross overlay when removed (Desktop only) */}
                 {isRemoved && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-red-500/10">
+                    <div className="hidden lg:flex absolute inset-0 items-center justify-center bg-red-500/10">
                         <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg">
                             <IconX size={40} stroke={2.5} />
                         </div>
                     </div>
                 )}
                 
-                {/* Hover overlay hint */}
+                {/* Mobile removed tint state */}
+                {isRemoved && (
+                    <div className="lg:hidden absolute inset-0 bg-slate-900/10 pointer-events-none" />
+                )}
+                
+                {/* Hover overlay hint (Desktop only) */}
                 {!isRemoved && hovered && (
-                    <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
+                    <div className="hidden lg:flex absolute inset-0 bg-red-500/10 items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 shadow-lg transition-transform hover:scale-110">
                             <IconX size={28} stroke={2.5} />
                         </div>
                     </div>
                 )}
+                
+                {/* Mobile-only checkbox indicator */}
+                <div className="lg:hidden absolute top-2 right-2 z-10">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors shadow-sm ${
+                        isRemoved ? "bg-red-500 border-red-500 text-white shadow-md" : "bg-white/90 border-slate-300"
+                    }`}>
+                        {isRemoved && <IconX size={14} stroke={3} />}
+                    </div>
+                </div>
             </div>
 
-            <div className={`text-[12px] font-bold px-3 py-1 rounded-full shadow-sm transition-colors ${
-                isRemoved ? "bg-red-100 text-red-500" : "bg-[#8C886B] text-white"
-            }`}>
+            <div className={`text-[12px] font-bold px-3 py-1 rounded-full shadow-sm transition-colors ${isRemoved ? "bg-red-100 text-red-500" : "bg-[#8C886B] text-white"
+                }`}>
                 Page {page.pageIndex}
             </div>
         </motion.div>

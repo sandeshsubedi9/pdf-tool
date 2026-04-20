@@ -14,9 +14,26 @@ export async function POST(req: NextRequest) {
 
         if (!response.ok) {
             const errorBody = await response.text();
+            // Log the raw, detailed error securely in the terminal/server logs
             console.error("Python service error (url-to-pdf):", errorBody);
+            
+            let userMessage = "We encountered an issue processing this URL. Please try again.";
+            
+            try {
+                const parsed = JSON.parse(errorBody);
+                if (parsed.detail) {
+                    // If it's a 400 (validation error), it's safe to show
+                    if (response.status === 400) {
+                        userMessage = typeof parsed.detail === "string" ? parsed.detail : "Invalid request parameters provided.";
+                    } 
+                    // Otherwise keep the generic 500 message so we don't expose stack traces/internal logic
+                }
+            } catch (e) {
+                // Ignore JSON parse errors, stick to the fallback message
+            }
+
             return NextResponse.json(
-                { error: `Internal conversion error: ${errorBody}` },
+                { error: userMessage },
                 { status: response.status }
             );
         }

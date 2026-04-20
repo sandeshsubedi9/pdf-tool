@@ -13,6 +13,7 @@ import {
     IconRotateClockwise2,
     IconRefresh,
     IconAlertCircle,
+    IconSettings,
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -80,8 +81,7 @@ function PageCard({
             transition={{ duration: 0.2 }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            className="relative flex flex-col items-center gap-2 select-none"
-            style={{ width: 160 }}
+            className="relative flex flex-col items-center gap-2 select-none w-[140px] md:w-[160px] shrink-0"
         >
             {/* Thumbnail container */}
             <div
@@ -127,7 +127,7 @@ function PageCard({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute inset-0 bg-black/35 flex items-center justify-center gap-3"
+                            className="hidden lg:flex absolute inset-0 bg-black/35 items-center justify-center gap-3"
                         >
                             {/* CCW */}
                             <button
@@ -148,6 +148,21 @@ function PageCard({
                         </motion.div>
                     )}
                 </AnimatePresence>
+                {/* Mobile rotate controls (inside card, bottom center) */}
+                <div className="lg:hidden absolute bottom-2 inset-x-0 flex items-center justify-center gap-3 w-full px-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRotateCCW(); }}
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white shadow-md active:scale-95 border border-white/20 active:bg-black/80"
+                    >
+                        <IconRotate2 size={16} stroke={2} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRotateCW(); }}
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white shadow-md active:scale-95 border border-white/20 active:bg-black/80"
+                    >
+                        <IconRotateClockwise size={16} stroke={2} />
+                    </button>
+                </div>
             </div>
 
             {/* Page label */}
@@ -172,6 +187,9 @@ export default function RotatePdfToolPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+    
+    // Mobile Responsive
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     // Load file from FileStore
     useEffect(() => {
@@ -401,8 +419,8 @@ export default function RotatePdfToolPage() {
                     </AnimatePresence>
 
                     {/* Pages grid – scrollable */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
-                        <div className="flex flex-wrap gap-8 items-start justify-center">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-5 md:p-8">
+                        <div className="flex flex-wrap gap-4 md:gap-8 items-start justify-center">
                             <AnimatePresence>
                                 {pages.map((page, i) => (
                                     <PageCard
@@ -418,85 +436,120 @@ export default function RotatePdfToolPage() {
                     </div>
                 </div>
 
-                {/* ── Right sidebar ─────────────────────────────── */}
-                <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4">
-                    <div className="bg-white rounded-2xl border border-border shadow-sm p-4 flex flex-col gap-3">
-                        <div className="border-b border-border pb-3">
-                            <h2 className="text-sm font-bold text-brand-dark">Rotate All Pages</h2>
-                            <p className="text-[11px] text-brand-sage mt-0.5">Apply rotation to every page at once</p>
-                        </div>
+                {/* ── Mobile FAB ── */}
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#059669] text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#047857] transition-all border-2 border-white active:scale-95"
+                    aria-label="Settings"
+                >
+                    <IconSettings size={28} stroke={1.5} />
+                </button>
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => rotateAll("ccw")}
-                                disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-brand-dark text-sm font-semibold hover:border-[#059669] hover:text-[#059669] hover:bg-emerald-50 transition-all cursor-pointer disabled:opacity-40"
-                                title="Rotate all counter-clockwise"
-                            >
-                                <IconRotate2 size={16} />
-                                CCW
-                            </button>
-                            <button
-                                onClick={() => rotateAll("cw")}
-                                disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-brand-dark text-sm font-semibold hover:border-[#059669] hover:text-[#059669] hover:bg-emerald-50 transition-all cursor-pointer disabled:opacity-40"
-                                title="Rotate all clockwise"
-                            >
-                                <IconRotateClockwise size={16} />
-                                CW
-                            </button>
-                        </div>
+                {/* ── Mobile Backdrop ── */}
+                <AnimatePresence>
+                    {isMobileDrawerOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                        />
+                    )}
+                </AnimatePresence>
 
-                        <button
-                            onClick={() => setShowResetConfirm(true)}
-                            disabled={isProcessing || pages.every((p) => p.rotation === 0)}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            <IconRefresh size={16} />
-                            Reset All Rotations
-                        </button>
+                {/* ── Right sidebar / Bottom Drawer ─────────────────────────────── */}
+                <div className={`
+                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-slate-50 lg:bg-transparent rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    lg:static lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:gap-4
+                    ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh] pt-2" : "translate-y-full lg:max-h-full"}
+                `}>
+                    {/* Drawer drag handle */}
+                    <div className="lg:hidden flex items-center justify-center pt-2 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                        <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
                     </div>
 
-                    {/* Stats */}
-                    <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
-                        <p className="text-[11px] text-brand-sage font-medium mb-2">Summary</p>
-                        <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between text-xs">
-                                <span className="text-brand-sage">Total pages</span>
-                                <span className="font-bold text-brand-dark">{pages.length}</span>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 px-5 py-4 lg:px-0 lg:py-0">
+                        <div className="bg-white rounded-2xl border border-border shadow-sm p-4 flex flex-col gap-3">
+                            <div className="border-b border-border pb-3">
+                                <h2 className="text-sm font-bold text-brand-dark">Rotate All Pages</h2>
+                                <p className="text-[11px] text-brand-sage mt-0.5">Apply rotation to every page at once</p>
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-brand-sage">Rotated pages</span>
-                                <span className="font-bold text-[#059669]">
-                                    {pages.filter((p) => p.rotation !== 0).length}
-                                </span>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => rotateAll("ccw")}
+                                    disabled={isProcessing}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-brand-dark text-sm font-semibold hover:border-[#059669] hover:text-[#059669] hover:bg-emerald-50 transition-all cursor-pointer disabled:opacity-40"
+                                    title="Rotate all counter-clockwise"
+                                >
+                                    <IconRotate2 size={16} />
+                                    CCW
+                                </button>
+                                <button
+                                    onClick={() => rotateAll("cw")}
+                                    disabled={isProcessing}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-brand-dark text-sm font-semibold hover:border-[#059669] hover:text-[#059669] hover:bg-emerald-50 transition-all cursor-pointer disabled:opacity-40"
+                                    title="Rotate all clockwise"
+                                >
+                                    <IconRotateClockwise size={16} />
+                                    CW
+                                </button>
                             </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-brand-sage">Original pages</span>
-                                <span className="font-bold text-brand-dark">
-                                    {pages.filter((p) => p.rotation === 0).length}
-                                </span>
+
+                            <button
+                                onClick={() => setShowResetConfirm(true)}
+                                disabled={isProcessing || pages.every((p) => p.rotation === 0)}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                <IconRefresh size={16} />
+                                Reset All Rotations
+                            </button>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
+                            <p className="text-[11px] text-brand-sage font-medium mb-2">Summary</p>
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-brand-sage">Total pages</span>
+                                    <span className="font-bold text-brand-dark">{pages.length}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-brand-sage">Rotated pages</span>
+                                    <span className="font-bold text-[#059669]">
+                                        {pages.filter((p) => p.rotation !== 0).length}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-brand-sage">Original pages</span>
+                                    <span className="font-bold text-brand-dark">
+                                        {pages.filter((p) => p.rotation === 0).length}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Export button */}
-                    <button
-                        onClick={handleExport}
-                        disabled={isProcessing || pages.length === 0}
-                        className={`w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl text-[15px] font-bold text-white transition-all cursor-pointer shadow-md active:scale-[0.98] ${
-                            isProcessing || pages.length === 0
-                                ? "bg-[#059669]/40 cursor-not-allowed"
-                                : "bg-[#059669] hover:bg-emerald-700 shadow-[#059669]/20"
-                        }`}
-                    >
-                        {isProcessing ? (
-                            <IconLoader2 size={20} className="animate-spin" />
-                        ) : (
-                            <IconDownload size={20} />
-                        )}
-                        <span>{isProcessing ? "Exporting…" : "Apply & Download"}</span>
-                    </button>
+                    <div className="p-5 pt-4 pb-8 lg:p-0 border-t border-border/50 lg:border-none bg-white lg:bg-transparent shrink-0 rounded-b-3xl lg:rounded-none">
+                        <button
+                            onClick={handleExport}
+                            disabled={isProcessing || pages.length === 0}
+                            className={`w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl text-[15px] font-bold text-white transition-all cursor-pointer shadow-md active:scale-[0.98] ${
+                                isProcessing || pages.length === 0
+                                    ? "bg-[#059669]/40 cursor-not-allowed"
+                                    : "bg-[#059669] hover:bg-emerald-700 shadow-[#059669]/20"
+                            }`}
+                        >
+                            {isProcessing ? (
+                                <IconLoader2 size={20} className="animate-spin" />
+                            ) : (
+                                <IconDownload size={20} />
+                            )}
+                            <span>{isProcessing ? "Exporting…" : "Apply & Download"}</span>
+                        </button>
+                    </div>
                 </div>
             </main>
 
