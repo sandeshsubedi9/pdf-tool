@@ -209,3 +209,4 @@ async def get_rendered_html(url: str) -> Tuple[str, str]:
         await browser.close()
         
     return html_content, title
+

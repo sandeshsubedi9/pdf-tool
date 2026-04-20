@@ -6,7 +6,6 @@ import { motion } from "motion/react";
 import {
     IconScan,
     IconLoader2,
-    IconDownload,
     IconFileTypePdf,
     IconAlertTriangle,
     IconCheck,
@@ -17,6 +16,7 @@ import {
 import { ocrPdf, OcrResult, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
+
 // ── Supported Tesseract language options ──────────────────────────────────────
 const LANGUAGES = [
     { value: "eng",         label: "English" },
@@ -81,7 +81,7 @@ export default function OcrPdfConvertPage() {
     const handleRun = async () => {
         if (!file) return;
         setStatus("processing");
-        const toastId = toast.loading("Running OCR — this may take a moment…");
+        const toastId = toast.loading("Running OCR, please wait...");
 
         try {
             const res = await ocrPdf(file, language, force);
@@ -91,17 +91,15 @@ export default function OcrPdfConvertPage() {
                 setStatus("already_text");
                 toast.success("PDF already has selectable text!", { id: toastId });
             } else {
+                downloadBlob(res.blob, res.filename);
                 setStatus("success");
-                toast.success("OCR complete — text is now selectable!", { id: toastId });
+                toast.success("OCR complete! Your file is downloading.", { id: toastId });
             }
-        } finally {
-            setStatus("idle"); // or whatever appropriate
+        } catch (err) {
+            console.error("OCR error:", err);
+            setStatus("error");
+            toast.error("OCR failed. Please try again.", { id: toastId });
         }
-    };
-
-    const handleDownload = () => {
-        if (!result) return;
-        downloadBlob(result.blob, result.filename);
     };
 
     const handleReset = () => {
@@ -111,18 +109,20 @@ export default function OcrPdfConvertPage() {
     };
 
     const handleForceRun = async () => {
-        setForce(true);
-        // Need to wait for state update, so call directly with force=true
         if (!file) return;
+        setForce(true);
         setStatus("processing");
-        const toastId = toast.loading("Re-running OCR (forced)…");
+        const toastId = toast.loading("Re-running OCR, please wait...");
         try {
             const res = await ocrPdf(file, language, true);
             setResult(res);
+            downloadBlob(res.blob, res.filename);
             setStatus("success");
-            toast.success("OCR complete!", { id: toastId });
-        } finally {
-            // handle finally if needed
+            toast.success("OCR complete! Your file is downloading.", { id: toastId });
+        } catch (err) {
+            console.error("Force OCR error:", err);
+            setStatus("error");
+            toast.error("OCR failed. Please try again.", { id: toastId });
         }
     };
 
@@ -137,7 +137,7 @@ export default function OcrPdfConvertPage() {
                 <main className="flex-1 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
                         <IconLoader2 size={36} className="animate-spin" style={{ color: ACCENT }} />
-                        <p className="text-brand-sage text-sm font-medium">Loading document…</p>
+                        <p className="text-brand-sage text-sm font-medium">Loading document...</p>
                     </div>
                 </main>
             </div>
@@ -166,74 +166,69 @@ export default function OcrPdfConvertPage() {
                     transition={{ duration: 0.5 }}
                     className="flex flex-col items-center text-center gap-6 w-full max-w-lg"
                 >
-
-                    {/* ── SUCCESS STATE ─────────────────────────────────────── */}
-                    {(status === "success" || status === "already_text") && result ? (
+                    {/* ── SUCCESS STATE ──────────────────────────────────────────── */}
+                    {status === "success" ? (
                         <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-border w-full flex flex-col items-center gap-6">
-                            {/* Icon */}
                             <span
                                 className="flex items-center justify-center w-20 h-20 rounded-full"
                                 style={{ background: ACCENT_BG, color: ACCENT }}
                             >
-                                {status === "already_text"
-                                    ? <IconInfoCircle size={40} stroke={2} />
-                                    : <IconCheck size={40} stroke={2.5} />
-                                }
+                                <IconCheck size={40} stroke={2.5} />
                             </span>
-
                             <div>
-                                <h1 className="text-2xl font-bold text-brand-dark">
-                                    {status === "already_text" ? "PDF Already Has Text!" : "OCR Complete!"}
-                                </h1>
+                                <h1 className="text-2xl font-bold text-brand-dark">OCR Complete!</h1>
                                 <p className="text-brand-sage mt-2 text-sm leading-relaxed">
-                                    {status === "already_text"
-                                        ? "This PDF already contains selectable text layers. We've returned it unchanged. You can force re-OCR if the existing text is garbled."
-                                        : "The scanned text has been recognised and embedded as a searchable, selectable layer — without altering the visual appearance."
-                                    }
+                                    Your searchable PDF has been downloaded. The text is now selectable and the visual appearance is unchanged.
                                 </p>
                             </div>
+                            <button
+                                onClick={handleReset}
+                                className="w-full py-3.5 rounded-xl text-white font-bold transition-all cursor-pointer shadow-md active:scale-[0.98] text-sm"
+                                style={{ background: ACCENT }}
+                                onMouseEnter={e => (e.currentTarget.style.background = ACCENT_HOVER)}
+                                onMouseLeave={e => (e.currentTarget.style.background = ACCENT)}
+                            >
+                                OCR Another File
+                            </button>
+                        </div>
 
-                            {/* File info */}
-                            <div className="w-full flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                                <IconFileTypePdf size={24} className="text-brand-sage shrink-0 mt-0.5" />
-                                <div className="min-w-0">
-                                    <p className="text-sm font-semibold truncate text-brand-dark">{result.filename}</p>
-                                    <p className="text-xs text-brand-sage mt-0.5">Ready to download</p>
-                                </div>
+                    ) : status === "already_text" && result ? (
+                        /* ── ALREADY HAS TEXT STATE ─────────────────────────────── */
+                        <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-border w-full flex flex-col items-center gap-6">
+                            <span
+                                className="flex items-center justify-center w-20 h-20 rounded-full"
+                                style={{ background: ACCENT_BG, color: ACCENT }}
+                            >
+                                <IconInfoCircle size={40} stroke={2} />
+                            </span>
+                            <div>
+                                <h1 className="text-2xl font-bold text-brand-dark">PDF Already Has Text!</h1>
+                                <p className="text-brand-sage mt-2 text-sm leading-relaxed">
+                                    This PDF already contains selectable text layers. You can force re-OCR if the existing text is garbled.
+                                </p>
                             </div>
-
-                            {/* Buttons */}
-                            <div className="flex flex-col sm:flex-row gap-3 w-full mt-1">
-                                {status === "already_text" && (
-                                    <button
-                                        onClick={handleForceRun}
-                                        className="flex-1 py-3.5 rounded-xl bg-white text-brand-dark font-semibold border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer shadow-sm active:scale-[0.98] text-sm flex items-center justify-center gap-2"
-                                    >
-                                        <IconRefresh size={16} />
-                                        Force Re-OCR
-                                    </button>
-                                )}
+                            <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                <button
+                                    onClick={handleForceRun}
+                                    className="flex-1 py-3.5 rounded-xl text-white font-bold transition-all cursor-pointer shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                                    style={{ background: ACCENT }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = ACCENT_HOVER)}
+                                    onMouseLeave={e => (e.currentTarget.style.background = ACCENT)}
+                                >
+                                    <IconRefresh size={16} />
+                                    Force Re-OCR
+                                </button>
                                 <button
                                     onClick={handleReset}
                                     className="flex-1 py-3.5 rounded-xl bg-white text-brand-dark font-semibold border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer shadow-sm active:scale-[0.98] text-sm"
                                 >
                                     New File
                                 </button>
-                                <button
-                                    onClick={handleDownload}
-                                    className="flex-1 py-3.5 rounded-xl text-white font-bold transition-all cursor-pointer shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
-                                    style={{ background: ACCENT }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = ACCENT_HOVER)}
-                                    onMouseLeave={e => (e.currentTarget.style.background = ACCENT)}
-                                >
-                                    <IconDownload size={18} />
-                                    Download PDF
-                                </button>
                             </div>
                         </div>
 
                     ) : (
-                        /* ── IDLE / PROCESSING / ERROR STATE ─────────────── */
+                        /* ── IDLE / PROCESSING / ERROR STATE ───────────────────── */
                         <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-border w-full flex flex-col items-center gap-6">
                             {/* Icon */}
                             <span
@@ -253,17 +248,15 @@ export default function OcrPdfConvertPage() {
                             <div>
                                 <h1 className="text-2xl font-bold text-brand-dark">
                                     {status === "processing"
-                                        ? "Running OCR…"
+                                        ? "Running OCR..."
                                         : status === "error"
                                             ? "OCR Failed"
                                             : "Make PDF Searchable"}
                                 </h1>
                                 <p className="text-brand-sage mt-2 text-sm leading-relaxed">
-                                    {status === "processing"
-                                        ? "Analysing each page and embedding a hidden text layer. This can take 5–30 seconds per page."
-                                        : status === "error"
-                                            ? "Something went wrong. Please try again or check the file."
-                                            : "Convert non-selectable PDF files into selectable and searchable PDF with high accuracy."}
+                                    {status === "error"
+                                        ? "Something went wrong. Please try again or check the file."
+                                        : "Convert non-selectable PDF files into selectable and searchable PDF with high accuracy."}
                                 </p>
                             </div>
 
@@ -332,7 +325,7 @@ export default function OcrPdfConvertPage() {
                                     {status === "processing" ? (
                                         <>
                                             <IconLoader2 size={17} className="animate-spin" />
-                                            Processing…
+                                            Processing...
                                         </>
                                     ) : status === "error" ? (
                                         <>
@@ -348,6 +341,12 @@ export default function OcrPdfConvertPage() {
                                 </button>
                             </div>
 
+                            {/* Don't close browser hint */}
+                            {status === "processing" && (
+                                <p className="text-center text-[11px] font-medium text-brand-sage animate-pulse leading-relaxed">
+                                    Don't close the browser tab. This may take a few moments.
+                                </p>
+                            )}
                         </div>
                     )}
                 </motion.div>
@@ -355,4 +354,3 @@ export default function OcrPdfConvertPage() {
         </div>
     );
 }
-
