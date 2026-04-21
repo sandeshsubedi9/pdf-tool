@@ -13,6 +13,7 @@ import {
     IconArrowLeft,
     IconFileTypePdf,
     IconChevronDown,
+    IconSettings,
 } from "@tabler/icons-react";
 import { imagesToPdf, downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -202,19 +203,22 @@ function ImageCard({
                 </p>
             </div>
 
-            {/* Mobile action row — always visible */}
-            <div className="md:hidden flex items-center gap-1 px-2 pb-2 bg-white">
+            {/* Mobile action row — icon only, red delete */}
+            <div className="md:hidden flex items-center border-t border-slate-100">
                 <button
                     onClick={onRotate}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-50 text-brand-sage hover:bg-[#EAB308]/10 hover:text-[#EAB308] text-xs font-medium transition-colors cursor-pointer"
+                    className="flex-1 flex items-center justify-center py-2 text-brand-sage hover:bg-[#EAB308]/10 hover:text-[#EAB308] transition-colors cursor-pointer"
+                    title="Rotate"
                 >
-                    <IconRotateClockwise size={13} /> Rotate
+                    <IconRotateClockwise size={16} />
                 </button>
+                <div className="w-px h-5 bg-slate-100" />
                 <button
                     onClick={onDelete}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-50 text-brand-sage hover:bg-red-50 hover:text-red-500 text-xs font-medium transition-colors cursor-pointer"
+                    className="flex-1 flex items-center justify-center py-2 text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
+                    title="Remove"
                 >
-                    <IconTrash size={13} /> Remove
+                    <IconTrash size={16} />
                 </button>
             </div>
         </motion.div>
@@ -302,6 +306,7 @@ export default function ImageToPdfConvertPage() {
     const [error, setError] = useState<string | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);  // true until we finish reading FileStore
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     // Load initial files from FileStore.
     // IMPORTANT: guard with hasInitialized so React Strict Mode's double-invoke
@@ -588,110 +593,143 @@ export default function ImageToPdfConvertPage() {
                         )}
                     </div>
 
-                    {/* ── Options Sidebar ── */}
-                    <div className="w-full lg:w-72 xl:w-80 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2 pb-10 lg:pb-0">
-                        <div className="bg-white rounded-2xl border border-border shadow-sm p-5 flex flex-col gap-5">
-                            <h2 className="text-sm font-bold text-brand-dark flex items-center gap-2">
-                                <IconFileTypePdf size={18} className="text-[#EAB308]" />
-                                PDF Options
-                            </h2>
+                {/* ── Options Sidebar / Mobile Bottom Drawer ── */}
 
-                            {/* Page size */}
-                            <CustomSelect
-                                label="Page Size"
-                                options={PAGE_SIZES}
-                                value={pageSize}
-                                onChange={setPageSize}
+                    {/* Mobile FAB */}
+                    <button
+                        onClick={() => setIsMobileDrawerOpen(true)}
+                        className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#EAB308] text-white rounded-full shadow-2xl flex items-center justify-center z-40 border-2 border-white active:scale-95"
+                        aria-label="Settings"
+                    >
+                        <IconSettings size={28} stroke={1.5} />
+                    </button>
+
+                    {/* Mobile Backdrop */}
+                    <AnimatePresence>
+                        {isMobileDrawerOpen && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsMobileDrawerOpen(false)}
+                                className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
                             />
+                        )}
+                    </AnimatePresence>
 
-                            {/* Orientation */}
-                            <div>
-                                <p className="text-xs font-bold text-brand-sage uppercase tracking-widest mb-2">Orientation</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(["portrait", "landscape"] as const).map((o) => (
-                                        <button
-                                            key={o}
-                                            onClick={() => setOrientation(o)}
-                                            className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${orientation === o
-                                                ? "border-[#EAB308] bg-[#EAB308]/8 text-[#ca9a04]"
-                                                : "border-slate-200 text-brand-sage hover:border-slate-300"
-                                                }`}
-                                        >
-                                            <span className={`border-2 rounded-sm ${o === "portrait" ? "w-6 h-8" : "w-8 h-6"} ${orientation === o ? "border-[#EAB308]" : "border-slate-300"}`} />
-                                            {o.charAt(0).toUpperCase() + o.slice(1)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                    <div className={`
+                        fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                        lg:static lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:w-72 lg:xl:w-80 lg:shrink-0 lg:flex lg:flex-col
+                        ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh] pt-2" : "translate-y-full lg:max-h-full"}
+                    `}>
+                        {/* Drawer handle */}
+                        <div className="lg:hidden flex items-center justify-center pt-2 pb-3 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                            <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+                        </div>
 
-                            {/* Margin */}
-                            <div>
-                                <p className="text-xs font-bold text-brand-sage uppercase tracking-widest mb-2">Margin</p>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {MARGIN_OPTIONS.map((m) => (
-                                        <button
-                                            key={m.value}
-                                            onClick={() => setMargin(m.value)}
-                                            className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${margin === m.value
-                                                ? "border-[#EAB308] bg-[#EAB308]/8 text-[#ca9a04]"
-                                                : "border-slate-200 text-brand-sage hover:border-slate-300"
-                                                }`}
-                                        >
-                                            <span
-                                                className={`w-8 h-6 border-2 rounded-sm flex items-center justify-center ${margin === m.value ? "border-[#EAB308]" : "border-slate-300"}`}
-                                                style={{ padding: m.value === "none" ? "0" : m.value === "small" ? "2px" : "4px" }}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 lg:px-0 pb-8 lg:pb-0">
+                            <div className="bg-white lg:rounded-2xl lg:border border-border lg:shadow-sm p-5 flex flex-col gap-5">
+                                <h2 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                                    <IconFileTypePdf size={18} className="text-[#EAB308]" />
+                                    PDF Options
+                                </h2>
+
+                                {/* Page size */}
+                                <CustomSelect
+                                    label="Page Size"
+                                    options={PAGE_SIZES}
+                                    value={pageSize}
+                                    onChange={setPageSize}
+                                />
+
+                                {/* Orientation */}
+                                <div>
+                                    <p className="text-xs font-bold text-brand-sage uppercase tracking-widest mb-2">Orientation</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(["portrait", "landscape"] as const).map((o) => (
+                                            <button
+                                                key={o}
+                                                onClick={() => setOrientation(o)}
+                                                className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${orientation === o
+                                                    ? "border-[#EAB308] bg-[#EAB308]/8 text-[#ca9a04]"
+                                                    : "border-slate-200 text-brand-sage hover:border-slate-300"
+                                                    }`}
                                             >
-                                                <span className={`flex-1 rounded-[2px] ${margin === m.value ? "bg-[#EAB308]/30" : "bg-slate-200"}`} style={{ minHeight: "100%" }} />
-                                            </span>
-                                            <span>{m.label}</span>
-                                            <span className="text-[9px] opacity-60">{m.sub}</span>
-                                        </button>
-                                    ))}
+                                                <span className={`border-2 rounded-sm ${o === "portrait" ? "w-6 h-8" : "w-8 h-6"} ${orientation === o ? "border-[#EAB308]" : "border-slate-300"}`} />
+                                                {o.charAt(0).toUpperCase() + o.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Merge toggle */}
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <div
-                                    className={`relative rounded-full transition-colors duration-200 border-2 ${mergeAll ? "bg-[#EAB308] border-[#EAB308]" : "bg-slate-200 border-slate-200"}`}
-                                    onClick={() => setMergeAll((v) => !v)}
-                                    style={{ height: "22px", width: "40px", flexShrink: 0 }}
+                                {/* Margin */}
+                                <div>
+                                    <p className="text-xs font-bold text-brand-sage uppercase tracking-widest mb-2">Margin</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {MARGIN_OPTIONS.map((m) => (
+                                            <button
+                                                key={m.value}
+                                                onClick={() => setMargin(m.value)}
+                                                className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${margin === m.value
+                                                    ? "border-[#EAB308] bg-[#EAB308]/8 text-[#ca9a04]"
+                                                    : "border-slate-200 text-brand-sage hover:border-slate-300"
+                                                    }`}
+                                            >
+                                                <span
+                                                    className={`w-8 h-6 border-2 rounded-sm flex items-center justify-center ${margin === m.value ? "border-[#EAB308]" : "border-slate-300"}`}
+                                                    style={{ padding: m.value === "none" ? "0" : m.value === "small" ? "2px" : "4px" }}
+                                                >
+                                                    <span className={`flex-1 rounded-[2px] ${margin === m.value ? "bg-[#EAB308]/30" : "bg-slate-200"}`} style={{ minHeight: "100%" }} />
+                                                </span>
+                                                <span>{m.label}</span>
+                                                <span className="text-[9px] opacity-60">{m.sub}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Merge toggle */}
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div
+                                        className={`relative rounded-full transition-colors duration-200 border-2 ${mergeAll ? "bg-[#EAB308] border-[#EAB308]" : "bg-slate-200 border-slate-200"}`}
+                                        onClick={() => setMergeAll((v) => !v)}
+                                        style={{ height: "22px", width: "40px", flexShrink: 0 }}
+                                    >
+                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${mergeAll ? "translate-x-5" : "translate-x-0.5"}`} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-brand-dark">Merge into one PDF</span>
+                                        <span className="text-[11px] text-brand-sage">All images in a single file</span>
+                                    </div>
+                                </label>
+
+                                {/* Error */}
+                                {error && (
+                                    <div className="p-3 bg-red-50 text-red-600 text-xs rounded-xl flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 mt-1 rounded-full bg-red-500 shrink-0" />
+                                        {error}
+                                    </div>
+                                )}
+
+                                {/* Convert button */}
+                                <button
+                                    onClick={handleConvert}
+                                    disabled={images.length === 0 || isProcessing}
+                                    className={`w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] text-sm ${images.length === 0
+                                        ? "bg-[#EAB308]/30 cursor-not-allowed shadow-none"
+                                        : isProcessing
+                                            ? "bg-[#EAB308] opacity-50 cursor-wait"
+                                            : "bg-[#EAB308] hover:bg-[#ca9a04] cursor-pointer"
+                                        }`}
                                 >
-                                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${mergeAll ? "translate-x-5" : "translate-x-0.5"}`} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-semibold text-brand-dark">Merge into one PDF</span>
-                                    <span className="text-[11px] text-brand-sage">All images in a single file</span>
-                                </div>
-                            </label>
-
-                            {/* Error */}
-                            {error && (
-                                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-xl flex items-start gap-2">
-                                    <span className="w-1.5 h-1.5 mt-1 rounded-full bg-red-500 shrink-0" />
-                                    {error}
-                                </div>
-                            )}
-
-                            {/* Convert button */}
-                            <button
-                                onClick={handleConvert}
-                                disabled={images.length === 0 || isProcessing}
-                                className={`w-full py-3.5 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] text-sm ${images.length === 0
-                                    ? "bg-[#EAB308]/30 cursor-not-allowed shadow-none"
-                                    : isProcessing
-                                        ? "bg-[#EAB308] opacity-50 cursor-wait"
-                                        : "bg-[#EAB308] hover:bg-[#ca9a04] cursor-pointer"
-                                    }`}
-                            >
-                                {isProcessing && <IconLoader2 className="animate-spin" size={18} />}
-                                {isProcessing ? "Converting…" : `Convert ${images.length > 0 ? images.length + " image" + (images.length > 1 ? "s" : "") + " " : ""}to PDF`}
-                            </button>
+                                    {isProcessing && <IconLoader2 className="animate-spin" size={18} />}
+                                    {isProcessing ? "Converting…" : `Convert ${images.length > 0 ? images.length + " image" + (images.length > 1 ? "s" : "") + " " : ""}to PDF`}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </main>
-
         </div>
     );
 }

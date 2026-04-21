@@ -24,6 +24,8 @@ import {
     IconChevronDown,
     IconDownload,
     IconAlertCircle,
+    IconDotsVertical,
+    IconSettings,
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -228,6 +230,8 @@ function PageCard({
     page,
     index,
     totalPages,
+    activeMobileCard,
+    setActiveMobileCard,
     onDelete,
     onRotate,
     onMoveLeft,
@@ -244,6 +248,8 @@ function PageCard({
     page: PageItem;
     index: number;
     totalPages: number;
+    activeMobileCard: string | null;
+    setActiveMobileCard: (id: string | null) => void;
     onDelete: () => void;
     onRotate: () => void;
     onMoveLeft: () => void;
@@ -262,6 +268,8 @@ function PageCard({
         // Match by color string
         return page.color === FILE_COLORS[i].badge;
     }) || FILE_COLORS[0];
+    
+    const isActive = hovered || activeMobileCard === page.id;
 
     return (
         <div
@@ -269,7 +277,7 @@ function PageCard({
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onDragOver={onDragOver}
-            style={{ width: 140 }}
+            className="w-[140px]"
         >
             <motion.div
                 layout
@@ -279,12 +287,22 @@ function PageCard({
                 transition={{ duration: 0.2 }}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
-                className={`relative flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing select-none group`}
-                style={{ width: 140 }}
+                className={`relative flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing select-none group w-full`}
             >
+                {/* Mobile Action Button (Three Dots) */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMobileCard(isActive ? null : page.id);
+                    }}
+                    className="lg:hidden absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white text-brand-dark shadow-md border border-slate-200 z-30 flex items-center justify-center active:scale-90"
+                >
+                    <IconDotsVertical size={16} stroke={2} />
+                </button>
+
                 {/* Add Buttons (Left) */}
                 <AnimatePresence>
-                    {hovered && (
+                    {isActive && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.7 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -312,7 +330,7 @@ function PageCard({
 
                 {/* Add Buttons (Right) */}
                 <AnimatePresence>
-                    {hovered && (
+                    {isActive && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.7 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -340,10 +358,10 @@ function PageCard({
 
                 {/* Thumbnail container */}
                 <div
-                    className={`relative w-full rounded-xl overflow-hidden border-2 transition-all duration-200 shadow-sm ${hovered ? "shadow-xl" : ""
+                    className={`relative w-full rounded-xl overflow-hidden border-2 transition-all duration-200 shadow-sm ${isActive ? "shadow-xl" : ""
                         }`}
                     style={{
-                        borderColor: hovered ? page.color : "#E0DED9",
+                        borderColor: isActive ? page.color : "#E0DED9",
                         aspectRatio: page.isBlankPage ? "0.707" : "0.707",
                         background: page.isBlankPage ? "#fafaf9" : "#f3f3f3",
                     }}
@@ -380,9 +398,9 @@ function PageCard({
                         </div>
                     )}
 
-                    {/* Action overlay on hover */}
+                    {/* Action overlay on hover or active */}
                     <AnimatePresence>
-                        {hovered && (
+                        {isActive && (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -424,7 +442,7 @@ function PageCard({
 
                 {/* Move arrows (always take up space to prevent layout jump, but fade in on hover) */}
                 <div
-                    className={`flex gap-1 mt-1 transition-all duration-200 ${hovered ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none translate-y-1"
+                    className={`flex gap-1 mt-1 transition-all duration-200 ${isActive ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none translate-y-1"
                         }`}
                 >
                     <button
@@ -515,6 +533,10 @@ export default function OrganisePdfConvertPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
+    
+    // Mobile Responsive
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+    const [activeMobileCard, setActiveMobileCard] = useState<string | null>(null);
 
     // Drag state for Pages
     const dragPageId = useRef<string | null>(null);
@@ -926,6 +948,7 @@ export default function OrganisePdfConvertPage() {
                     <div
                         ref={canvasScrollRef}
                         className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 relative"
+                        onClick={() => setActiveMobileCard(null)}
                         onDragOver={handleCanvasDragOver}
                         onDragLeave={stopDragScroll}
                         onDrop={stopDragScroll}
@@ -963,11 +986,13 @@ export default function OrganisePdfConvertPage() {
                         ) : (
                             <div className="flex flex-wrap gap-8 items-start justify-center">
                                 {pages.map((page, index) => (
-                                    <div key={page.id} className="py-2">
+                                    <div key={page.id} className="py-2" onClick={(e) => e.stopPropagation()}>
                                         <PageCard
                                             page={page}
                                             index={index}
                                             totalPages={pages.length}
+                                            activeMobileCard={activeMobileCard}
+                                            setActiveMobileCard={setActiveMobileCard}
                                             onDelete={() => deletePage(page.id)}
                                             onRotate={() => rotatePage(page.id)}
                                             onMoveLeft={() => movePage(index, index - 1)}
@@ -994,15 +1019,47 @@ export default function OrganisePdfConvertPage() {
                     </div>
                 </div>
 
-                {/* ── Right sidebar: source files ──────────── */}
-                <div className="w-full lg:w-80 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2 lg:pb-0 pb-10">
-                    <div className="bg-white rounded-2xl border border-border flex flex-col gap-0 shadow-sm min-h-[400px]">
-                        <div className="p-4 border-b border-border shrink-0">
-                            <h2 className="text-sm font-bold text-brand-dark">Source Files</h2>
-                            <p className="text-[11px] text-brand-sage mt-0.5">
-                                {sourceFiles.length} file{sourceFiles.length !== 1 ? "s" : ""} · Drag to reorder
-                            </p>
-                        </div>
+                {/* ── Mobile FAB ── */}
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#047C58] text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#036245] transition-all border-2 border-white active:scale-95"
+                    aria-label="Settings"
+                >
+                    <IconSettings size={28} stroke={1.5} />
+                </button>
+
+                {/* ── Mobile Backdrop ── */}
+                <AnimatePresence>
+                    {isMobileDrawerOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                        />
+                    )}
+                </AnimatePresence>
+
+                {/* ── Right sidebar: source files / Bottom Drawer ──────────── */}
+                <div className={`
+                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-slate-50 lg:bg-transparent rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    lg:static lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:w-80 lg:shrink-0 lg:flex lg:flex-col lg:overflow-y-auto lg:pr-2 lg:pb-0
+                    ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh] pt-2" : "translate-y-full lg:max-h-full"}
+                `}>
+                    {/* Drawer drag handle */}
+                    <div className="lg:hidden flex items-center justify-center pt-2 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                        <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto flex flex-col px-5 lg:px-0 lg:py-0 pb-10">
+                        <div className="bg-white lg:rounded-2xl lg:border border-border flex flex-col gap-0 lg:shadow-sm min-h-[400px]">
+                            <div className="p-4 border-b border-border shrink-0">
+                                <h2 className="text-sm font-bold text-brand-dark">Source Files</h2>
+                                <p className="text-[11px] text-brand-sage mt-0.5">
+                                    {sourceFiles.length} file{sourceFiles.length !== 1 ? "s" : ""} · Drag to reorder
+                                </p>
+                            </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2">
                             <Reorder.Group
@@ -1063,10 +1120,10 @@ export default function OrganisePdfConvertPage() {
                                 <span>{isProcessing ? "Exporting…" : "Export PDF"}</span>
                             </button>
                         </div>
-
                     </div>
                 </div>
-            </main>
+            </div>
+        </main>
         </div>
     );
 }
