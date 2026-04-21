@@ -549,6 +549,7 @@ async def add_watermark_endpoint(
         logger.error(f"Error adding watermark: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to add watermark: {str(e)}")
 
+@app.post("/crop/pdf")
 async def crop_pdf_endpoint(
     file: UploadFile = File(...),
     crops: str = Form(...),

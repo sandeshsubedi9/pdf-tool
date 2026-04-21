@@ -40,27 +40,29 @@ async def crop_pdf(file: UploadFile, crops_json: str) -> tuple[bytes, str]:
             continue
 
         page = doc.load_page(page_idx)
-        media_box = page.mediabox  # fitz.Rect: x0, y0, x1, y1 in PDF units
 
-        page_w = media_box.width
-        page_h = media_box.height
+        # Use page.rect — fitz coordinate space where y goes DOWN from top,
+        # exactly matching the frontend screen coordinates.
+        # DO NOT use page.mediabox: that lives in PDF user-space (y goes UP),
+        # but set_cropbox() expects fitz/screen-space (y goes DOWN).
+        page_rect = page.rect
+        page_w = page_rect.width
+        page_h = page_rect.height
 
-        # Percentages → PDF user-space units (origin bottom-left in PDF)
         x_pct: float = float(crop["x"]) / 100.0
         y_pct: float = float(crop["y"]) / 100.0
         w_pct: float = float(crop["w"]) / 100.0
         h_pct: float = float(crop["h"]) / 100.0
 
-        # x0, y0 are the top-left in screenspace → convert to PDF coords
-        # PDF y-axis is flipped (0 at bottom)
-        crop_x0 = media_box.x0 + x_pct * page_w
-        crop_y0 = media_box.y0 + (1.0 - y_pct - h_pct) * page_h
+        # Direct 1-to-1 mapping — no y-flip needed because both systems use y-down.
+        crop_x0 = page_rect.x0 + x_pct * page_w
+        crop_y0 = page_rect.y0 + y_pct * page_h
         crop_x1 = crop_x0 + w_pct * page_w
         crop_y1 = crop_y0 + h_pct * page_h
 
         crop_rect = fitz.Rect(crop_x0, crop_y0, crop_x1, crop_y1)
-        # Clamp to media box
-        crop_rect = crop_rect & media_box
+        # Clamp to actual page bounds
+        crop_rect = crop_rect & page_rect
         page.set_cropbox(crop_rect)
 
     output_buf = io.BytesIO()

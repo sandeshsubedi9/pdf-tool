@@ -23,6 +23,7 @@ import {
     IconCopy,
     IconCheck,
     IconAlertTriangle,
+    IconSettings,
 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 import toast from "react-hot-toast";
@@ -383,11 +384,10 @@ function PageSidebar({
                                         });
                                 }}
                                 /* Always visible border — dark when active, grey otherwise */
-                                className={`relative w-full rounded-md overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
-                                    isActive
+                                className={`relative w-full rounded-md overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${isActive
                                         ? "border-[#1a1a2e] shadow-lg shadow-[#1a1a2e]/10 bg-white"
                                         : "border-[#D0CEC9] bg-white hover:border-[#1a1a2e]/40"
-                                }`}
+                                    }`}
                             >
                                 <div className="p-1 relative">
                                     <img
@@ -404,11 +404,10 @@ function PageSidebar({
                                 </div>
                             </button>
                             <div
-                                className={`text-[11px] font-bold transition-all px-2.5 py-0.5 rounded-full ${
-                                    isActive
+                                className={`text-[11px] font-bold transition-all px-2.5 py-0.5 rounded-full ${isActive
                                         ? "bg-[#f5f4f0] text-brand-dark"
                                         : "text-brand-sage"
-                                }`}
+                                    }`}
                             >
                                 Page {i + 1}
                             </div>
@@ -439,6 +438,7 @@ export default function CropPdfEditorPage() {
     const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1.0);
     const [showZoomMenu, setShowZoomMenu] = useState(false);
+    const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
 
     // Drawing state
     const drawing = useRef(false);
@@ -602,7 +602,7 @@ export default function CropPdfEditorPage() {
                     </div>
                     <p className="text-xs text-brand-sage font-medium pl-8 border-l-[3px] border-amber-200 py-1">
                         {crops.length} crop box{crops.length !== 1 ? "es" : ""} across{" "}
-                        {pages.length} pages will be removed.
+                        {new Set(crops.map((c) => c.pageIndex)).size} page{new Set(crops.map((c) => c.pageIndex)).size !== 1 ? "s" : ""} will be removed.
                     </p>
                     <div className="flex gap-2 justify-end mt-1">
                         <button
@@ -646,9 +646,15 @@ export default function CropPdfEditorPage() {
             ));
             const res = await fetch("/api/crop-pdf", { method: "POST", body: formData });
             if (!res.ok) {
-                let msg = "Crop failed.";
-                try { const b = await res.json(); msg = b.error || msg; } catch { msg = (await res.text()) || msg; }
-                throw new Error(msg);
+                let detail = "Crop failed.";
+                try { const b = await res.json(); detail = b.error || b.detail || detail; } catch { detail = (await res.text()) || detail; }
+                console.error("[crop-pdf] backend error:", res.status, detail);
+                // Show a friendly message — never expose raw internal errors to the user
+                const friendlyMsg =
+                    res.status === 400 ? detail  // 400 = user-caused (e.g. bad file), show it
+                    : res.status === 413 ? "The PDF is too large to process. Try a smaller file."
+                    : "Something went wrong while cropping. Please try again.";
+                throw new Error(friendlyMsg);
             }
             const blob = await res.blob();
             const fname = file.name.replace(/\.pdf$/i, "_cropped.pdf");
@@ -659,7 +665,8 @@ export default function CropPdfEditorPage() {
             setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
             toast.success("Cropped PDF downloaded!", { id: toastId });
         } catch (err: any) {
-            toast.error(err?.message || "Export failed", { id: toastId });
+            console.error("[crop-pdf] export error:", err);
+            toast.error(err?.message || "Something went wrong. Please try again.", { id: toastId });
         } finally {
             setIsExporting(false);
         }
@@ -701,68 +708,65 @@ export default function CropPdfEditorPage() {
             <Navbar />
 
             {/* ── Toolbar ── */}
-            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] px-4 py-2.5 flex items-center justify-between shadow-sm shrink-0 gap-2 flex-wrap">
-                {/* Left */}
-                <div className="flex-1 flex items-center gap-4 min-w-0">
-                    <div className="flex items-center gap-3 pr-4 border-r border-[#E0DED9] shrink-0">
-                        <button
-                            onClick={() => router.push("/crop-pdf")}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
-                        >
-                            <IconArrowLeft size={16} />
-                            Back
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="bg-[#f0f0f0] p-1.5 rounded-lg">
-                            <IconFileTypePdf size={18} className="text-black" />
+            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] shadow-sm shrink-0">
+                {/* Row 1: Back + filename */}
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-[#E0DED9]/60">
+                    <button
+                        onClick={() => router.push("/crop-pdf")}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all shrink-0"
+                    >
+                        <IconArrowLeft size={15} />
+                        <span className="hidden sm:inline">Back</span>
+                    </button>
+                    <div className="w-px h-4 bg-[#E0DED9] shrink-0" />
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="bg-[#f0f0f0] p-1 rounded-md shrink-0">
+                            <IconFileTypePdf size={14} className="text-black" />
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-bold text-brand-dark truncate max-w-[160px] leading-tight">
-                                {file.name}
-                            </span>
-                            <span className="text-[10px] text-brand-sage font-medium">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-brand-dark truncate" title={file.name}>{file.name}</p>
+                            <p className="text-[10px] text-brand-sage font-medium">
                                 {pages.length} page{pages.length !== 1 ? "s" : ""} · {crops.length} crop{crops.length !== 1 ? "s" : ""} set
-                            </span>
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Center */}
-                <div className="flex items-center justify-center gap-3 flex-wrap">
+                {/* Row 2: tools */}
+                <div className="flex items-center justify-center gap-2 px-4 py-2 flex-wrap">
                     <button
                         onClick={handleClearAll}
                         disabled={crops.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-600 hover:bg-red-100 transition-all cursor-pointer disabled:opacity-40"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-100 text-xs font-bold text-red-600 hover:bg-red-100 transition-all cursor-pointer disabled:opacity-40 shrink-0"
                     >
-                        <IconTrash size={14} />
+                        <IconTrash size={13} />
                         Clear All
                     </button>
 
                     {/* Page nav */}
-                    <div className="flex items-center gap-2 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
                         <button
                             onClick={() => document.getElementById(`pdf-page-${Math.max(0, currentPage - 1)}`)?.scrollIntoView({ behavior: "smooth" })}
                             disabled={currentPage === 0}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
                         >
-                            <IconChevronUp size={16} />
+                            <IconChevronUp size={14} />
                         </button>
                         <button
                             onClick={() => document.getElementById(`pdf-page-${Math.min(pages.length - 1, currentPage + 1)}`)?.scrollIntoView({ behavior: "smooth" })}
                             disabled={currentPage === pages.length - 1}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
                         >
-                            <IconChevronDown size={16} />
+                            <IconChevronDown size={14} />
                         </button>
                     </div>
 
                     {/* Page jump */}
-                    <div className="flex items-center gap-2">
-                        <div className="bg-[#f5f4f0]/60 hover:bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-xl px-2 py-1 transition-all">
+                    <div className="flex items-center gap-1">
+                        <div className="bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-lg px-2 py-1 transition-all">
                             <input
                                 type="text"
-                                className="w-8 text-center font-bold text-sm bg-transparent focus:outline-none text-brand-dark"
+                                className="w-6 text-center font-bold text-xs bg-transparent focus:outline-none text-brand-dark"
                                 value={pageJump}
                                 onChange={(e) => setPageJump(e.target.value.replace(/\D/g, ""))}
                                 onKeyDown={(e) => {
@@ -783,16 +787,16 @@ export default function CropPdfEditorPage() {
                         <span className="text-xs font-bold text-brand-sage">/ {pages.length}</span>
                     </div>
 
-                    {/* Zoom */}
-                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                    {/* Zoom — hidden on mobile (touch devices can't benefit from zoom controls) */}
+                    <div className="hidden sm:flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
                         <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} disabled={!canZoomOut}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all cursor-pointer">
-                            <IconMinus size={14} />
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all cursor-pointer">
+                            <IconMinus size={13} />
                         </button>
                         <div className="relative">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowZoomMenu((v) => !v); }}
-                                className="px-2 py-1 text-xs font-bold text-brand-dark hover:bg-white rounded-lg transition-all cursor-pointer min-w-[46px] text-center"
+                                className="px-2 py-1 text-xs font-bold text-brand-dark hover:bg-white rounded-lg transition-all cursor-pointer min-w-[40px] text-center"
                             >
                                 {ZOOM_LABELS[zoom] ?? `${Math.round(zoom * 100)}%`}
                             </button>
@@ -818,13 +822,11 @@ export default function CropPdfEditorPage() {
                             </AnimatePresence>
                         </div>
                         <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} disabled={!canZoomIn}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all cursor-pointer">
-                            <IconPlus size={14} />
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-30 transition-all cursor-pointer">
+                            <IconPlus size={13} />
                         </button>
                     </div>
                 </div>
-
-                <div className="flex-1 hidden md:block" />
             </div>
 
             {/* ── Main layout ── */}
@@ -862,8 +864,8 @@ export default function CropPdfEditorPage() {
 
                     <div className="py-8 flex flex-col items-center gap-8">
                         <div
-                            className="flex flex-col gap-10 pb-20"
-                            style={{ width: `${Math.min(900 * zoom, 3000)}px`, maxWidth: "none" }}
+                            className="flex flex-col gap-10 pb-24"
+                            style={{ width: `min(${Math.round(900 * zoom)}px, 100%)`, paddingLeft: 2, paddingRight: 2 }}
                         >
                             {pages.map((pg, i) => {
                                 const pageCrop = crops.find((c) => c.pageIndex === i);
@@ -972,11 +974,10 @@ export default function CropPdfEditorPage() {
                                     {crops.slice().sort((a, b) => a.pageIndex - b.pageIndex).map((c) => (
                                         <div
                                             key={c.id}
-                                            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                                                selectedCropId === c.id
+                                            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${selectedCropId === c.id
                                                     ? "bg-blue-50 text-blue-700 border border-blue-200"
                                                     : "bg-[#f5f4f0] text-brand-dark hover:bg-[#eeecea]"
-                                            }`}
+                                                }`}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setSelectedCropId(c.id);
@@ -1021,7 +1022,70 @@ export default function CropPdfEditorPage() {
                 </div>
             </div>
 
-            {/* Mobile bar */}
+            {/* Mobile FAB (open crop tools) */}
+            <button
+                onClick={(e) => { e.stopPropagation(); setIsMobileToolsOpen(true); }}
+                className="lg:hidden fixed bottom-20 right-4 w-12 h-12 bg-black text-white rounded-full shadow-xl flex items-center justify-center z-40 border-2 border-white active:scale-95"
+                aria-label="Crop Tools"
+            >
+                <IconSettings size={22} stroke={1.5} />
+            </button>
+
+            {/* Mobile crop tools backdrop */}
+            <AnimatePresence>
+                {isMobileToolsOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileToolsOpen(false)}
+                        className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Mobile crop tools drawer */}
+            <div className={`
+                lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.12)]
+                transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                ${isMobileToolsOpen ? "translate-y-0" : "translate-y-full"}
+            `}>
+                <div className="flex items-center justify-center pt-3 pb-2 cursor-pointer" onClick={() => setIsMobileToolsOpen(false)}>
+                    <div className="w-10 h-1.5 bg-slate-300 rounded-full" />
+                </div>
+                <div className="px-5 pb-2">
+                    <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                        <IconCrop size={16} /> Crop Summary
+                    </h3>
+                </div>
+                <div className="px-5 pb-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                    {crops.length === 0 ? (
+                        <p className="text-xs text-brand-sage font-medium py-4 text-center">
+                            Drag on any page to draw a crop region.
+                        </p>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {crops.slice().sort((a, b) => a.pageIndex - b.pageIndex).map((c) => (
+                                <div
+                                    key={c.id}
+                                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#f5f4f0] text-xs font-semibold cursor-pointer"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedCropId(c.id); document.getElementById(`pdf-page-${c.pageIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }); setIsMobileToolsOpen(false); }}
+                                >
+                                    <span>Page {c.pageIndex + 1}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-brand-sage">{Math.round(c.w)}×{Math.round(c.h)}%</span>
+                                        <button onClick={(e) => { e.stopPropagation(); deleteCrop(c.id); }} className="w-4 h-4 flex items-center justify-center text-red-400 hover:text-red-600">
+                                            <IconX size={10} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Mobile bottom bar */}
             <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[#E0DED9] px-4 py-3 flex gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
                 <button
                     onClick={(e) => { e.stopPropagation(); handleExport(); }}

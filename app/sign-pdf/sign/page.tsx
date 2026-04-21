@@ -39,7 +39,8 @@ type SignatureType = "typed" | "drawn" | "image";
 interface SavedSignature {
     id: string;
     type: SignatureType;
-    dataUrl: string; // canvas data URL or image data URL
+    dataUrl: string; // cropped canvas data URL used for placing on PDF
+    rawDataUrl?: string; // full 480x180 canvas, only for drawn type — used when re-editing
     label: string;
     fontIndex?: number;
     color?: string;
@@ -222,11 +223,25 @@ async function embedSignaturesIntoPdf(
 
 // ─── Draw Canvas Component ────────────────────────────────────────────────────
 
-function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; color: string }) {
+function DrawCanvas({ onSave, color, initialDataUrl }: { onSave: (dataUrl: string, rawDataUrl: string) => void; color: string; initialDataUrl?: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawing = useRef(false);
     const lastPos = useRef<{ x: number; y: number } | null>(null);
     const [hasDrawn, setHasDrawn] = useState(false);
+
+    // Pre-load existing raw drawing when editing (1:1, no scaling)
+    useEffect(() => {
+        if (!initialDataUrl || !canvasRef.current) return;
+        const img = new Image();
+        img.onload = () => {
+            const canvas = canvasRef.current!;
+            const ctx = canvas.getContext("2d")!;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            setHasDrawn(true);
+        };
+        img.src = initialDataUrl;
+    }, [initialDataUrl]);
 
     const getPos = (e: React.MouseEvent | React.TouchEvent) => {
         const canvas = canvasRef.current!;
@@ -287,7 +302,7 @@ function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; colo
     const handleSave = () => {
         const canvas = canvasRef.current!;
         const ctx = canvas.getContext("2d")!;
-        
+
         // Find drawn bounds
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
@@ -308,7 +323,8 @@ function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; colo
         }
 
         if (!hasPixels) {
-            onSave(canvas.toDataURL("image/png"));
+            const rawDataUrl = canvas.toDataURL("image/png");
+            onSave(rawDataUrl, rawDataUrl);
             return;
         }
 
@@ -328,7 +344,9 @@ function DrawCanvas({ onSave, color }: { onSave: (dataUrl: string) => void; colo
         const croppedCtx = croppedCanvas.getContext("2d")!;
         croppedCtx.putImageData(ctx.getImageData(minX, minY, width, height), 0, 0);
 
-        onSave(croppedCanvas.toDataURL("image/png"));
+        // rawDataUrl = full 480x180 canvas (for re-editing later)
+        const rawDataUrl = canvas.toDataURL("image/png");
+        onSave(croppedCanvas.toDataURL("image/png"), rawDataUrl);
     };
 
     return (
@@ -444,11 +462,12 @@ function SignatureModal({
         });
     };
 
-    const handleDrawSave = (dataUrl: string) => {
+    const handleDrawSave = (dataUrl: string, rawDataUrl: string) => {
         onSave({
             id: initialData?.id ?? uid(),
             type: "drawn",
             dataUrl,
+            rawDataUrl,
             label: "Drawn signature",
         });
     };
@@ -623,7 +642,11 @@ function SignatureModal({
 
                         {/* Draw tab */}
                         {tab === "drawn" && (
-                            <DrawCanvas onSave={handleDrawSave} color={selectedColor} />
+                            <DrawCanvas
+                                onSave={handleDrawSave}
+                                color={selectedColor}
+                                initialDataUrl={initialData?.type === "drawn" ? initialData.rawDataUrl : undefined}
+                            />
                         )}
 
                         {/* Image upload tab */}
@@ -913,6 +936,7 @@ export default function SignPdfSignPage() {
     const [pageJump, setPageJump] = useState("1"); // Added pageJump state
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [editingSignature, setEditingSignature] = useState<SavedSignature | null>(null);
     const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>([]);
     const [placedSignatures, setPlacedSignatures] = useState<PlacedSignature[]>([]);
@@ -1207,37 +1231,39 @@ export default function SignPdfSignPage() {
             <Navbar />
 
             {/* ── Secondary Full-Width Header ── */}
-            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] px-4 py-2.5 flex items-center justify-between shadow-sm shrink-0">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 pr-6 border-r border-[#E0DED9]">
-                        <button
-                            onClick={() => router.push("/sign-pdf")}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
-                            title="Back to upload"
-                        >
-                            <IconArrowLeft size={16} />
-                            Back
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="bg-[#e6f4ef] p-1.5 rounded-lg">
-                            <IconFileTypePdf size={18} className="text-[#047C58]" />
+            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] flex flex-col md:flex-row md:items-center md:justify-between shadow-sm shrink-0">
+                {/* Left: Back + File Name */}
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-[#E0DED9]/60 md:border-b-0 md:flex-1 min-w-0">
+                    <button
+                        onClick={() => router.push("/sign-pdf")}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all shrink-0"
+                        title="Back to upload"
+                    >
+                        <IconArrowLeft size={16} />
+                        Back
+                    </button>
+                    <div className="w-px h-4 bg-[#E0DED9] shrink-0" />
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="bg-[#e6f4ef] p-1.5 rounded-lg shrink-0">
+                            <IconFileTypePdf size={16} className="text-[#047C58]" />
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-bold text-brand-dark truncate max-w-[200px] leading-tight">{file.name}</span>
-                            <span className="text-[10px] text-brand-sage font-medium">{pages.length} pages</span>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-brand-dark truncate leading-tight max-w-[180px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[500px]" title={file.name}>{file.name}</p>
+                            <p className="text-[10px] text-brand-sage font-medium">{pages.length} pages</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-5">
-                    {/* Page Navigation */}
-                    <div className="flex items-center gap-2 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                {/* Center / Bottom: Page Navigation */}
+                <div className="flex items-center justify-center gap-3 px-4 py-2 bg-[#fdfdfb] md:bg-transparent shrink-0">
+                    {/* Prev / Next */}
+                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
                         <button
                             onClick={() => {
                                 const prev = Math.max(0, currentPage - 1);
-                                document.getElementById(`pdf-page-${prev}`)?.scrollIntoView({ behavior: "smooth" });
+                                const container = document.getElementById("pdf-scroll-container");
+                                const pageEl = document.getElementById(`pdf-page-${prev}`) as HTMLElement | null;
+                                if (container && pageEl) container.scrollTo({ top: pageEl.offsetTop - 32, behavior: "smooth" });
                             }}
                             className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
                             disabled={currentPage === 0}
@@ -1247,7 +1273,9 @@ export default function SignPdfSignPage() {
                         <button
                             onClick={() => {
                                 const next = Math.min(pages.length - 1, currentPage + 1);
-                                document.getElementById(`pdf-page-${next}`)?.scrollIntoView({ behavior: "smooth" });
+                                const container = document.getElementById("pdf-scroll-container");
+                                const pageEl = document.getElementById(`pdf-page-${next}`) as HTMLElement | null;
+                                if (container && pageEl) container.scrollTo({ top: pageEl.offsetTop - 32, behavior: "smooth" });
                             }}
                             className="w-7 h-7 flex items-center justify-center rounded-lg text-brand-sage hover:bg-white hover:text-brand-dark hover:shadow-sm disabled:opacity-20 transition-all cursor-pointer"
                             disabled={currentPage === pages.length - 1}
@@ -1256,10 +1284,12 @@ export default function SignPdfSignPage() {
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    {/* Page jump input */}
+                    <div className="flex items-center gap-2">
                         <div className="bg-[#f5f4f0]/60 hover:bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-xl px-2 py-1 transition-all">
                             <input
                                 type="text"
+                                inputMode="numeric"
                                 className="w-8 text-center font-bold text-sm bg-transparent focus:outline-none text-brand-dark"
                                 value={pageJump}
                                 onChange={(e) => setPageJump(e.target.value.replace(/\D/g, ""))}
@@ -1269,7 +1299,10 @@ export default function SignPdfSignPage() {
                                         if (!isNaN(val) && val >= 1 && val <= pages.length) {
                                             const targetIdx = val - 1;
                                             setCurrentPage(targetIdx);
-                                            document.getElementById(`pdf-page-${targetIdx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                            const container = document.getElementById("pdf-scroll-container");
+                                            const pageEl = document.getElementById(`pdf-page-${targetIdx}`) as HTMLElement | null;
+                                            if (container && pageEl) container.scrollTo({ top: pageEl.offsetTop - 32, behavior: "smooth" });
+                                            (e.target as HTMLInputElement).blur();
                                         } else {
                                             setPageJump((currentPage + 1).toString());
                                         }
@@ -1282,7 +1315,8 @@ export default function SignPdfSignPage() {
                     </div>
                 </div>
 
-                <div className="w-[100px] hidden lg:block" /> {/* Balance spacer */}
+                {/* Right: Balancer for Desktop */}
+                <div className="hidden md:block flex-1" />
             </div>
 
             {/* Main layout: sidebar | pdf canvas | signing panel */}
@@ -1359,13 +1393,42 @@ export default function SignPdfSignPage() {
                     </div>
                 </div>
 
-                {/* ── Right: Signing Panel ── */}
-                <div
-                    className="hidden lg:flex flex-col bg-white border-l border-[#E0DED9]"
-                    style={{ width: 320, minWidth: 300, maxWidth: 360 }}
+                {/* ── Mobile FAB ── */}
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#047C58] text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#036649] transition-all border-2 border-white active:scale-95"
+                    aria-label="Signing Options"
                 >
-                    {/* Panel header */}
-                    <div className="px-4 py-4 border-b border-[#E0DED9]">
+                    <IconSignature size={28} stroke={1.5} />
+                </button>
+
+                {/* ── Mobile Backdrop ── */}
+                <AnimatePresence>
+                    {isMobileDrawerOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileDrawerOpen(false)}
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+                        />
+                    )}
+                </AnimatePresence>
+
+                {/* ── Right Options Sidebar (Desktop) & Bottom Drawer (Mobile) ── */}
+                <div className={`
+                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    lg:static lg:bg-white lg:border-l lg:border-[#E0DED9] lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:shrink-0 lg:flex lg:overflow-y-auto lg:pr-0 lg:pb-0 custom-scrollbar
+                    w-full lg:w-[320px] lg:min-w-[300px] lg:max-w-[360px]
+                    ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh]" : "translate-y-full lg:max-h-full"}
+                `}>
+                    {/* Drawer drag handle for mobile */}
+                    <div className="lg:hidden flex items-center justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                    </div>
+
+                    {/* Panel header (hidden on mobile since drawer is obvious, or keep for consistency) */}
+                    <div className="hidden lg:flex px-4 py-4 border-b border-[#E0DED9]">
                         <h3 className="text-base font-bold text-brand-dark flex items-center gap-2">
                             <IconSignature size={18} className="text-[#047C58]" />
                             Signing Options
@@ -1374,160 +1437,148 @@ export default function SignPdfSignPage() {
 
                     <div className="flex-1 flex flex-col min-h-0">
                         {/* Legal Warning Banner */}
-                            <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex gap-2">
-                                <IconAlertTriangle size={14} className="shrink-0 text-amber-500 mt-0.5" />
-                                <p className="text-[10px] leading-relaxed text-amber-900 font-medium">
-                                    Visual signatures from this tool are not guaranteed to be legally binding. For legally enforceable signatures, Certified digital signature service can be used.
+                        <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex gap-2">
+                            <IconAlertTriangle size={14} className="shrink-0 text-amber-500 mt-0.5" />
+                            <p className="text-[10px] leading-relaxed text-amber-900 font-medium">
+                                Visual signatures from this tool are not guaranteed to be legally binding. For legally enforceable signatures, Certified digital signature service can be used.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+                            {/* Add signature button */}
+                            <button
+                                onClick={() => setShowModal(true)}
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-[#047C58]/40 rounded-xl text-[#047C58] text-sm font-semibold hover:border-[#047C58] hover:bg-[#e6f4ef]/50 transition-all cursor-pointer"
+                            >
+                                <IconPlus size={16} stroke={2.5} />
+                                Add Signature
+                            </button>
+
+                            {/* Saved signatures */}
+                            {savedSignatures.length > 0 && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-3">My Signatures</p>
+                                    <div className="space-y-2.5">
+                                        {savedSignatures.map((sig) => (
+                                            <div
+                                                key={sig.id}
+                                                draggable
+                                                onDragStart={(e) => {
+                                                    setIsMobileDrawerOpen(false);
+                                                    e.dataTransfer.setData("application/json", JSON.stringify({ type: "signature", content: sig }));
+                                                    e.dataTransfer.effectAllowed = "copy";
+                                                }}
+                                                className="group flex items-center gap-2 p-2 border border-[#E0DED9] rounded-xl bg-white hover:border-[#047C58]/50 transition-all shadow-sm hover:shadow-md cursor-move active:scale-[0.98]"
+                                                onClick={() => {
+                                                    placeSignatureInView(sig);
+                                                    setIsMobileDrawerOpen(false);
+                                                    toast.success("Signature placed! Tap it on the page to move or delete.", { duration: 3000, position: "top-center" });
+                                                }}
+                                            >
+                                                {/* Drag handle */}
+                                                <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors">
+                                                    <IconGripVertical size={18} />
+                                                </div>
+
+                                                {/* Signature preview */}
+                                                <div className="flex-1 min-w-0 h-14 bg-[#fcfbf9] rounded-lg flex items-center px-3 border border-[#E0DED9] overflow-hidden group-hover:bg-white transition-colors">
+                                                    <img src={sig.dataUrl} alt={sig.label} className="max-h-10 object-contain mx-auto" />
+                                                </div>
+
+                                                {/* Actions (Vertical stacked on right) */}
+                                                <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => handleEditSignature(e, sig)}
+                                                        className="w-8 h-8 flex items-center justify-center bg-white border border-[#E0DED9] text-brand-sage hover:text-[#047C58] hover:border-[#047C58] rounded-lg transition-all cursor-pointer shadow-sm hover:shadow-md"
+                                                        title="Edit signature"
+                                                    >
+                                                        <IconPencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteSignature(e, sig.id)}
+                                                        className="w-8 h-8 flex items-center justify-center bg-white border border-[#E0DED9] text-brand-sage hover:text-red-500 hover:border-red-200 rounded-lg transition-all cursor-pointer shadow-sm hover:shadow-md"
+                                                        title="Delete signature"
+                                                    >
+                                                        <IconTrash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Quick add fields — Date only */}
+                            <div>
+                                <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-3">Quick Add Fields</p>
+                                <button
+                                    draggable
+                                    onDragStart={(e) => {
+                                        setIsMobileDrawerOpen(false);
+                                        e.dataTransfer.setData("application/json", JSON.stringify({ type: "field", content: "Date" }));
+                                        e.dataTransfer.effectAllowed = "copy";
+                                    }}
+                                    onClick={() => {
+                                        const actualContent = new Date().toLocaleDateString("en-US");
+                                        const dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 32);
+                                        const tempSig = { id: uid(), type: "typed" as const, dataUrl, label: "Date" };
+                                        placeSignatureInView(tempSig, true, "Date", actualContent);
+                                        setIsMobileDrawerOpen(false);
+                                        toast.success("Date field placed! Tap it on the page to move or delete.", { duration: 3000, position: "top-center" });
+                                    }}
+                                    className="w-full flex items-center gap-2 p-2 rounded-xl border border-[#E0DED9] bg-white hover:border-[#047C58]/40 hover:bg-[#e6f4ef]/20 transition-all cursor-move group shadow-sm hover:shadow-md"
+                                >
+                                    <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors px-1">
+                                        <IconGripVertical size={16} />
+                                    </div>
+                                    <span className="w-10 h-10 rounded-xl bg-[#f5f4f0] group-hover:bg-[#dcf2ec] flex items-center justify-center text-brand-sage group-hover:text-[#047C58] transition-all shrink-0">
+                                        <IconCalendar size={16} />
+                                    </span>
+                                    <div className="flex-1 flex flex-col text-left items-start">
+                                        <p className="text-[13px] font-bold text-brand-dark">Date</p>
+                                        <p className="text-[11px] text-brand-sage font-medium -mt-0.5">Drag or click to add today's date</p>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Drag & Drop hint */}
+                            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9]">
+                                <span className="text-lg shrink-0 mt-0.5">💡</span>
+                                <p className="text-[11px] text-brand-sage leading-relaxed">
+                                    <span className="font-bold text-brand-dark">Click or drag &amp; drop</span> any signature or field from above directly onto the page to place it exactly where you need it.
                                 </p>
                             </div>
+                        </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-                                {/* Add signature button */}
-                                <button
-                                    onClick={() => setShowModal(true)}
-                                    className="w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-[#047C58]/40 rounded-xl text-[#047C58] text-sm font-semibold hover:border-[#047C58] hover:bg-[#e6f4ef]/50 transition-all cursor-pointer"
-                                >
-                                    <IconPlus size={16} stroke={2.5} />
-                                    Add Signature
-                                </button>
-
-                                {/* Saved signatures */}
-                                {savedSignatures.length > 0 && (
-                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-3">My Signatures</p>
-                                        <div className="space-y-2.5">
-                                            {savedSignatures.map((sig) => (
-                                                <div
-                                                    key={sig.id}
-                                                    draggable
-                                                    onDragStart={(e) => {
-                                                        e.dataTransfer.setData("application/json", JSON.stringify({ type: "signature", content: sig }));
-                                                        e.dataTransfer.effectAllowed = "copy";
-                                                    }}
-                                                    className="group flex items-center gap-2 p-2 border border-[#E0DED9] rounded-xl bg-white hover:border-[#047C58]/50 transition-all shadow-sm hover:shadow-md cursor-move active:scale-[0.98]"
-                                                    onClick={() => {
-                                                        placeSignatureInView(sig);
-                                                    }}
-                                                >
-                                                    {/* Drag handle */}
-                                                    <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors">
-                                                        <IconGripVertical size={18} />
-                                                    </div>
-
-                                                    {/* Signature preview */}
-                                                    <div className="flex-1 min-w-0 h-14 bg-[#fcfbf9] rounded-lg flex items-center px-3 border border-[#E0DED9] overflow-hidden group-hover:bg-white transition-colors">
-                                                        <img src={sig.dataUrl} alt={sig.label} className="max-h-10 object-contain mx-auto" />
-                                                    </div>
-
-                                                    {/* Actions (Vertical stacked on right) */}
-                                                    <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={(e) => handleEditSignature(e, sig)}
-                                                            className="w-8 h-8 flex items-center justify-center bg-white border border-[#E0DED9] text-brand-sage hover:text-[#047C58] hover:border-[#047C58] rounded-lg transition-all cursor-pointer shadow-sm hover:shadow-md"
-                                                            title="Edit signature"
-                                                        >
-                                                            <IconPencil size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleDeleteSignature(e, sig.id)}
-                                                            className="w-8 h-8 flex items-center justify-center bg-white border border-[#E0DED9] text-brand-sage hover:text-red-500 hover:border-red-200 rounded-lg transition-all cursor-pointer shadow-sm hover:shadow-md"
-                                                            title="Delete signature"
-                                                        >
-                                                            <IconTrash size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Quick add fields — Date only */}
-                                <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-3">Quick Add Fields</p>
-                                    <button
-                                        draggable
-                                        onDragStart={(e) => {
-                                            e.dataTransfer.setData("application/json", JSON.stringify({ type: "field", content: "Date" }));
-                                            e.dataTransfer.effectAllowed = "copy";
-                                        }}
-                                        onClick={() => {
-                                            const actualContent = new Date().toLocaleDateString("en-US");
-                                            const dataUrl = renderTextSignature(actualContent, "Inter, sans-serif", "#000000", 32);
-                                            const tempSig = { id: uid(), type: "typed" as const, dataUrl, label: "Date" };
-                                            placeSignatureInView(tempSig, true, "Date", actualContent);
-                                        }}
-                                        className="w-full flex items-center gap-2 p-2 rounded-xl border border-[#E0DED9] bg-white hover:border-[#047C58]/40 hover:bg-[#e6f4ef]/20 transition-all cursor-move group shadow-sm hover:shadow-md"
-                                    >
-                                        <div className="text-brand-sage/40 group-hover:text-brand-sage transition-colors px-1">
-                                            <IconGripVertical size={16} />
-                                        </div>
-                                        <span className="w-10 h-10 rounded-xl bg-[#f5f4f0] group-hover:bg-[#dcf2ec] flex items-center justify-center text-brand-sage group-hover:text-[#047C58] transition-all shrink-0">
-                                            <IconCalendar size={16} />
-                                        </span>
-                                        <div className="flex-1 flex flex-col text-left items-start">
-                                            <p className="text-[13px] font-bold text-brand-dark">Date</p>
-                                            <p className="text-[11px] text-brand-sage font-medium -mt-0.5">Drag or click to add today's date</p>
-                                        </div>
-                                    </button>
-                                </div>
-
-                                {/* Drag & Drop hint */}
-                                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9]">
-                                    <span className="text-lg shrink-0 mt-0.5">💡</span>
-                                    <p className="text-[11px] text-brand-sage leading-relaxed">
-                                        <span className="font-bold text-brand-dark">Drag &amp; drop</span> any signature or field from above directly onto the page — place it exactly where you need it.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Export / Download Action (Pinned to bottom of sidebar) */}
-                            <div className="p-4 bg-white border-t border-[#E0DED9] mt-auto shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-                                <button
-                                    onClick={handleExport}
-                                    disabled={isExporting || placedSignatures.length === 0}
-                                    className="w-full py-4 rounded-xl bg-[#047C58] text-white text-[15px] font-bold hover:bg-[#036649] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-[#047C58]/25 active:scale-[0.98]"
-                                >
-                                    {isExporting ? <IconLoader2 size={18} className="animate-spin" /> : <IconWriting size={18} />}
-                                    {isExporting ? "Signing PDF..." : "Sign PDF"}
-                                </button>
-                            </div>
+                        {/* Export / Download Action (Pinned to bottom of sidebar) */}
+                        <div className="p-4 bg-white border-t border-[#E0DED9] mt-auto shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+                            <button
+                                onClick={handleExport}
+                                disabled={isExporting || placedSignatures.length === 0}
+                                className="w-full py-4 rounded-xl bg-[#047C58] text-white text-[15px] font-bold hover:bg-[#036649] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-[#047C58]/25 active:scale-[0.98]"
+                            >
+                                {isExporting ? <IconLoader2 size={18} className="animate-spin" /> : <IconWriting size={18} />}
+                                {isExporting ? "Signing PDF..." : "Sign PDF"}
+                            </button>
                         </div>
                     </div>
-
-
-                {/* Mobile signing panel (bottom sheet) */}
-                <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[#E0DED9] px-4 py-3 flex items-center gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-dashed border-[#047C58]/50 rounded-xl text-[#047C58] text-sm font-semibold hover:bg-[#e6f4ef]/40 transition-all cursor-pointer"
-                    >
-                        <IconPlus size={15} /> Add Signature
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        disabled={isExporting || placedSignatures.length === 0}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#047C58] text-white text-sm font-bold rounded-xl hover:bg-[#036649] disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-[#047C58]/20"
-                    >
-                        {isExporting ? <IconLoader2 size={15} className="animate-spin" /> : <IconDownload size={15} />}
-                        {isExporting ? "Saving…" : "Download Signed"}
-                    </button>
                 </div>
+
             </div>
 
-            {/* Modal */}
-            {
-                showModal && (
-                    <SignatureModal
-                        onClose={() => {
-                            setShowModal(false);
-                            setEditingSignature(null);
-                        }}
-                        onSave={handleSaveSignature}
-                        initialData={editingSignature ?? undefined}
-                    />
-                )
-            }
+            {/* Modal */ }
+    {
+        showModal && (
+            <SignatureModal
+                onClose={() => {
+                    setShowModal(false);
+                    setEditingSignature(null);
+                }}
+                onSave={handleSaveSignature}
+                initialData={editingSignature ?? undefined}
+            />
+        )
+    }
         </div >
     );
 }
