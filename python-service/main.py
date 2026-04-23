@@ -547,7 +547,7 @@ async def add_watermark_endpoint(
         )
     except Exception as e:
         logger.error(f"Error adding watermark: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to add watermark: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add watermark due to an internal server error. Please try again.")
 
 @app.post("/crop/pdf")
 async def crop_pdf_endpoint(

@@ -190,15 +190,65 @@ function PageSidebar({
 function RedactionOverlay({
     rect,
     onDelete,
+    onUpdate,
     pageIndex,
     currentPageIndex,
 }: {
     rect: RedactionRect;
     onDelete: () => void;
+    onUpdate: (rect: RedactionRect) => void;
     pageIndex: number;
     currentPageIndex: number;
 }) {
     const [hovered, setHovered] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStart = useRef<{x: number, y: number, startX: number, startY: number} | null>(null);
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        // Only allow left click dragging
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        e.target.setPointerCapture(e.pointerId);
+        setIsDragging(true);
+        dragStart.current = {
+            x: e.clientX,
+            y: e.clientY,
+            startX: rect.x,
+            startY: rect.y
+        };
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isDragging || !dragStart.current) return;
+        e.stopPropagation();
+        const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
+        if (!pageEl) return;
+        const pageRect = pageEl.getBoundingClientRect();
+        
+        const dx = ((e.clientX - dragStart.current.x) / pageRect.width) * 100;
+        const dy = ((e.clientY - dragStart.current.y) / pageRect.height) * 100;
+        
+        let newX = dragStart.current.startX + dx;
+        let newY = dragStart.current.startY + dy;
+
+        // Clamp to page bounds
+        newX = Math.max(0, Math.min(100 - rect.w, newX));
+        newY = Math.max(0, Math.min(100 - rect.h, newY));
+
+        onUpdate({ ...rect, x: newX, y: newY });
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        e.target.releasePointerCapture(e.pointerId);
+        setIsDragging(false);
+        dragStart.current = null;
+    };
+
+    const isWholePage = rect.w === 100 && rect.h === 100;
+    const topPos = rect.y < 2 ? "4px" : "-12px";
+    const rightPos = rect.x + rect.w > 98 ? "4px" : "-12px";
 
     return (
         <motion.div
@@ -212,15 +262,21 @@ function RedactionOverlay({
                 top: `${rect.y}%`,
                 width: `${rect.w}%`,
                 height: `${rect.h}%`,
+                cursor: isWholePage ? "default" : isDragging ? "grabbing" : "grab",
+                touchAction: "none"
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            onPointerDown={isWholePage ? undefined : handlePointerDown}
+            onPointerMove={isWholePage ? undefined : handlePointerMove}
+            onPointerUp={isWholePage ? undefined : handlePointerUp}
+            onPointerCancel={isWholePage ? undefined : handlePointerUp}
         >
             {/* The black redaction block */}
             <div
                 className="w-full h-full bg-black relative group"
                 style={{
-                    boxShadow: hovered
+                    boxShadow: hovered || isDragging
                         ? "0 0 0 2px rgba(255,80,80,0.7)"
                         : "none",
                 }}
@@ -233,24 +289,18 @@ function RedactionOverlay({
                     REDACTED
                 </span>
 
-                {/* Delete button shown on hover */}
-                <AnimatePresence>
-                    {hovered && (
-                        <motion.button
-                            initial={{ opacity: 0, scale: 0.7 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.7 }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete();
-                            }}
-                            className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer z-50 transition-colors"
-                            title="Remove redaction"
-                        >
-                            <IconX size={12} stroke={3} />
-                        </motion.button>
-                    )}
-                </AnimatePresence>
+                {/* Delete button: always visible on mobile, visible on hover for desktop */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                    className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer z-50 transition-all opacity-100 scale-100 lg:opacity-0 lg:scale-75 lg:group-hover:opacity-100 lg:group-hover:scale-100"
+                    style={{ top: topPos, right: rightPos }}
+                    title="Remove redaction"
+                >
+                    <IconX size={12} stroke={3} />
+                </button>
             </div>
         </motion.div>
     );
@@ -1098,6 +1148,15 @@ export default function RedactPdfPage() {
                                                                 )
                                                         )
                                                     }
+                                                    onUpdate={(updatedRect) => {
+                                                        setRedactions((prev) =>
+                                                            prev.map((r) =>
+                                                                r.id === updatedRect.id
+                                                                    ? updatedRect
+                                                                    : r
+                                                            )
+                                                        );
+                                                    }}
                                                 />
                                             ))}
                                         </AnimatePresence>

@@ -391,7 +391,7 @@ export default function ComparePdfPage() {
                 setStep("upload");
             }
         })();
-    }, [fileA, fileB, renderPages, execute]);
+    }, [fileA, fileB, renderPages]);
 
     // ── Derived page list ────────────────────────────────────────────────────
 
