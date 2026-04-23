@@ -24,6 +24,7 @@ import {
     IconPlus,
     IconZoomIn,
     IconZoomOut,
+    IconSettings,
 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
@@ -508,6 +509,7 @@ export default function RedactPdfPage() {
     const [zoom, setZoom] = useState(1.0);
     const [showZoomMenu, setShowZoomMenu] = useState(false);
     const [showWholePageModal, setShowWholePageModal] = useState(false);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     // Drawing state
     const drawing = useRef(false);
@@ -821,7 +823,11 @@ export default function RedactPdfPage() {
                                             </span>
                                         </div>
                                         <p className="text-xs text-brand-sage font-medium pl-8 border-l-[3px] border-amber-200 py-1">
-                                            This action cannot be undone. You will lose the {redactions.length} placed boxes across {pages.length} pages.
+                                            {(() => {
+                                                const boxCount = redactions.length;
+                                                const pageCount = new Set(redactions.map((r) => r.pageIndex)).size;
+                                                return `This will remove ${boxCount} box${boxCount !== 1 ? "es" : ""} across ${pageCount} page${pageCount !== 1 ? "s" : ""}. This cannot be undone.`;
+                                            })()}
                                         </p>
                                         <div className="flex gap-2 justify-end mt-2">
                                             <button
@@ -1115,7 +1121,7 @@ export default function RedactPdfPage() {
                     </div>
                 </div>
 
-                {/* Right: Instructions panel */}
+                {/* Right: Instructions panel (desktop only) */}
                 <div
                     className="hidden lg:flex flex-col bg-white border-l border-[#E0DED9]"
                     style={{ width: 280, minWidth: 260, maxWidth: 320 }}
@@ -1193,6 +1199,116 @@ export default function RedactPdfPage() {
                             </p>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* ── Mobile FAB ─────────────────────────────────────────────── */}
+            <button
+                onClick={() => setIsMobileDrawerOpen(true)}
+                className="lg:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full bg-black shadow-xl flex items-center justify-center z-40 border-2 border-white active:scale-95 cursor-pointer"
+                aria-label="Redaction Tools"
+            >
+                <IconSettings size={22} stroke={1.5} className="text-white" />
+                {redactions.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {redactions.length}
+                    </span>
+                )}
+            </button>
+
+            {/* ── Mobile backdrop ────────────────────────────────────────── */}
+            <AnimatePresence>
+                {isMobileDrawerOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileDrawerOpen(false)}
+                        className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ── Mobile drawer ──────────────────────────────────────────── */}
+            <div className={`
+                lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.12)]
+                transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                ${isMobileDrawerOpen ? "translate-y-0" : "translate-y-full"}
+            `}>
+                {/* Drag handle */}
+                <div className="flex items-center justify-center pt-3 pb-2 cursor-pointer" onClick={() => setIsMobileDrawerOpen(false)}>
+                    <div className="w-10 h-1.5 bg-slate-300 rounded-full" />
+                </div>
+
+                {/* Drawer header */}
+                <div className="px-5 pb-3 flex items-center justify-between border-b border-[#E0DED9]">
+                    <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                        <IconEraser size={16} className="text-black" /> Redaction Tools
+                    </h3>
+                    <button onClick={() => setIsMobileDrawerOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition cursor-pointer">
+                        <IconX size={16} className="text-brand-sage" />
+                    </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="px-5 py-4 max-h-[55vh] overflow-y-auto custom-scrollbar space-y-4">
+                    {/* How to use */}
+                    <div className="rounded-xl bg-[#f5f4f0] p-4 space-y-2">
+                        <p className="text-xs font-bold text-brand-dark">How to Redact</p>
+                        <p className="text-xs text-brand-sage leading-relaxed">
+                            Draw a box over any area on the PDF page to add a redaction block. Use <strong>Whole Page</strong> in the toolbar to redact full pages.
+                        </p>
+                    </div>
+
+                    {/* Redaction summary */}
+                    {redactions.length > 0 ? (
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-brand-sage mb-2">
+                                Redaction Summary
+                            </p>
+                            <div className="space-y-1">
+                                {Array.from(
+                                    new Set(redactions.map((r) => r.pageIndex))
+                                )
+                                    .sort((a, b) => a - b)
+                                    .map((pageIdx) => {
+                                        const count = redactions.filter(
+                                            (r) => r.pageIndex === pageIdx
+                                        ).length;
+                                        return (
+                                            <div
+                                                key={pageIdx}
+                                                className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#f5f4f0] text-xs font-semibold text-brand-dark"
+                                            >
+                                                <span>Page {pageIdx + 1}</span>
+                                                <span className="bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    {count} box{count !== 1 ? "es" : ""}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 text-brand-sage text-xs">
+                            No redactions added yet. Draw boxes on the PDF to get started.
+                        </div>
+                    )}
+                </div>
+
+                {/* Drawer action buttons */}
+                <div className="px-5 pb-6 pt-3 border-t border-[#E0DED9] flex flex-col gap-2">
+                    <button
+                        onClick={() => { handleExport(); setIsMobileDrawerOpen(false); }}
+                        disabled={isExporting || redactions.length === 0}
+                        className="w-full py-3.5 rounded-xl bg-[#047C58] text-white text-sm font-bold hover:bg-[#036245] disabled:opacity-50 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-[#047C58]/15 active:scale-[0.98]"
+                    >
+                        {isExporting ? (
+                            <><IconLoader2 size={18} className="animate-spin" /> Exporting…</>
+                        ) : (
+                            <><IconDownload size={18} /> Download Redacted PDF</>
+                        )}
+                    </button>
                 </div>
             </div>
 

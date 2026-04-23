@@ -16,6 +16,7 @@ import {
     IconLayersIntersect,
     IconAlertCircle,
     IconX,
+    IconSettings,
 } from "@tabler/icons-react";
 import { downloadBlob } from "@/lib/pdf-utils";
 import FileStore from "@/lib/file-store";
@@ -380,7 +381,7 @@ export default function WatermarkApplyPage() {
     const [bold, setBold] = useState(false);
     const [italic, setItalic] = useState(false);
     const [underline, setUnderline] = useState(false);
-    const [textColor, setTextColor] = useState("#7C3AED");
+    const [textColor, setTextColor] = useState("#000000");
 
     // Image settings
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -405,6 +406,9 @@ export default function WatermarkApplyPage() {
 
     // Dropdowns
     const [fontOpen, setFontOpen] = useState(false);
+
+    // Mobile drawer
+    const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
     // Load file
     useEffect(() => {
@@ -584,7 +588,7 @@ export default function WatermarkApplyPage() {
             <Navbar />
 
             {/* Toolbar */}
-            <div className="bg-white border-b border-border z-10 px-4 md:px-6 py-3 shadow-sm flex items-center justify-between gap-3 shrink-0 relative">
+            <div className="bg-white border-b border-border z-10 px-4 md:px-6 py-3 shadow-sm flex items-center gap-3 shrink-0">
                 {/* Left: File Info */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
@@ -596,19 +600,19 @@ export default function WatermarkApplyPage() {
                     <span className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0 text-white" style={{ backgroundColor: ACCENT }}>
                         <IconDroplet size={18} stroke={2} />
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 overflow-hidden">
                         <h1 className="text-sm md:text-base font-bold text-brand-dark leading-tight truncate">
                             Watermark PDF
                         </h1>
-                        <p className="text-[10px] md:text-xs text-brand-sage truncate mt-0.5">
+                        <p className="text-[10px] md:text-xs text-brand-sage truncate mt-0.5" title={file?.name}>
                             {file?.name} · {totalPages} page{totalPages !== 1 ? "s" : ""}
                         </p>
                     </div>
                 </div>
 
-                {/* Center: Page nav */}
+                {/* Center: Page nav — hidden on xs, visible from sm */}
                 {thumbnails.length > 1 && (
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-slate-50 rounded-xl p-1 border border-border shrink-0 z-20">
+                    <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 rounded-xl p-1 border border-border shrink-0">
                         <button
                             onClick={() => setPreviewPageIdx(i => Math.max(0, i - 1))}
                             disabled={previewPageIdx === 0}
@@ -629,10 +633,26 @@ export default function WatermarkApplyPage() {
                     </div>
                 )}
 
-                {/* Right: Placeholder for layout balance */}
-                <div className="flex-1 flex justify-end">
-                    {/* Add download button or something here later if needed */}
-                </div>
+                {/* Right: compact page nav for xs screens only */}
+                {thumbnails.length > 1 && (
+                    <div className="sm:hidden flex items-center gap-1 bg-slate-50 rounded-xl p-1 border border-border shrink-0">
+                        <button
+                            onClick={() => setPreviewPageIdx(i => Math.max(0, i - 1))}
+                            disabled={previewPageIdx === 0}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-brand-sage hover:bg-white hover:text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer text-sm"
+                        >
+                            ‹
+                        </button>
+                        <span className="text-[10px] text-brand-sage font-medium">{previewPageIdx + 1}/{thumbnails.length}</span>
+                        <button
+                            onClick={() => setPreviewPageIdx(i => Math.min(thumbnails.length - 1, i + 1))}
+                            disabled={previewPageIdx === thumbnails.length - 1}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-brand-sage hover:bg-white hover:text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer text-sm"
+                        >
+                            ›
+                        </button>
+                    </div>
+                )}
             </div>
 
             {error && (
@@ -674,8 +694,8 @@ export default function WatermarkApplyPage() {
                     </div>
                 </main>
 
-                {/* ── Right: Settings panel ──────────────────────────────── */}
-                <aside className="w-[300px] xl:w-[320px] shrink-0 border-l border-border bg-white flex flex-col h-full">
+                {/* ── Right: Settings panel (desktop only) ───────────────── */}
+                <aside className="hidden lg:flex w-[300px] xl:w-[320px] shrink-0 border-l border-border bg-white flex-col h-full">
                     {/* Tab switcher: Text / Image (Fixed at top) */}
                     <div className="px-4 py-5 shrink-0 bg-white z-10">
                         <div className="flex rounded-xl overflow-hidden border border-border">
@@ -962,6 +982,337 @@ export default function WatermarkApplyPage() {
                         </button>
                     </div>
                 </aside>
+            </div>
+
+            {/* ── Mobile FAB ───────────────────────────────────────────── */}
+            <button
+                onClick={() => setIsMobileSettingsOpen(true)}
+                className="lg:hidden fixed bottom-20 right-4 w-12 h-12 rounded-full shadow-xl flex items-center justify-center z-40 border-2 border-white active:scale-95 cursor-pointer"
+                style={{ backgroundColor: ACCENT }}
+                aria-label="Watermark Settings"
+            >
+                <IconSettings size={22} stroke={1.5} className="text-white" />
+            </button>
+
+            {/* ── Mobile backdrop ──────────────────────────────────────── */}
+            <AnimatePresence>
+                {isMobileSettingsOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileSettingsOpen(false)}
+                        className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ── Mobile settings drawer ───────────────────────────────── */}
+            <div className={`
+                lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.12)]
+                transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                ${isMobileSettingsOpen ? "translate-y-0" : "translate-y-full"}
+            `}>
+                {/* Drag handle */}
+                <div className="flex items-center justify-center pt-3 pb-2 cursor-pointer" onClick={() => setIsMobileSettingsOpen(false)}>
+                    <div className="w-10 h-1.5 bg-slate-300 rounded-full" />
+                </div>
+
+                {/* Drawer header */}
+                <div className="px-5 pb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                        <IconDroplet size={16} style={{ color: ACCENT }} /> Watermark Settings
+                    </h3>
+                    <button onClick={() => setIsMobileSettingsOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition cursor-pointer">
+                        <IconX size={16} className="text-brand-sage" />
+                    </button>
+                </div>
+
+                {/* Tab switcher inside drawer */}
+                <div className="px-5 pb-3">
+                    <div className="flex rounded-xl overflow-hidden border border-border">
+                        {(["text", "image"] as WatermarkTab[]).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setTab(t)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold transition-all cursor-pointer ${tab === t ? "text-white" : "text-brand-sage hover:bg-slate-50"}`}
+                                style={tab === t ? { backgroundColor: ACCENT } : {}}
+                            >
+                                {t === "text" ? <IconTypography size={14} /> : <IconPhoto size={14} />}
+                                {t === "text" ? "Add Text" : "Add Image"}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Scrollable settings body */}
+                <div className="px-5 pb-4 max-h-[55vh] overflow-y-auto custom-scrollbar flex flex-col gap-5">
+
+                    {/* TEXT SETTINGS */}
+                    {tab === "text" && (
+                        <>
+                            <Section title="Watermark text">
+                                <input
+                                    type="text"
+                                    value={text}
+                                    onChange={e => setText(e.target.value)}
+                                    placeholder="e.g. CONFIDENTIAL"
+                                    className="w-full border border-border rounded-lg px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-purple-200"
+                                />
+                            </Section>
+
+                            <Section title="Text format">
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setFontOpen(o => !o)}
+                                        className="w-full flex items-center justify-between border border-border rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50 transition cursor-pointer"
+                                        style={currentFont.style as React.CSSProperties}
+                                    >
+                                        <span>{currentFont.label}</span>
+                                        <IconChevronDown size={14} className={`transition-transform ${fontOpen ? "rotate-180" : ""} text-brand-sage`} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {fontOpen && (
+                                            <motion.ul
+                                                initial={{ opacity: 0, y: -4 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -4 }}
+                                                className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-xl overflow-hidden"
+                                            >
+                                                {FONT_OPTIONS.map(f => (
+                                                    <li
+                                                        key={f.value}
+                                                        onClick={() => { setFontName(f.value); setFontOpen(false); }}
+                                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition ${fontName === f.value ? "bg-purple-50 text-purple-700" : "text-brand-dark"}`}
+                                                        style={f.style as React.CSSProperties}
+                                                    >
+                                                        {f.label}
+                                                    </li>
+                                                ))}
+                                            </motion.ul>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap mt-1">
+                                    <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                                        <button onClick={() => setFontSize(s => Math.max(8, s - 2))} className="px-2 py-1.5 text-brand-sage hover:bg-gray-50 transition text-xs cursor-pointer">−</button>
+                                        <span className="px-2 text-sm font-medium text-brand-dark min-w-[32px] text-center">{fontSize}</span>
+                                        <button onClick={() => setFontSize(s => Math.min(200, s + 2))} className="px-2 py-1.5 text-brand-sage hover:bg-gray-50 transition text-xs cursor-pointer">+</button>
+                                    </div>
+                                    <FormatBtn active={bold} onClick={() => setBold(b => !b)} title="Bold"><strong>B</strong></FormatBtn>
+                                    <FormatBtn active={italic} onClick={() => setItalic(i => !i)} title="Italic"><em>I</em></FormatBtn>
+                                    <FormatBtn active={underline} onClick={() => setUnderline(u => !u)} title="Underline"><span className="underline">U</span></FormatBtn>
+                                    <label className="relative flex items-center justify-center w-8 h-8 rounded-lg border border-border cursor-pointer hover:bg-gray-50 transition overflow-hidden" title="Text color">
+                                        <span className="text-sm font-bold" style={{ color: textColor }}>A</span>
+                                        <div className="absolute bottom-0 left-0 right-0 h-1.5" style={{ background: textColor }} />
+                                        <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                                    </label>
+                                </div>
+                            </Section>
+                        </>
+                    )}
+
+                    {/* IMAGE SETTINGS */}
+                    {tab === "image" && (
+                        <Section title="Watermark image">
+                            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-6 px-4 cursor-pointer hover:border-purple-400 hover:bg-purple-50/30 transition-all">
+                                {imagePreviewUrl ? (
+                                    <>
+                                        <img src={imagePreviewUrl} alt="selected" className="max-h-20 object-contain rounded-lg shadow" />
+                                        <span className="text-xs text-brand-sage">{imageFile?.name}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IconPhoto size={28} className="text-brand-sage" />
+                                        <span className="text-sm text-brand-sage font-medium">Click to upload image</span>
+                                        <span className="text-xs text-brand-sage opacity-70">PNG, JPG, SVG, WEBP</span>
+                                    </>
+                                )}
+                                <input type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+                            </label>
+
+                            {imagePreviewUrl && (
+                                <button
+                                    onClick={() => { setImageFile(null); setImagePreviewUrl(""); }}
+                                    className="text-xs text-red-500 hover:text-red-700 transition mt-1 cursor-pointer self-start"
+                                >
+                                    Remove image
+                                </button>
+                            )}
+
+                            <div className="flex flex-col gap-1 mt-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-brand-sage font-semibold">Width</span>
+                                    <span className="text-xs font-bold text-brand-dark">{imageWidthPct}%</span>
+                                </div>
+                                <input
+                                    type="range" min={5} max={100} step={5}
+                                    value={imageWidthPct}
+                                    onChange={e => setImageWidthPct(Number(e.target.value))}
+                                    className="w-full accent-purple-600 cursor-pointer"
+                                />
+                                <div className="flex justify-between text-[9px] text-brand-sage">
+                                    <span>Small (5%)</span><span>Full</span>
+                                </div>
+                            </div>
+                        </Section>
+                    )}
+
+                    {/* SHARED SETTINGS */}
+                    <Section title="Position">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex p-1 bg-slate-100/50 rounded-xl border border-slate-200">
+                                {(["single", "multiple"] as const).map(m => (
+                                    <button
+                                        key={m}
+                                        onClick={() => {
+                                            setLayoutMode(m);
+                                            if (m === "single") setSelectedPositions(["MC"]);
+                                        }}
+                                        className={`flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${layoutMode === m ? "bg-white shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                        style={layoutMode === m ? { color: ACCENT } : {}}
+                                    >
+                                        {m === "single" ? "Single" : "Multiple"}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center justify-center gap-4">
+                                <div className="grid grid-cols-3 gap-1.5 bg-white p-1.5 border border-slate-100 rounded-xl shadow-sm">
+                                    {POSITION_GRID.flat().map(p => {
+                                        const isActive = selectedPositions.includes(p);
+                                        return (
+                                            <button
+                                                key={p}
+                                                onClick={() => {
+                                                    if (layoutMode === "single") {
+                                                        setSelectedPositions([p]);
+                                                    } else {
+                                                        setSelectedPositions(prev =>
+                                                            prev.includes(p)
+                                                                ? (prev.length > 1 ? prev.filter(x => x !== p) : prev)
+                                                                : [...prev, p]
+                                                        );
+                                                    }
+                                                }}
+                                                className={`w-9 h-9 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-center ${isActive ? "bg-purple-50" : "border-slate-50 bg-white hover:border-slate-200"}`}
+                                                style={isActive ? { borderColor: ACCENT } : {}}
+                                            >
+                                                <div className={`w-2.5 h-2.5 rounded-full transition-all ${isActive ? "" : "bg-slate-200"}`}
+                                                    style={isActive ? { backgroundColor: ACCENT } : {}} />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {layoutMode === "multiple" && (
+                                    <div className="flex flex-col items-center">
+                                        <button
+                                            onClick={() => {
+                                                const all = POSITION_GRID.flat();
+                                                if (selectedPositions.length === all.length) {
+                                                    setSelectedPositions(["MC"]);
+                                                } else {
+                                                    setSelectedPositions(all);
+                                                }
+                                            }}
+                                            className="flex flex-col items-center gap-2 group cursor-pointer transition-colors"
+                                            style={{ color: selectedPositions.length === 9 ? ACCENT : "#94a3b8" }}
+                                        >
+                                            <div className="w-9 h-9 rounded-lg border-2 flex items-center justify-center transition-all"
+                                                style={selectedPositions.length === 9
+                                                    ? { backgroundColor: ACCENT, borderColor: ACCENT }
+                                                    : { backgroundColor: "white", borderColor: "#e2e8f0" }
+                                                }
+                                            >
+                                                <IconCheck size={18} className={selectedPositions.length === 9 ? "text-white" : "text-transparent"} />
+                                            </div>
+                                            <span className="text-[9px] font-bold uppercase tracking-widest text-center leading-tight">Select All</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Section>
+
+                    <Section title="Transparency">
+                        <div className="grid grid-cols-2 gap-2">
+                            {OPACITY_OPTIONS.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => setOpacity(opt.value)}
+                                    className={`flex items-center justify-center px-3 py-2 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer ${opacity === opt.value
+                                        ? "border-purple-500 bg-purple-50 text-purple-700"
+                                        : "border-border text-brand-sage hover:border-purple-300"
+                                        }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </Section>
+
+                    <Section title="Rotation">
+                        <DropdownSelect
+                            label=""
+                            value={rotation}
+                            options={ROTATION_OPTIONS}
+                            onChange={v => setRotation(Number(v))}
+                        />
+                    </Section>
+
+                    <Section title="Page range">
+                        <input
+                            type="text"
+                            value={pageRange}
+                            onChange={e => setPageRange(e.target.value)}
+                            placeholder="all, 1-3, 5-10"
+                            className={`w-full border rounded-lg px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-2 transition-all ${rangeError
+                                ? "border-red-400 focus:ring-red-100 bg-red-50/20"
+                                : "border-border focus:ring-purple-200"
+                                }`}
+                        />
+                        {rangeError ? (
+                            <p className="text-[10px] text-red-500 mt-1 flex items-start gap-1 font-medium leading-tight">
+                                <IconAlertCircle size={10} className="shrink-0 mt-0.5" />
+                                {rangeError}
+                            </p>
+                        ) : (
+                            <p className="text-[10px] text-brand-sage mt-1 leading-tight">
+                                Use <code className="bg-gray-100 px-1 rounded text-[9px]">all</code> or ranges like <code className="bg-gray-100 px-1 rounded text-[9px]">1-3,5</code>
+                            </p>
+                        )}
+                    </Section>
+                </div>
+
+                {/* Drawer apply button */}
+                <div className="px-5 pb-6 pt-3 border-t border-border">
+                    <button
+                        onClick={() => { handleApply(); setIsMobileSettingsOpen(false); }}
+                        disabled={isProcessing || !!rangeError}
+                        className="w-full text-white py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm active:scale-[0.98] cursor-pointer"
+                        style={{ backgroundColor: ACCENT }}
+                    >
+                        {isProcessing ? (
+                            <><IconLoader2 size={18} className="animate-spin" /> Applying…</>
+                        ) : (
+                            <><IconDownload size={18} /> Download with Watermark</>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Mobile bottom bar ───────────────────────────────────── */}
+            <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-border px-4 py-3 flex gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+                <button
+                    onClick={handleApply}
+                    disabled={isProcessing || !!rangeError}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-all cursor-pointer shadow-md"
+                    style={{ backgroundColor: ACCENT }}
+                >
+                    {isProcessing ? <><IconLoader2 size={15} className="animate-spin" /> Applying…</> : <><IconDownload size={15} /> Download with Watermark</>}
+                </button>
             </div>
         </div>
     );

@@ -38,9 +38,9 @@ def _hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
 
 def _resolve_font(base: str, bold: bool, italic: bool) -> str:
     if base == "helv":
-        if bold and italic: return "hebo"
-        elif bold: return "hebo"
-        elif italic: return "heob"
+        if bold and italic: return "hebi"   # Helvetica-BoldOblique
+        elif bold: return "hebo"             # Helvetica-Bold
+        elif italic: return "heit"           # Helvetica-Oblique (italic)
         return "helv"
     elif base == "tiro":
         if bold and italic: return "tibi"
@@ -179,68 +179,52 @@ async def add_watermark(
 
 def _stamp_text(page, text, font_name, font_size, bold, italic, underline,
                 text_color, cx, cy, pw, ph, opacity, rotation, layer, pos_fractions):
-    """Stamp text watermark at (cx, cy) with given settings."""
-    base_font = FONT_MAP.get(font_name, "helv")
-    use_bold = bold or (font_name in FORCE_BOLD)
-    fitz_font = _resolve_font(base_font, use_bold, italic)
+    """Stamp text watermark using system fonts for correct bold/italic rendering."""
     color = _hex_to_rgb(text_color)
+    use_bold = bold or (font_name in FORCE_BOLD)
 
-    # Measure text dimensions
-    tw = fitz.get_text_length(text, fontname=fitz_font, fontsize=font_size)
-    th = font_size  # approximate text height
+    # Build a fitz.Font with proper italic/bold flags so the PDF embeds real italic glyphs
+    sys_name = font_name if font_name else "Arial"
+    try:
+        font = fitz.Font(fontname=sys_name, is_bold=int(use_bold), is_italic=int(italic))
+    except Exception:
+        # Fall back to Helvetica Base14 family
+        base = FONT_MAP.get(font_name, "helv")
+        alias = _resolve_font(base, use_bold, italic)
+        try:
+            font = fitz.Font(fontname=alias)
+        except Exception:
+            font = fitz.Font(fontname="helv")
+
+    tw = font.text_length(text, fontsize=font_size)
+    th = font_size
 
     h_frac, v_frac = pos_fractions
-
-    # The anchor (cx, cy) is the grid anchor point.
-    # We want the text bounding box to be positioned so that:
-    #   - horizontally: left edge at cx - h_frac*tw  (so TL aligns left, MC centers, TR aligns right)
-    #   - vertically: top of text at cy - v_frac*th  (so TL aligns top, MC centers, BL aligns bottom)
-    # fitz insert_text places the baseline at the given point. Baseline ~ top + th*0.8
     insert_x = cx - (h_frac * tw)
-    insert_y = cy - (v_frac * th) + th * 0.8  # convert top-of-text to baseline
+    insert_y = cy - (v_frac * th) + th * 0.8
 
-    # Rotation pivot: the visual center of the text (not the insert point)
-    pivot_x = insert_x + tw / 2
-    pivot_y = insert_y - th * 0.3  # approx vertical center
-    pivot = fitz.Point(pivot_x, pivot_y)
-
-    # fitz.Matrix(angle_degrees) expects degrees.
-    # Positive degrees in CSS (preview) rotate CLOCKWISE.
-    # Positive degrees in fitz.Matrix rotate COUNTER-CLOCKWISE.
-    # So we must negate the rotation to match the preview exactly!
+    pivot = fitz.Point(insert_x + tw / 2, insert_y - th * 0.3)
     mat = fitz.Matrix(-rotation)
+    morph_arg = (pivot, mat) if rotation % 360 != 0 else None
 
-    insert_pt = fitz.Point(insert_x, insert_y)
-    try:
-        page.insert_text(
-            insert_pt,
-            text,
-            fontname=fitz_font,
-            fontsize=font_size,
-            color=color,
-            fill_opacity=opacity,
-            morph=(pivot, mat),
-            overlay=(layer == "over"),
-        )
-    except Exception:
-        # Fallback: insert without morph
-        page.insert_text(
-            insert_pt,
-            text,
-            fontname=fitz_font,
-            fontsize=font_size,
-            color=color,
-            overlay=(layer == "over"),
-        )
+    # ── Text ─────────────────────────────────────────────────────────────────
+    writer = fitz.TextWriter(page.rect)
+    writer.append(fitz.Point(insert_x, insert_y), text, font=font, fontsize=font_size)
+    writer.write_text(page, color=color, opacity=opacity,
+                      overlay=(layer == "over"), morph=morph_arg)
 
-    if underline and rotation == 0:
+    # ── Underline (separate draw_line — TextWriter underline not in all versions) ──
+    if underline:
         ul_y = insert_y + 2
-        page.draw_line(
-            fitz.Point(insert_x, ul_y),
-            fitz.Point(insert_x + tw, ul_y),
-            color=color,
-            width=0.8,
-        )
+        ul_w = max(0.5, font_size * 0.04)
+        p1, p2 = fitz.Point(insert_x, ul_y), fitz.Point(insert_x + tw, ul_y)
+        try:
+            page.draw_line(p1, p2, color=color, width=ul_w,
+                           morph=morph_arg, overlay=(layer == "over"),
+                           stroke_opacity=opacity)
+        except TypeError:
+            page.draw_line(p1, p2, color=color, width=ul_w,
+                           morph=morph_arg, overlay=(layer == "over"))
 
 
 def _stamp_image(page, img_bytes, img_w, img_h, unrotated_w, cx, cy, page_width, width_pct, layer, pos_fractions):
