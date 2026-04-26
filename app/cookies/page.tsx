@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Cookie Policy – SandeshPDF",
+  title: "Cookie Policy – PDF Maya",
   description:
-    "Learn how SandeshPDF uses cookies and similar technologies to operate the website, remember preferences, and improve performance.",
+    "Learn how PDF Maya uses cookies and similar technologies to operate the website, remember preferences, and improve performance.",
 };
 
 export default function CookiePolicy() {
@@ -21,7 +21,7 @@ export default function CookiePolicy() {
             Cookie Policy
           </h1>
           <p className="text-[#8C886B] leading-relaxed text-lg">
-            SandeshPDF may use cookies and similar technologies to operate the
+            PDF Maya may use cookies and similar technologies to operate the
             website, remember preferences, improve performance, provide
             analytics, detect abuse, and, where applicable, support advertising
             and measurement.
@@ -34,7 +34,7 @@ export default function CookiePolicy() {
               Types of Cookies We Use
             </h2>
             <p className="mb-4">
-              Cookies used by SandeshPDF may include:
+              Cookies used by PDF Maya may include:
             </p>
             <div className="space-y-4">
               <div className="bg-white border border-[#E8E5D8] rounded-xl p-5">
@@ -80,7 +80,7 @@ export default function CookiePolicy() {
             </h2>
             <p>
               Users can manage cookies through browser settings or any cookie
-              controls that SandeshPDF may provide. Blocking cookies may affect
+              controls that PDF Maya may provide. Blocking cookies may affect
               the functionality of some parts of the site.
             </p>
           </section>
@@ -92,10 +92,10 @@ export default function CookiePolicy() {
             <p>
               For questions about our cookie practices, contact:{" "}
               <a
-                href="mailto:privacy@SandeshPDF.com"
+                href="mailto:privacy@pdfmaya.com"
                 className="text-[#047C58] hover:underline font-medium"
               >
-                privacy@SandeshPDF.com
+                privacy@pdfmaya.com
               </a>
             </p>
           </section>

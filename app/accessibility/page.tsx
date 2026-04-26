@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Accessibility Statement – SandeshPDF",
+  title: "Accessibility Statement – PDF Maya",
   description:
-    "SandeshPDF is committed to improving website accessibility and usability for all users, including people who use assistive technologies.",
+    "PDF Maya is committed to improving website accessibility and usability for all users, including people who use assistive technologies.",
 };
 
 export default function AccessibilityStatement() {
@@ -21,7 +21,7 @@ export default function AccessibilityStatement() {
             Accessibility Statement
           </h1>
           <p className="text-[#8C886B] leading-relaxed text-lg">
-            SandeshPDF is committed to improving website accessibility and
+            PDF Maya is committed to improving website accessibility and
             usability for all users, including people who use assistive
             technologies.
           </p>
@@ -33,7 +33,7 @@ export default function AccessibilityStatement() {
               Our Commitment
             </h2>
             <p>
-              SandeshPDF aims to make its content, navigation, and tool
+              PDF Maya aims to make its content, navigation, and tool
               interfaces as clear, perceivable, and usable as reasonably
               possible. Accessibility is an ongoing effort, and some parts of
               the website may not yet be fully optimized at all times. We
@@ -46,7 +46,7 @@ export default function AccessibilityStatement() {
               Reporting an Accessibility Issue
             </h2>
             <p className="mb-4">
-              If you encounter an accessibility barrier while using SandeshPDF,
+              If you encounter an accessibility barrier while using PDF Maya,
               please contact us and include the following information so we can
               review and improve:
             </p>
@@ -58,10 +58,10 @@ export default function AccessibilityStatement() {
             <p className="mt-4">
               Contact:{" "}
               <a
-                href="mailto:accessibility@SandeshPDF.com"
+                href="mailto:accessibility@pdfmaya.com"
                 className="text-[#047C58] hover:underline font-medium"
               >
-                accessibility@SandeshPDF.com
+                accessibility@pdfmaya.com
               </a>
             </p>
           </section>

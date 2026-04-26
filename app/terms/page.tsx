@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Terms of Service – SandeshPDF",
+  title: "Terms of Service – PDF Maya",
   description:
-    "Read the Terms of Service for SandeshPDF. These terms govern your access to and use of SandeshPDF and all related tools, features, content, and services.",
+    "Read the Terms of Service for PDF Maya. These terms govern your access to and use of PDF Maya and all related tools, features, content, and services.",
 };
 
 export default function TermsOfService() {
@@ -22,9 +22,9 @@ export default function TermsOfService() {
             Terms of Service
           </h1>
           <p className="text-[#8C886B] leading-relaxed text-lg">
-            Welcome to SandeshPDF. These Terms of Service govern your access to
-            and use of SandeshPDF and all related tools, features, content, and
-            services available through the website. By using SandeshPDF, you
+            Welcome to PDF Maya. These Terms of Service govern your access to
+            and use of PDF Maya and all related tools, features, content, and
+            services available through the website. By using PDF Maya, you
             agree to these Terms. If you do not agree, you must not use the
             website.
           </p>
@@ -34,10 +34,10 @@ export default function TermsOfService() {
           {/* Section 1 */}
           <section>
             <h2 className="text-2xl font-bold text-[#1E1702] mb-3">
-              1. About SandeshPDF
+              1. About PDF Maya
             </h2>
             <p>
-              SandeshPDF is an online document tool website that may allow users
+              PDF Maya is an online document tool website that may allow users
               to compress PDFs, edit PDFs, merge files, split files, convert
               between formats, add signatures, create fillable forms, and perform
               other document-related actions through a browser-based interface.
@@ -52,10 +52,10 @@ export default function TermsOfService() {
               2. Eligibility
             </h2>
             <p>
-              You may use SandeshPDF only if you are legally able to enter into a
+              You may use PDF Maya only if you are legally able to enter into a
               binding agreement under the laws that apply to you. If you are
               under the age of majority in your jurisdiction, you may use
-              SandeshPDF only with permission and supervision from a parent or
+              PDF Maya only with permission and supervision from a parent or
               legal guardian.
             </p>
           </section>
@@ -67,7 +67,7 @@ export default function TermsOfService() {
             </h2>
             <p className="mb-4">
               When you upload, submit, import, or process any file through
-              SandeshPDF, you represent and warrant that:
+              PDF Maya, you represent and warrant that:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
@@ -85,8 +85,8 @@ export default function TermsOfService() {
               </li>
             </ul>
             <p className="mt-4">
-              You retain ownership of your files. SandeshPDF does not claim
-              ownership of user-uploaded documents. However, you grant SandeshPDF
+              You retain ownership of your files. PDF Maya does not claim
+              ownership of user-uploaded documents. However, you grant PDF Maya
               a limited, non-exclusive, revocable right to host, process,
               transmit, convert, compress, store temporarily, and otherwise
               handle your files only as necessary to provide the requested
@@ -100,7 +100,7 @@ export default function TermsOfService() {
               4. Acceptable Use
             </h2>
             <p className="mb-4">
-              You agree not to use SandeshPDF to:
+              You agree not to use PDF Maya to:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Upload or process files you do not have the right to use.</li>
@@ -117,7 +117,7 @@ export default function TermsOfService() {
                 interfere with the website.
               </li>
               <li>
-                Access or use SandeshPDF through abusive bots, scripts, or
+                Access or use PDF Maya through abusive bots, scripts, or
                 automated systems that harm service availability.
               </li>
               <li>
@@ -126,7 +126,7 @@ export default function TermsOfService() {
               </li>
             </ul>
             <p className="mt-4">
-              SandeshPDF may suspend, restrict, or terminate access if it
+              PDF Maya may suspend, restrict, or terminate access if it
               believes a user has violated these Terms, created legal risk, abused
               the website, or threatened system integrity.
             </p>
@@ -138,14 +138,14 @@ export default function TermsOfService() {
               5. File Upload and Security Rules
             </h2>
             <p className="mb-4">
-              To help protect the website and its users, SandeshPDF may restrict
+              To help protect the website and its users, PDF Maya may restrict
               accepted file types, file sizes, upload volume, storage periods,
               and processing limits. Restricting uploads to approved file types
               and applying size limits are standard file-upload security
               practices.
             </p>
             <p>
-              SandeshPDF may scan files, block suspicious uploads, refuse
+              PDF Maya may scan files, block suspicious uploads, refuse
               processing requests, or delete files that appear unsafe, unlawful,
               corrupted, unsupported, or abusive. These actions may be taken
               automatically or manually for security, compliance, or operational
@@ -159,7 +159,7 @@ export default function TermsOfService() {
               6. No Guarantee of Results
             </h2>
             <p className="mb-4">
-              SandeshPDF aims to provide useful and reliable document-processing
+              PDF Maya aims to provide useful and reliable document-processing
               tools, but it does not guarantee that every output will be
               error-free, perfectly formatted, fully editable, or suitable for
               every legal, commercial, archival, or technical purpose. Results
@@ -179,7 +179,7 @@ export default function TermsOfService() {
               7. Availability
             </h2>
             <p>
-              SandeshPDF may change, suspend, limit, or discontinue any feature,
+              PDF Maya may change, suspend, limit, or discontinue any feature,
               tool, or part of the website at any time, with or without notice.
               Access may also be interrupted by maintenance, updates, technical
               failures, security events, or third-party service issues.
@@ -192,12 +192,12 @@ export default function TermsOfService() {
               8. Intellectual Property
             </h2>
             <p>
-              All content and materials on SandeshPDF, excluding user-uploaded
+              All content and materials on PDF Maya, excluding user-uploaded
               files — including software, branding, design, logos, text, layout,
               graphics, tool logic, and website content — are owned by or
-              licensed to SandeshPDF and are protected by applicable intellectual
+              licensed to PDF Maya and are protected by applicable intellectual
               property laws. You may not copy, reproduce, distribute, modify,
-              sell, license, or exploit any portion of SandeshPDF except as
+              sell, license, or exploit any portion of PDF Maya except as
               expressly permitted in writing.
             </p>
           </section>
@@ -208,7 +208,7 @@ export default function TermsOfService() {
               9. Third-Party Services
             </h2>
             <p>
-              SandeshPDF may rely on third-party hosting, analytics, security,
+              PDF Maya may rely on third-party hosting, analytics, security,
               advertising, payment, storage, OCR, file-processing, and
               infrastructure providers. These providers may process certain data
               or technical information as part of the service, and their own
@@ -222,9 +222,9 @@ export default function TermsOfService() {
               10. Disclaimer of Warranties
             </h2>
             <p>
-              SandeshPDF is provided on an &quot;as is&quot; and &quot;as
+              PDF Maya is provided on an &quot;as is&quot; and &quot;as
               available&quot; basis. To the fullest extent permitted by law,
-              SandeshPDF disclaims all warranties, express or implied, including
+              PDF Maya disclaims all warranties, express or implied, including
               warranties of merchantability, fitness for a particular purpose,
               accuracy, non-infringement, and uninterrupted or error-free
               operation.
@@ -237,7 +237,7 @@ export default function TermsOfService() {
               11. Limitation of Liability
             </h2>
             <p className="mb-4">
-              To the fullest extent permitted by law, SandeshPDF and its owners,
+              To the fullest extent permitted by law, PDF Maya and its owners,
               affiliates, service providers, contractors, and licensors will not
               be liable for any indirect, incidental, consequential, special,
               punitive, or exemplary damages, or for any loss of files, content,
@@ -245,7 +245,7 @@ export default function TermsOfService() {
               related to your use of the website.
             </p>
             <p>
-              If liability cannot be excluded, the total liability of SandeshPDF
+              If liability cannot be excluded, the total liability of PDF Maya
               for any claim related to the website will be limited to the minimum
               amount permitted by applicable law, and where relevant, no more
               than the amount paid by you, if any, for the specific service at
@@ -259,7 +259,7 @@ export default function TermsOfService() {
               12. Indemnification
             </h2>
             <p>
-              You agree to defend, indemnify, and hold harmless SandeshPDF and
+              You agree to defend, indemnify, and hold harmless PDF Maya and
               its owners, affiliates, and service providers from and against
               claims, liabilities, losses, damages, costs, and expenses arising
               from your files, your misuse of the website, your violation of
@@ -273,9 +273,9 @@ export default function TermsOfService() {
               13. Changes to These Terms
             </h2>
             <p>
-              SandeshPDF may update these Terms from time to time. Updated Terms
+              PDF Maya may update these Terms from time to time. Updated Terms
               will be posted on this page with a revised &quot;Last Updated&quot;
-              date. Continued use of SandeshPDF after changes take effect means
+              date. Continued use of PDF Maya after changes take effect means
               you accept the updated Terms.
             </p>
           </section>
@@ -287,7 +287,7 @@ export default function TermsOfService() {
             </h2>
             <p>
               These Terms are governed by the laws of the jurisdiction in which
-              SandeshPDF operates, without regard to conflict of law rules,
+              PDF Maya operates, without regard to conflict of law rules,
               except where mandatory law requires otherwise.
             </p>
           </section>
@@ -300,10 +300,10 @@ export default function TermsOfService() {
             <p>
               For legal questions about these Terms, contact:{" "}
               <a
-                href="mailto:legal@SandeshPDF.com"
+                href="mailto:legal@pdfmaya.com"
                 className="text-[#047C58] hover:underline font-medium"
               >
-                legal@SandeshPDF.com
+                legal@pdfmaya.com
               </a>
             </p>
           </section>

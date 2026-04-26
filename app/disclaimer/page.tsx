@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Disclaimer – SandeshPDF",
+  title: "Disclaimer – PDF Maya",
   description:
-    "Read the SandeshPDF disclaimer. SandeshPDF provides online PDF and document tools for general informational and utility purposes only.",
+    "Read the PDF Maya disclaimer. PDF Maya provides online PDF and document tools for general informational and utility purposes only.",
 };
 
 export default function Disclaimer() {
@@ -24,8 +24,8 @@ export default function Disclaimer() {
 
         <div className="space-y-6 text-[#8C886B] leading-relaxed">
           <p>
-            SandeshPDF provides online PDF and document tools for general
-            informational and utility purposes only. Although SandeshPDF aims to
+            PDF Maya provides online PDF and document tools for general
+            informational and utility purposes only. Although PDF Maya aims to
             provide reliable tools and accurate outputs, no guarantee is made
             that the website, its tools, or any output files will always be
             complete, secure, accurate, error-free, or suitable for every
@@ -40,12 +40,12 @@ export default function Disclaimer() {
           </p>
           <p>
             You are solely responsible for reviewing any output produced through
-            SandeshPDF before relying on it, filing it, sharing it, printing it,
+            PDF Maya before relying on it, filing it, sharing it, printing it,
             signing it, or submitting it to any employer, client, school, court,
             government office, bank, or other third party.
           </p>
           <p>
-            SandeshPDF does not provide legal advice, accounting advice,
+            PDF Maya does not provide legal advice, accounting advice,
             compliance advice, records-retention advice, or
             document-authentication services. Use of the website is at your own
             risk.

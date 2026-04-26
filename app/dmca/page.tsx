@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Copyright & DMCA Policy – SandeshPDF",
+  title: "Copyright & DMCA Policy – PDF Maya",
   description:
-    "SandeshPDF respects intellectual property rights. Learn how to submit a copyright notice or DMCA counter-notice.",
+    "PDF Maya respects intellectual property rights. Learn how to submit a copyright notice or DMCA counter-notice.",
 };
 
 export default function DmcaPolicy() {
@@ -21,10 +21,10 @@ export default function DmcaPolicy() {
             Copyright &amp; DMCA Policy
           </h1>
           <p className="text-[#8C886B] leading-relaxed text-lg">
-            SandeshPDF respects intellectual property rights and expects users to
+            PDF Maya respects intellectual property rights and expects users to
             do the same. If you believe content processed, stored, displayed, or
-            made available through SandeshPDF infringes your copyright, you may
-            send a written notice to SandeshPDF&apos;s designated copyright
+            made available through PDF Maya infringes your copyright, you may
+            send a written notice to PDF Maya&apos;s designated copyright
             contact.
           </p>
         </div>
@@ -103,7 +103,7 @@ export default function DmcaPolicy() {
               3. Repeat Infringers
             </h2>
             <p>
-              SandeshPDF may suspend, restrict, or terminate access for users
+              PDF Maya may suspend, restrict, or terminate access for users
               who repeatedly upload or process material that infringes the rights
               of others.
             </p>
@@ -119,10 +119,10 @@ export default function DmcaPolicy() {
             </p>
             <p>
               <a
-                href="mailto:copyright@SandeshPDF.com"
+                href="mailto:copyright@pdfmaya.com"
                 className="text-[#047C58] hover:underline font-medium"
               >
-                copyright@SandeshPDF.com
+                copyright@pdfmaya.com
               </a>
             </p>
             <p className="mt-2 text-sm">

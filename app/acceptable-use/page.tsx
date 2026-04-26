@@ -3,9 +3,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "Acceptable Use Policy – SandeshPDF",
+  title: "Acceptable Use Policy – PDF Maya",
   description:
-    "Read SandeshPDF's Acceptable Use Policy. Learn the rules for using SandeshPDF's tools and infrastructure responsibly.",
+    "Read PDF Maya's Acceptable Use Policy. Learn the rules for using PDF Maya's tools and infrastructure responsibly.",
 };
 
 export default function AcceptableUsePolicy() {
@@ -22,8 +22,8 @@ export default function AcceptableUsePolicy() {
           </h1>
           <p className="text-[#8C886B] leading-relaxed text-lg">
             This Acceptable Use Policy explains the rules for using
-            SandeshPDF&apos;s tools and infrastructure. Users may not use
-            SandeshPDF to upload, store, convert, edit, merge, sign, or
+            PDF Maya&apos;s tools and infrastructure. Users may not use
+            PDF Maya to upload, store, convert, edit, merge, sign, or
             distribute files that are unlawful, abusive, harmful, fraudulent,
             infringing, or technically dangerous.
           </p>
@@ -35,7 +35,7 @@ export default function AcceptableUsePolicy() {
               Prohibited Uses
             </h2>
             <p className="mb-4">
-              The following activities are strictly prohibited on SandeshPDF:
+              The following activities are strictly prohibited on PDF Maya:
             </p>
             <ul className="list-disc pl-6 space-y-3">
               <li>
@@ -59,7 +59,7 @@ export default function AcceptableUsePolicy() {
                 unlawful record manipulation
               </li>
               <li>
-                Using SandeshPDF to harass, deceive, extort, or facilitate
+                Using PDF Maya to harass, deceive, extort, or facilitate
                 unlawful conduct
               </li>
             </ul>
@@ -70,7 +70,7 @@ export default function AcceptableUsePolicy() {
               Enforcement
             </h2>
             <p>
-              SandeshPDF may block, suspend, remove, refuse, or report content
+              PDF Maya may block, suspend, remove, refuse, or report content
               or activity that violates this policy. Repeat violations may result
               in permanent termination of access.
             </p>
