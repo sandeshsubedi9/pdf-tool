@@ -38,7 +38,7 @@ export default function Footer() {
                                 <IconFileText size={18} stroke={2} />
                             </span>
                             <span className="font-bold text-lg text-white">
-                                PDF<span className="text-brand-teal">Tool</span>
+                                PDF <span className="text-brand-teal">Maya</span>
                             </span>
                         </a>
                         <p className="text-sm leading-relaxed max-w-xs" style={{ color: "#A09888" }}>
@@ -93,7 +93,7 @@ export default function Footer() {
 
                 {/* Bottom bar */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-8 text-xs" style={{ color: "#6B6050" }}>
-                    <p>© {new Date().getFullYear()} PDFTool. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} PDF Maya. All rights reserved.</p>
                     <p>Made with care for PDF lovers everywhere.</p>
                 </div>
             </div>

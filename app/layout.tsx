@@ -12,10 +12,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PDFTool – Every PDF Tool in One Place",
+  title: "PDF Maya – Every PDF Tool in One Place",
   description:
-    "Merge, split, compress, convert, edit, sign and do much more with PDFs. Free, fast, and easy to use – PDFTool has every PDF tool at your fingertips.",
-  keywords: "PDF editor, merge PDF, split PDF, compress PDF, convert PDF, PDF tools",
+    "Merge, split, compress, convert, edit, sign and do much more with PDFs. Free, fast, and easy to use – PDF Maya has every PDF tool at your fingertips.",
+  keywords: "PDF editor, merge PDF, split PDF, compress PDF, convert PDF, PDF tools, crop PDF, watermark PDF, OCR PDF, redact PDF, sign PDF, extract images, protect PDF, translate PDF, repair PDF, PDF to Word, Word to PDF, Excel to PDF",
 };
 
 export default function RootLayout({

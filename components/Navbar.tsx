@@ -247,7 +247,7 @@ export default function Navbar() {
                         className="font-bold text-lg tracking-tight text-brand-dark"
                         style={{ fontFamily: "var(--font-inter)" }}
                     >
-                        PDF<span className="text-brand-teal">Tool</span>
+                        PDF <span className="text-brand-teal">Maya</span>
                     </span>
                 </a>
 

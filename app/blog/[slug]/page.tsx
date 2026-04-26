@@ -22,7 +22,7 @@ export async function generateMetadata(props: Props) {
     return { title: "Blog Not Found" };
   }
   return {
-    title: `${blog.title} – SandeshPDF`,
+    title: `${blog.title} – PDF Maya`,
     description: blog.summary,
   };
 }

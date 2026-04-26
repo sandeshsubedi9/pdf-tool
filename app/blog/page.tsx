@@ -5,7 +5,7 @@ import Link from "next/link";
 import blogs from "@/data/blogs.json";
 
 export const metadata = {
-  title: "Blog – SandeshPDF",
+  title: "Blog – PDF Maya",
   description: "Read the latest tips, tricks, and guides about managing PDF files.",
 };
 
@@ -15,7 +15,7 @@ export default function BlogListing() {
       <Navbar />
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-20">
         <div className="mb-10 text-center">
-          <h1 className="text-4xl font-bold text-[#1E1702] mb-4">SandeshPDF Blog</h1>
+          <h1 className="text-4xl font-bold text-[#1E1702] mb-4">PDF Maya Blog</h1>
           <p className="text-[#8C886B] leading-relaxed text-lg max-w-2xl mx-auto">
             Everything you need to know about compressing, splitting, merging, and beautifully managing your PDFs.
           </p>

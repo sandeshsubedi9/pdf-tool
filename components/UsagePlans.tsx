@@ -60,14 +60,25 @@ export default function UsagePlans() {
                             <p className="text-sm font-semibold text-[#047C58]">Unlimited usage for everyone</p>
                         </div>
 
-                        <ul className="flex flex-col gap-2.5 flex-1">
-                            {["Organize PDF", "Merge PDF", "Split PDF", "Compress PDF", "Rotate & Crop", "All Conversions"].map((tool) => (
-                                <li key={tool} className="flex items-center gap-2 text-sm text-brand-sage">
-                                    <IconCheck size={14} className="text-[#047C58] shrink-0" />
-                                    <span>{tool}</span>
+                        <div className="flex flex-col flex-1 gap-4">
+                            <p className="text-sm leading-relaxed text-brand-sage">
+                                <strong className="text-brand-dark font-semibold">Every single tool</strong> in our suite, except for the main PDF Editor, is completely unrestricted.
+                            </p>
+                            <ul className="flex flex-col gap-3 w-full mt-1">
+                                <li className="flex items-start gap-2 text-sm text-brand-sage">
+                                    <IconCheck size={14} className="text-[#047C58] shrink-0 mt-0.5" />
+                                    <span>No file size or page count restrictions.</span>
                                 </li>
-                            ))}
-                        </ul>
+                                <li className="flex items-start gap-2 text-sm text-brand-sage">
+                                    <IconCheck size={14} className="text-[#047C58] shrink-0 mt-0.5" />
+                                    <span>No daily or hourly usage limits.</span>
+                                </li>
+                                <li className="flex items-start gap-2 text-sm text-brand-sage">
+                                    <IconCheck size={14} className="text-[#047C58] shrink-0 mt-0.5" />
+                                    <span>No sign-up or credit card required.</span>
+                                </li>
+                            </ul>
+                        </div>
                     </motion.div>
 
                     {/* Edit PDF Limit Card */}

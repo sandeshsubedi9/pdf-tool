@@ -1407,7 +1407,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         const editDescriptionContent = (
             <div className="flex flex-col gap-5 mt-4">
                 <p className="text-brand-sage leading-relaxed">
-                    Make changes without the original source file using SandeshPDF’s Edit PDF tool. Our online PDF editor lets you fix typos, update dates, replace images, and adjust layouts directly in your browser.
+                    Make changes without the original source file using PDF Maya’s Edit PDF tool. Our online PDF editor lets you fix typos, update dates, replace images, and adjust layouts directly in your browser.
                 </p>
                 <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
                 <ul className="flex flex-col gap-2.5">
