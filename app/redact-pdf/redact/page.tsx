@@ -22,9 +22,10 @@ import {
     IconCheck,
     IconMinus,
     IconPlus,
-    IconZoomIn,
     IconZoomOut,
     IconSettings,
+    IconHandStop,
+    IconPencil,
 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 import { downloadBlob } from "@/lib/pdf-utils";
@@ -147,11 +148,10 @@ function PageSidebar({
                                             block: "start",
                                         });
                                 }}
-                                className={`relative w-full rounded-md overflow-hidden border-2 transition-all cursor-pointer group shrink-0 ${
-                                    currentPage === i
+                                className={`relative w-full rounded-md overflow-hidden border-2 transition-all cursor-pointer group shrink-0 ${currentPage === i
                                         ? "border-[#1a1a2e] shadow-lg shadow-[#1a1a2e]/10 bg-white"
                                         : "border-transparent bg-white hover:border-[#E0DED9]"
-                                }`}
+                                    }`}
                             >
                                 <div className="p-1 relative">
                                     <img
@@ -169,11 +169,10 @@ function PageSidebar({
                                 </div>
                             </button>
                             <div
-                                className={`text-[11px] font-bold transition-all px-2.5 py-0.5 rounded-full ${
-                                    currentPage === i
+                                className={`text-[11px] font-bold transition-all px-2.5 py-0.5 rounded-full ${currentPage === i
                                         ? "bg-[#f5f4f0] text-brand-dark"
                                         : "text-brand-sage group-hover:text-brand-dark"
-                                }`}
+                                    }`}
                             >
                                 Page {i + 1}
                             </div>
@@ -202,7 +201,7 @@ function RedactionOverlay({
 }) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const dragStart = useRef<{x: number, y: number, startX: number, startY: number} | null>(null);
+    const dragStart = useRef<{ x: number, y: number, startX: number, startY: number } | null>(null);
 
     const handlePointerDown = (e: React.PointerEvent) => {
         // Only allow left click dragging
@@ -224,10 +223,10 @@ function RedactionOverlay({
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pageRect = pageEl.getBoundingClientRect();
-        
+
         const dx = ((e.clientX - dragStart.current.x) / pageRect.width) * 100;
         const dy = ((e.clientY - dragStart.current.y) / pageRect.height) * 100;
-        
+
         let newX = dragStart.current.startX + dx;
         let newY = dragStart.current.startY + dy;
 
@@ -418,18 +417,16 @@ function WholePageModal({
                                 <button
                                     key={opt.key}
                                     onClick={() => setMode(opt.key)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all cursor-pointer text-left ${
-                                        mode === opt.key
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all cursor-pointer text-left ${mode === opt.key
                                             ? "border-black bg-[#f0f0f0]"
                                             : "border-transparent bg-[#f9f9f8] hover:border-[#E0DED9]"
-                                    }`}
+                                        }`}
                                 >
                                     <span
-                                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                            mode === opt.key
+                                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${mode === opt.key
                                                 ? "border-black bg-black"
                                                 : "border-[#C0BEB6]"
-                                        }`}
+                                            }`}
                                     >
                                         {mode === opt.key && (
                                             <IconCheck
@@ -626,7 +623,7 @@ export default function RedactPdfPage() {
     // ── Drawing handlers ──────────────────────────────────────────────────────
 
     const getRelativePosition = (
-        e: React.MouseEvent | React.PointerEvent,
+        e: React.PointerEvent,
         pageEl: HTMLElement
     ): { x: number; y: number } => {
         const rect = pageEl.getBoundingClientRect();
@@ -637,10 +634,15 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseDown = (
-        e: React.MouseEvent | React.PointerEvent,
+        e: React.PointerEvent,
         pageIndex: number
     ) => {
         e.preventDefault();
+        if (e.target && 'setPointerCapture' in e.target) {
+            try {
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            } catch (err) { }
+        }
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pos = getRelativePosition(e, pageEl);
@@ -651,7 +653,7 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseMove = (
-        e: React.MouseEvent | React.PointerEvent,
+        e: React.PointerEvent,
         pageIndex: number
     ) => {
         if (!drawing.current || !drawStart.current) return;
@@ -659,6 +661,11 @@ export default function RedactPdfPage() {
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pos = getRelativePosition(e, pageEl);
+
+        // Clamp to page bounds
+        pos.x = Math.max(0, Math.min(100, pos.x));
+        pos.y = Math.max(0, Math.min(100, pos.y));
+
         const x = Math.min(drawStart.current.x, pos.x);
         const y = Math.min(drawStart.current.y, pos.y);
         const w = Math.abs(pos.x - drawStart.current.x);
@@ -667,14 +674,24 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseUp = (
-        e: React.MouseEvent | React.PointerEvent,
+        e: React.PointerEvent,
         pageIndex: number
     ) => {
         if (!drawing.current || !drawStart.current) return;
         drawing.current = false;
+        if (e.target && 'releasePointerCapture' in e.target) {
+            try {
+                (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+            } catch (err) { }
+        }
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pos = getRelativePosition(e, pageEl);
+
+        // Clamp to page bounds
+        pos.x = Math.max(0, Math.min(100, pos.x));
+        pos.y = Math.max(0, Math.min(100, pos.y));
+
         const x = Math.min(drawStart.current.x, pos.x);
         const y = Math.min(drawStart.current.y, pos.y);
         const w = Math.abs(pos.x - drawStart.current.x);
@@ -1023,11 +1040,10 @@ export default function RedactPdfPage() {
                                                     setZoom(z);
                                                     setShowZoomMenu(false);
                                                 }}
-                                                className={`w-full px-4 py-2 text-xs font-bold text-left hover:bg-[#f5f4f0] transition-colors cursor-pointer ${
-                                                    zoom === z
+                                                className={`w-full px-4 py-2 text-xs font-bold text-left hover:bg-[#f5f4f0] transition-colors cursor-pointer ${zoom === z
                                                         ? "bg-black text-white hover:bg-black"
                                                         : "text-brand-dark"
-                                                }`}
+                                                    }`}
                                             >
                                                 {ZOOM_LABELS[z]}
                                             </button>
@@ -1072,6 +1088,28 @@ export default function RedactPdfPage() {
                         if (showZoomMenu) setShowZoomMenu(false);
                     }}
                 >
+                    {/* Hint Message */}
+                    <div className="sticky top-0 z-20 flex justify-center pt-3 pointer-events-none">
+                        <AnimatePresence>
+                            {redactions.length === 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    className="bg-white/95 backdrop-blur rounded-full px-4 py-2 shadow-lg border border-[#E0DED9] text-[11px] sm:text-xs font-semibold text-brand-sage flex items-center gap-2 text-center max-w-[85vw]"
+                                >
+                                    <IconEraser size={14} className="shrink-0" />
+                                    <span className="hidden lg:inline">
+                                        Drag on any page to draw a redaction region
+                                    </span>
+                                    <span className="lg:hidden">
+                                        Drag to draw a redaction. Use the toolbar arrows to change pages.
+                                    </span>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
                     <div className="flex flex-col items-center flex-1 w-full h-full p-2 md:p-4">
                         <div
                             className="flex flex-col gap-4 pb-12"
@@ -1090,25 +1128,23 @@ export default function RedactPdfPage() {
                                         key={i}
                                         id={`pdf-page-${i}`}
                                         className="relative bg-white shadow-xl mx-auto select-none"
+                                        onPointerDown={(e) => handlePageMouseDown(e, i)}
+                                        onPointerMove={(e) => handlePageMouseMove(e, i)}
+                                        onPointerUp={(e) => handlePageMouseUp(e, i)}
+                                        onPointerCancel={() => {
+                                            if (drawing.current) {
+                                                drawing.current = false;
+                                                drawStart.current = null;
+                                                setDraftRect(null);
+                                                draftPageRef.current = 0;
+                                            }
+                                        }}
                                         style={{
                                             aspectRatio: `${pg.width} / ${pg.height}`,
                                             cursor: "crosshair",
                                             width: "100%",
                                             border: "1px solid #ccc",
-                                        }}
-                                        onPointerDown={(e) =>
-                                            handlePageMouseDown(e, i)
-                                        }
-                                        onPointerMove={(e) =>
-                                            handlePageMouseMove(e, i)
-                                        }
-                                        onPointerUp={(e) =>
-                                            handlePageMouseUp(e, i)
-                                        }
-                                        onPointerLeave={(e) => {
-                                            if (drawing.current) {
-                                                handlePageMouseUp(e, i);
-                                            }
+                                            touchAction: "none",
                                         }}
                                     >
                                         {/* Page image */}

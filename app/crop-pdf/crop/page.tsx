@@ -499,7 +499,7 @@ export default function CropPdfEditorPage() {
 
     // ── Drawing handlers ───────────────────────────────────────────────────────
 
-    const getRelPos = (e: React.MouseEvent, pageEl: HTMLElement) => {
+    const getRelPos = (e: React.PointerEvent, pageEl: HTMLElement) => {
         const r = pageEl.getBoundingClientRect();
         return {
             x: ((e.clientX - r.left) / r.width) * 100,
@@ -507,9 +507,14 @@ export default function CropPdfEditorPage() {
         };
     };
 
-    const handlePageMouseDown = (e: React.MouseEvent, pageIndex: number) => {
+    const handlePageMouseDown = (e: React.PointerEvent, pageIndex: number) => {
         if ((e.target as HTMLElement).closest("[data-crop-box]")) return;
         e.preventDefault();
+        if (e.target && 'setPointerCapture' in e.target) {
+            try {
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            } catch (err) {}
+        }
         setSelectedCropId(null);
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
@@ -520,12 +525,16 @@ export default function CropPdfEditorPage() {
         setDraftRect({ x: pos.x, y: pos.y, w: 0, h: 0 });
     };
 
-    const handlePageMouseMove = (e: React.MouseEvent, pageIndex: number) => {
+    const handlePageMouseMove = (e: React.PointerEvent, pageIndex: number) => {
         if (!drawing.current || !drawStart.current) return;
         if (pageIndex !== draftPageRef.current) return;
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pos = getRelPos(e, pageEl);
+        
+        pos.x = Math.max(0, Math.min(100, pos.x));
+        pos.y = Math.max(0, Math.min(100, pos.y));
+        
         setDraftRect({
             x: Math.min(drawStart.current.x, pos.x),
             y: Math.min(drawStart.current.y, pos.y),
@@ -534,12 +543,21 @@ export default function CropPdfEditorPage() {
         });
     };
 
-    const handlePageMouseUp = (e: React.MouseEvent, pageIndex: number) => {
+    const handlePageMouseUp = (e: React.PointerEvent, pageIndex: number) => {
         if (!drawing.current || !drawStart.current) return;
         drawing.current = false;
+        if (e.target && 'releasePointerCapture' in e.target) {
+            try {
+                (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+            } catch (err) {}
+        }
         const pageEl = document.getElementById(`pdf-page-${pageIndex}`);
         if (!pageEl) return;
         const pos = getRelPos(e, pageEl);
+        
+        pos.x = Math.max(0, Math.min(100, pos.x));
+        pos.y = Math.max(0, Math.min(100, pos.y));
+        
         const x = Math.min(drawStart.current.x, pos.x);
         const y = Math.min(drawStart.current.y, pos.y);
         const w = Math.abs(pos.x - drawStart.current.x);
@@ -853,10 +871,15 @@ export default function CropPdfEditorPage() {
                                     initial={{ opacity: 0, y: -8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -8 }}
-                                    className="bg-white/95 backdrop-blur rounded-full px-4 py-1.5 shadow-lg border border-[#E0DED9] text-xs font-semibold text-brand-sage flex items-center gap-2"
+                                    className="bg-white/95 backdrop-blur rounded-full px-4 py-2 shadow-lg border border-[#E0DED9] text-[11px] sm:text-xs font-semibold text-brand-sage flex items-center gap-2 text-center max-w-[85vw]"
                                 >
-                                    <IconCrop size={13} />
-                                    Drag on any page to draw a crop region
+                                    <IconCrop size={14} className="shrink-0" />
+                                    <span className="hidden lg:inline">
+                                        Drag on any page to draw a crop region
+                                    </span>
+                                    <span className="lg:hidden">
+                                        Drag to draw a crop region. Use the toolbar arrows to change pages.
+                                    </span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -881,11 +904,19 @@ export default function CropPdfEditorPage() {
                                             cursor: "crosshair",
                                             width: "100%",
                                             border: "1px solid #ccc",
+                                            touchAction: "none",
                                         }}
-                                        onMouseDown={(e) => handlePageMouseDown(e, i)}
-                                        onMouseMove={(e) => handlePageMouseMove(e, i)}
-                                        onMouseUp={(e) => handlePageMouseUp(e, i)}
-                                        onMouseLeave={(e) => { if (drawing.current) handlePageMouseUp(e, i); }}
+                                        onPointerDown={(e) => handlePageMouseDown(e, i)}
+                                        onPointerMove={(e) => handlePageMouseMove(e, i)}
+                                        onPointerUp={(e) => handlePageMouseUp(e, i)}
+                                        onPointerCancel={() => {
+                                            if (drawing.current) {
+                                                drawing.current = false;
+                                                drawStart.current = null;
+                                                setDraftRect(null);
+                                                draftPageRef.current = 0;
+                                            }
+                                        }}
                                     >
                                         <img
                                             src={pg.dataUrl}
