@@ -626,7 +626,7 @@ export default function RedactPdfPage() {
     // ── Drawing handlers ──────────────────────────────────────────────────────
 
     const getRelativePosition = (
-        e: React.MouseEvent,
+        e: React.MouseEvent | React.PointerEvent,
         pageEl: HTMLElement
     ): { x: number; y: number } => {
         const rect = pageEl.getBoundingClientRect();
@@ -637,7 +637,7 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseDown = (
-        e: React.MouseEvent,
+        e: React.MouseEvent | React.PointerEvent,
         pageIndex: number
     ) => {
         e.preventDefault();
@@ -651,7 +651,7 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseMove = (
-        e: React.MouseEvent,
+        e: React.MouseEvent | React.PointerEvent,
         pageIndex: number
     ) => {
         if (!drawing.current || !drawStart.current) return;
@@ -667,7 +667,7 @@ export default function RedactPdfPage() {
     };
 
     const handlePageMouseUp = (
-        e: React.MouseEvent,
+        e: React.MouseEvent | React.PointerEvent,
         pageIndex: number
     ) => {
         if (!drawing.current || !drawStart.current) return;
@@ -813,43 +813,39 @@ export default function RedactPdfPage() {
             <Navbar />
 
             {/* ── Secondary toolbar ── */}
-            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] px-4 py-2.5 flex items-center justify-between shadow-sm shrink-0 gap-2 flex-wrap">
-                {/* Left: Back + file info */}
-                <div className="flex-1 flex items-center gap-4 min-w-0">
-                    <div className="flex items-center gap-3 pr-4 border-r border-[#E0DED9] shrink-0">
-                        <button
-                            onClick={() => router.push("/redact-pdf")}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
-                            title="Back to upload"
-                        >
-                            <IconArrowLeft size={16} />
-                            Back
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="bg-[#f0f0f0] p-1.5 rounded-lg">
-                            <IconFileTypePdf
-                                size={18}
-                                className="text-black"
-                            />
+            <div className="sticky top-0 z-40 w-full bg-white border-b border-[#E0DED9] shadow-sm shrink-0">
+                {/* Row 1: Back + filename */}
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-[#E0DED9]/60">
+                    <button
+                        onClick={() => router.push("/redact-pdf")}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-brand-sage cursor-pointer hover:bg-[#f5f4f0] hover:text-brand-dark transition-all shrink-0"
+                        title="Back to upload"
+                    >
+                        <IconArrowLeft size={15} />
+                        <span className="hidden sm:inline">Back</span>
+                    </button>
+                    <div className="w-px h-4 bg-[#E0DED9] shrink-0" />
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="bg-[#f0f0f0] p-1 rounded-md shrink-0">
+                            <IconFileTypePdf size={14} className="text-black" />
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-bold text-brand-dark truncate max-w-[160px] leading-tight">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-brand-dark truncate" title={file.name}>
                                 {file.name}
-                            </span>
-                            <span className="text-[10px] text-brand-sage font-medium">
-                                {pages.length} pages · {redactions.length} redactions
-                            </span>
+                            </p>
+                            <p className="text-[10px] text-brand-sage font-medium">
+                                {pages.length} page{pages.length !== 1 ? "s" : ""} · {redactions.length} redaction{redactions.length !== 1 ? "s" : ""}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Center: tools + page nav */}
-                <div className="flex items-center justify-center gap-3 flex-wrap">
+                {/* Row 2: tools */}
+                <div className="flex items-center justify-center gap-3 px-4 py-2 flex-wrap">
                     {/* Whole-page redact button */}
                     <button
                         onClick={() => setShowWholePageModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9] text-xs font-bold text-brand-dark hover:bg-[#E0DED9] transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f5f4f0] border border-[#E0DED9] text-xs font-bold text-brand-dark hover:bg-[#E0DED9] transition-all cursor-pointer shrink-0"
                         title="Redact whole pages"
                     >
                         <IconEraser size={14} />
@@ -993,7 +989,7 @@ export default function RedactPdfPage() {
                     </div>
 
                     {/* Zoom controls */}
-                    <div className="flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
+                    <div className="hidden md:flex items-center gap-1 bg-[#f5f4f0] p-1 rounded-xl border border-[#E0DED9]">
                         <button
                             onClick={zoomOut}
                             disabled={!canZoomOut}
@@ -1050,9 +1046,6 @@ export default function RedactPdfPage() {
                         </button>
                     </div>
                 </div>
-
-                {/* Right empty spacer to keep tools perfectly centered */}
-                <div className="flex-1 hidden md:block"></div>
             </div>
 
             {/* ── Main layout ── */}
@@ -1081,10 +1074,8 @@ export default function RedactPdfPage() {
                 >
                     <div className="flex flex-col items-center flex-1 w-full h-full p-2 md:p-4">
                         <div
-                            className="flex flex-col gap-4 pb-12 w-full max-w-none"
-                            style={{
-                                width: `${Math.min(900 * zoom, 3000)}px`,
-                            }}
+                            className="flex flex-col gap-4 pb-12"
+                            style={{ width: `min(${Math.round(900 * zoom)}px, 100%)`, paddingLeft: 2, paddingRight: 2 }}
                         >
                             {pages.map((pg, i) => {
                                 const pageRedactions = redactions.filter(
@@ -1105,16 +1096,16 @@ export default function RedactPdfPage() {
                                             width: "100%",
                                             border: "1px solid #ccc",
                                         }}
-                                        onMouseDown={(e) =>
+                                        onPointerDown={(e) =>
                                             handlePageMouseDown(e, i)
                                         }
-                                        onMouseMove={(e) =>
+                                        onPointerMove={(e) =>
                                             handlePageMouseMove(e, i)
                                         }
-                                        onMouseUp={(e) =>
+                                        onPointerUp={(e) =>
                                             handlePageMouseUp(e, i)
                                         }
-                                        onMouseLeave={(e) => {
+                                        onPointerLeave={(e) => {
                                             if (drawing.current) {
                                                 handlePageMouseUp(e, i);
                                             }

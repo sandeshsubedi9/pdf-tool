@@ -18,6 +18,7 @@ import {
     IconLoader2,
     IconFileText,
     IconAlertCircle,
+    IconListSearch,
 } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -70,6 +71,7 @@ export default function SearchPdfSearchPage() {
     const [query, setQuery] = useState("");
     const [matches, setMatches] = useState<SearchMatch[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -264,36 +266,36 @@ export default function SearchPdfSearchPage() {
     // ── Render ────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen flex flex-col pt-16" style={{ background: "#F7F6F3" }}>
+        <div className="h-screen flex flex-col pt-[64px]" style={{ background: "#F7F6F3" }}>
             <Navbar />
 
             {/* ── Top search bar ── */}
-            <div
-                className="sticky top-16 z-30 border-b border-border"
-                style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)" }}
-            >
-                <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 flex items-center gap-3">
-                    {/* Back */}
-                    <button
-                        onClick={() => router.push("/search-pdf")}
-                        className="flex items-center gap-1.5 text-sm text-brand-sage hover:text-brand-dark transition-colors cursor-pointer shrink-0"
-                    >
-                        <IconArrowLeft size={16} />
-                        <span className="hidden sm:inline">New PDF</span>
-                    </button>
-
-                    <div className="h-5 w-px bg-border shrink-0" />
-
-                    {/* File name */}
-                    <div className="flex items-center gap-1.5 text-xs text-brand-sage truncate shrink min-w-0">
-                        <IconFileText size={14} className="shrink-0" />
-                        <span className="truncate">{fileName}</span>
+            <div className="shrink-0 z-30 bg-white border-b border-border shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 md:py-0 md:h-14 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                    {/* Row 1 (Mobile) / Left side (Desktop): Back & File */}
+                    <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+                        <button
+                            onClick={() => router.push("/search-pdf")}
+                            className="flex items-center gap-1.5 text-sm text-brand-sage hover:text-brand-dark transition-colors cursor-pointer shrink-0"
+                        >
+                            <IconArrowLeft size={16} />
+                            <span className="hidden sm:inline">New PDF</span>
+                        </button>
+                        
+                        <div className="h-4 w-px bg-border shrink-0" />
+                        
+                        <div className="flex items-center gap-1.5 text-xs text-brand-sage truncate shrink min-w-0 flex-1">
+                            <IconFileText size={14} className="shrink-0" />
+                            <span className="truncate">{fileName}</span>
+                        </div>
+                        
+                        {/* Desktop separator */}
+                        <div className="hidden md:block h-5 w-px bg-border shrink-0 ml-1" />
                     </div>
 
-                    <div className="h-5 w-px bg-border shrink-0" />
-
-                    {/* Search input */}
-                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                    {/* Row 2 (Mobile) / Right side (Desktop): Search & Tools */}
+                    <div className="flex-1 flex items-center gap-2 min-w-0 w-full md:w-auto">
+                        {/* Search input */}
                         <div className="relative flex-1 max-w-md">
                             <IconSearch
                                 size={15}
@@ -364,7 +366,7 @@ export default function SearchPdfSearchPage() {
             </div>
 
             {/* ── Main layout ── */}
-            <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-6 gap-6 min-h-0">
+            <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 gap-6 min-h-0 overflow-hidden">
 
                 {/* ── Sidebar: match list ── */}
                 <AnimatePresence>
@@ -374,9 +376,9 @@ export default function SearchPdfSearchPage() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -16 }}
                             transition={{ duration: 0.2 }}
-                            className="hidden lg:flex flex-col w-72 shrink-0"
+                            className="hidden lg:flex flex-col w-72 shrink-0 h-full py-6"
                         >
-                            <div className="bg-white rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden h-fit max-h-[calc(100vh-10rem)] sticky top-[120px]">
+                            <div className="bg-white rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden h-full">
                                 <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                                     <span className="text-xs font-semibold text-brand-dark uppercase tracking-wider">
                                         Results
@@ -435,7 +437,7 @@ export default function SearchPdfSearchPage() {
                 </AnimatePresence>
 
                 {/* ── PDF viewer ── */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-y-auto custom-scrollbar pr-2 pt-6 pb-12">
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center gap-4 py-32">
                             <div
@@ -552,6 +554,87 @@ export default function SearchPdfSearchPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── Mobile FAB ── */}
+            {query.trim() && matches.length > 0 && (
+                <button
+                    onClick={() => setIsMobileDrawerOpen(true)}
+                    className="lg:hidden fixed bottom-6 right-4 w-12 h-12 rounded-full bg-[#0369a1] text-white shadow-xl flex items-center justify-center z-40 border-2 border-white active:scale-95"
+                    aria-label="Search Results"
+                >
+                    <IconListSearch size={22} stroke={1.5} />
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {matches.length}
+                    </span>
+                </button>
+            )}
+
+            {/* ── Mobile drawer backdrop ── */}
+            <AnimatePresence>
+                {isMobileDrawerOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileDrawerOpen(false)}
+                        className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ── Mobile drawer ── */}
+            <div className={`
+                lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.12)]
+                transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col
+                ${isMobileDrawerOpen ? "translate-y-0" : "translate-y-full"}
+            `} style={{ maxHeight: '80vh' }}>
+                <div className="flex items-center justify-center pt-3 pb-2 cursor-pointer shrink-0" onClick={() => setIsMobileDrawerOpen(false)}>
+                    <div className="w-10 h-1.5 bg-slate-300 rounded-full" />
+                </div>
+                <div className="px-5 pb-3 flex items-center justify-between border-b border-border shrink-0">
+                    <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
+                        <IconListSearch size={16} /> Search Results
+                    </h3>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#e0f2fe", color: "#0369a1" }}>
+                        {matches.length}
+                    </span>
+                </div>
+                <div className="overflow-y-auto custom-scrollbar flex-1">
+                    <div className="flex flex-col divide-y divide-border">
+                        {matches.map((match, idx) => {
+                            const snippet = getSnippet(match);
+                            const isActive = idx === activeIndex;
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => {
+                                        setActiveIndex(idx);
+                                        setIsMobileDrawerOpen(false);
+                                    }}
+                                    className="px-4 py-3 cursor-pointer transition-colors"
+                                    style={{
+                                        background: isActive ? "#e0f2fe" : "transparent",
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "#f0f9ff", color: "#0369a1" }}>
+                                            Page {match.page}
+                                        </span>
+                                        {isActive && <span className="text-[10px] font-bold text-[#0369a1]">← Active</span>}
+                                    </div>
+                                    <p className="text-xs text-brand-sage leading-relaxed truncate">
+                                        <span className="text-brand-sage/60">…{snippet.before}</span>
+                                        <mark className="font-semibold rounded-sm px-0.5" style={{ background: "#fef08a", color: "#92400e" }}>
+                                            {snippet.hit}
+                                        </mark>
+                                        <span className="text-brand-sage/60">{snippet.after}…</span>
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
