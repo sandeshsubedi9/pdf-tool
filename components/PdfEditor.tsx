@@ -38,6 +38,11 @@ import {
     IconGripVertical,
     IconFilePlus,
     IconSquare,
+    IconMenu2,
+    IconSettings,
+    IconHandStop,
+    IconEdit,
+    IconCheck,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
 import Navbar from "@/components/Navbar";
@@ -455,6 +460,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
     const [isSaving, setIsSaving] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [isBlankMode, setIsBlankMode] = useState(false);
+
+    const [isPagesDrawerOpen, setIsPagesDrawerOpen] = useState(false);
+    const [isPropertiesDrawerOpen, setIsPropertiesDrawerOpen] = useState(false);
+    const [mobileScrollMode, setMobileScrollMode] = useState<"scroll" | "edit">("scroll");
 
     useEffect(() => {
         if (sessionStorage.getItem("edit_pdf_blank") === "true") {
@@ -1553,8 +1562,15 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 {/* ── SECONDARY NAVBAR ── */}
                 <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
                     {/* LEFT: Back + file info */}
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="pr-4 border-r border-[#E0DED9] shrink-0">
+                    <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                        {/* Mobile Menu Button for Pages */}
+                        <button
+                            onClick={() => setIsPagesDrawerOpen(true)}
+                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-brand-dark hover:bg-[#f5f4f0] transition-colors shrink-0"
+                        >
+                            <IconMenu2 size={20} />
+                        </button>
+                        <div className="pr-2 md:pr-4 border-r border-[#E0DED9] shrink-0">
                             <button
                                 onClick={() => {
                                     setFile(null);
@@ -1582,7 +1598,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     </div>
 
                     {/* CENTER: Tools + Page Nav + Zoom */}
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto hide-scrollbar flex-1 md:flex-none">
                         {/* Tool buttons */}
                         <div className="flex items-center bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-1 gap-0.5">
                             {([
@@ -1706,7 +1722,101 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 </div>
 
                 {/* ── MAIN LAYOUT ── */}
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden relative">
+
+                    {/* Mobile Floating Action Buttons */}
+                    <div className="md:hidden absolute bottom-6 right-4 z-40 flex flex-col gap-3">
+                        {/* Scroll/Edit Toggle */}
+                        <button
+                            onClick={() => setMobileScrollMode(m => m === "scroll" ? "edit" : "scroll")}
+                            className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all ${mobileScrollMode === "scroll" ? "bg-white text-brand-dark border border-[#E0DED9]" : "bg-[#047C58] text-white"}`}
+                            title={mobileScrollMode === "scroll" ? "Switch to Edit Mode" : "Switch to Scroll Mode"}
+                        >
+                            {mobileScrollMode === "scroll" ? <IconHandStop size={22} /> : <IconEdit size={22} />}
+                        </button>
+
+                        {/* Settings Button (Only shows if a tool with settings is active or text is selected) */}
+                        {(tool === "text" || tool === "draw" || tool === "highlight" || tool === "whiteout" || selectedAnn?.type === "text") && (
+                            <button
+                                onClick={() => setIsPropertiesDrawerOpen(true)}
+                                className="w-12 h-12 rounded-full shadow-lg bg-black text-white flex items-center justify-center transition-transform active:scale-95"
+                            >
+                                <IconSettings size={22} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Mobile Pages Drawer */}
+                    <AnimatePresence>
+                        {isPagesDrawerOpen && (
+                            <>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setIsPagesDrawerOpen(false)}
+                                    className="fixed inset-0 bg-black/50 z-[100] md:hidden backdrop-blur-sm"
+                                />
+                                <motion.div
+                                    initial={{ x: "-100%" }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: "-100%" }}
+                                    transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                                    className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-2xl z-[101] md:hidden flex flex-col"
+                                >
+                                    <div className="flex items-center justify-between p-4 border-b border-[#E0DED9]">
+                                        <h3 className="font-bold text-brand-dark">Pages</h3>
+                                        <button onClick={() => setIsPagesDrawerOpen(false)} className="p-1 rounded-lg text-brand-sage hover:bg-[#f5f4f0]">
+                                            <IconX size={20} />
+                                        </button>
+                                    </div>
+                                    {/* Copy of thumbnails container */}
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-3 bg-[#fdfdfb]">
+                                        <div className="px-2 mb-2 mt-[-4px]">
+                                            <button
+                                                onClick={() => { addBlankPage(-1); setIsPagesDrawerOpen(false); }}
+                                                className="w-full flex items-center justify-center gap-1 py-1 mt-0.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-all border border-dashed border-emerald-300 hover:border-emerald-500"
+                                            >
+                                                <IconFilePlus size={14} /> Add page
+                                            </button>
+                                        </div>
+                                        {pages.map((pg, i) => (
+                                            <div
+                                                key={i}
+                                                className={`relative group flex flex-col items-center px-2 pb-3 mb-2 transition-all ${dragOverPage === i ? "bg-blue-50 ring-2 ring-inset ring-blue-400 rounded-xl" : ""}`}
+                                                draggable
+                                                onDragStart={e => handlePageDragStart(e, i)}
+                                                onDragOver={e => handlePageDragOver(e, i)}
+                                                onDrop={e => handlePageDrop(e, i)}
+                                            >
+                                                <div className="absolute left-1.5 top-2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-brand-sage">
+                                                    <IconGripVertical size={12} />
+                                                </div>
+                                                <div
+                                                    onClick={() => { scrollToPage(i + 1); setIsPagesDrawerOpen(false); }}
+                                                    className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 block ${currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"}`}
+                                                >
+                                                    <img src={pg.dataUrl} alt={`Page ${i + 1}`} className="w-full object-contain pointer-events-none select-none" draggable={false} />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                                        <button onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }} className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md">
+                                                            <IconTrash size={13} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-xs font-bold mt-1 ${currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"}`}>Page {i + 1}</span>
+                                                <button
+                                                    onClick={() => { addBlankPage(i); setIsPagesDrawerOpen(false); }}
+                                                    className="w-full flex items-center justify-center gap-1 py-1 mt-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-all border border-dashed border-emerald-300 hover:border-emerald-500"
+                                                >
+                                                    <IconFilePlus size={12} /> Add page
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
 
                     {/* Left: Thumbnails with page management */}
                     {pages.length > 0 && (
@@ -1829,6 +1939,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         ref={scrollContainerRef}
                         className="flex-1 bg-[#E8E6E3] overflow-auto custom-scrollbar"
                         onScroll={handleScroll}
+                        style={{ touchAction: mobileScrollMode === "scroll" ? "pan-x pan-y" : "none" }}
                     >
                         <div className="py-8 flex flex-col items-center gap-8 pb-20">
                             <div
@@ -1960,7 +2071,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         disableDragging={tool !== "select" || ta.editing}
                                                                         enableResizing={false}
                                                                         handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
-                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-md:outline max-md:outline-dashed max-md:outline-1 max-md:outline-blue-300/70" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();
@@ -2221,13 +2332,36 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
                     </div>
 
+                    {/* Right Properties Mobile Overlay */}
+                    <AnimatePresence>
+                        {isPropertiesDrawerOpen && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/50 z-[100] lg:hidden backdrop-blur-sm"
+                                onClick={() => setIsPropertiesDrawerOpen(false)}
+                            />
+                        )}
+                    </AnimatePresence>
+
                     {/* Right: Properties panel */}
-                    <div className="hidden lg:flex flex-col bg-white border-l border-[#E0DED9] w-[270px] shrink-0">
-                        <div className="px-4 py-4 border-b border-[#E0DED9]">
+                    <div className={`flex flex-col bg-white border-[#E0DED9] shrink-0 transition-transform duration-300 ${isPropertiesDrawerOpen ? 'fixed bottom-0 left-0 right-0 z-[101] max-h-[70vh] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t translate-y-0' : 'hidden lg:flex border-l w-[270px]'}`}>
+                        {isPropertiesDrawerOpen && (
+                            <div className="flex justify-center p-2 border-b border-[#E0DED9] lg:hidden">
+                                <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                            </div>
+                        )}
+                        <div className="px-4 py-4 border-b border-[#E0DED9] flex items-center justify-between">
                             <h3 className="text-sm font-bold text-brand-dark flex items-center gap-2">
                                 <IconForms size={16} className="text-black" />
                                 Properties
                             </h3>
+                            {isPropertiesDrawerOpen && (
+                                <button onClick={() => setIsPropertiesDrawerOpen(false)} className="lg:hidden p-1 rounded-lg text-brand-sage hover:bg-[#f5f4f0]">
+                                    <IconX size={20} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
