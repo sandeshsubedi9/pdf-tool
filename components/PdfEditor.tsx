@@ -1332,12 +1332,6 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         addItem.bold = ta.bold;
                         addItem.italic = ta.italic;
                         addItem.underline = ta.underline;
-                    } else if (ann.type === "redact") {
-                        const ra = ann as RedactAnnotation;
-                        addItem.x_pct = ra.x;
-                        addItem.y_pct = ra.y;
-                        addItem.w_pct = ra.w;
-                        addItem.h_pct = ra.h;
                     } else {
                         addItem.x_pct = ia.x;
                         addItem.y_pct = ia.y;
@@ -1350,7 +1344,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             }
             let targetFile: File | Blob;
             let targetName = "document.pdf";
-            
+
             if (originalFile || file) {
                 const f = originalFile || file;
                 targetFile = f!;
@@ -1365,7 +1359,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     pdfDoc.addPage([595.28, 841.89]); // A4 in points
                 }
                 const pdfBytes = await pdfDoc.save();
-                targetFile = new Blob([pdfBytes], { type: "application/pdf" });
+                targetFile = new Blob([pdfBytes as any], { type: "application/pdf" });
                 targetName = "blank_document.pdf";
             }
 

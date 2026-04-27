@@ -256,7 +256,7 @@ export default function SearchPdfSearchPage() {
 
     const getSnippet = (match: SearchMatch) => {
         const item = textItems[match.itemIndex];
-        if (!item) return "";
+        if (!item) return { before: "", hit: "", after: "" };
         const before = item.text.slice(Math.max(0, match.charStart - 20), match.charStart);
         const hit = item.text.slice(match.charStart, match.charEnd);
         const after = item.text.slice(match.charEnd, match.charEnd + 20);

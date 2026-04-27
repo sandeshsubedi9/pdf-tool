@@ -23,7 +23,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # we need to ensure the Next.js server can reach the python-service.
 ENV PYTHON_SERVICE_URL=http://python-service:8000
 
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
