@@ -19,7 +19,7 @@ const FEATURES = [
     {
         icon: IconDeviceLaptop,
         title: "Works on any device",
-        body: "PDFTool runs entirely in your browser. No downloads, no plugins, no OS restrictions. Works on Mac, Windows, Linux, iPhone, and Android.",
+        body: "PDF Maya runs entirely in your browser. No downloads, no plugins, no OS restrictions. Works on Mac, Windows, Linux, iPhone, and Android.",
         accent: "#8C886B",
         bg: "#f0ede4",
     },
@@ -52,7 +52,7 @@ export default function Features() {
                     className="max-w-2xl mb-14"
                 >
                     <p className="text-xs font-semibold uppercase tracking-widest text-brand-teal mb-3">
-                        Why PDFTool
+                        Why PDF Maya
                     </p>
                     <h2 className="text-3xl md:text-4xl font-bold text-brand-dark leading-tight">
                         Built for people who work with PDFs every day.

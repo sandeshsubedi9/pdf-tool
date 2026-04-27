@@ -21,7 +21,7 @@ export default function CompressPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Large files clog inboxes and fail upload limits. SandeshPDF’s Compress PDF tool helps you reduce PDF file size significantly while maintaining readability. Whether you need to compress PDF to 1MB or smaller, our optimizer ensures your documents are email-ready.
+                Large files clog inboxes and fail upload limits. PDF Maya’s Compress PDF tool helps you reduce PDF file size significantly while maintaining readability. Whether you need to compress PDF to 1MB or smaller, our optimizer ensures your documents are email-ready.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">
@@ -58,7 +58,7 @@ export default function CompressPdfPage() {
                 </li>
             </ul>
             <p className="text-sm font-medium text-brand-dark mt-2">
-                Learn how to make a PDF smaller without sacrificing quality with SandeshPDF.
+                Learn how to make a PDF smaller without sacrificing quality with PDF Maya.
             </p>
         </div>
     );

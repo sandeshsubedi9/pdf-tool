@@ -69,7 +69,7 @@ export function UserDropdown() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-[0_8px_30px_rgba(30,23,2,0.12)] border border-border overflow-hidden z-50 transform origin-top transition-all scale-100 opacity-100">
           <div className="p-4 bg-slate-50 border-b border-border">
-            <p className="text-sm font-bold text-brand-dark truncate">{user.name || "PDFTool User"}</p>
+            <p className="text-sm font-bold text-brand-dark truncate">{user.name || "PDF Maya User"}</p>
             <p className="text-xs text-brand-sage truncate mt-0.5">{user.email}</p>
             <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded border border-brand-teal/20 bg-brand-teal/10">
                {isPremium ? (

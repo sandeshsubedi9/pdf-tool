@@ -27,7 +27,7 @@ export default function TranslatePdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Break language barriers with SandeshPDF’s Translate PDF tool. Instantly translate PDF documents into dozens of languages while preserving the original layout and formatting.
+                Break language barriers with PDF Maya’s Translate PDF tool. Instantly translate PDF documents into dozens of languages while preserving the original layout and formatting.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

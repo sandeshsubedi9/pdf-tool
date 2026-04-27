@@ -33,7 +33,7 @@ function SplitPdfContent() {
     const splitDescription = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Need to share only specific sections of a large file? PDFTool’s Split PDF tool lets you extract pages from PDF documents or split a large file into multiple smaller ones instantly. It’s the fastest way to divide PDF files without losing quality.
+                Need to share only specific sections of a large file? PDF Maya’s Split PDF tool lets you extract pages from PDF documents or split a large file into multiple smaller ones instantly. It’s the fastest way to divide PDF files without losing quality.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">
@@ -71,7 +71,7 @@ function SplitPdfContent() {
     const extractDescription = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                PDFTool’s Extract Pages tool is designed to help you pull pages from PDF documents to create new, independent files. Instead of splitting the whole document, simply select the pages you need and extract them instantly.
+                PDF Maya’s Extract Pages tool is designed to help you pull pages from PDF documents to create new, independent files. Instead of splitting the whole document, simply select the pages you need and extract them instantly.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

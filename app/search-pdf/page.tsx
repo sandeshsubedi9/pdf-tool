@@ -21,7 +21,7 @@ export default function SearchPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Instantly find any word or phrase inside your PDF. SandeshPDF's Search PDF tool
+                Instantly find any word or phrase inside your PDF. PDF Maya's Search PDF tool
                 renders every page and highlights every match so you can navigate large documents
                 in seconds — no download, no account required.
             </p>
@@ -60,7 +60,7 @@ export default function SearchPdfPage() {
                 </li>
             </ul>
             <p className="text-sm font-medium text-brand-dark mt-2">
-                Upload your PDF and start searching in under a second with SandeshPDF.
+                Upload your PDF and start searching in under a second with PDF Maya.
             </p>
         </div>
     );

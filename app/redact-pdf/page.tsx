@@ -22,7 +22,7 @@ export default function RedactPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Protect privacy with SandeshPDF’s Redact PDF tool. Permanently black out sensitive data like names, SSNs, or financial figures so they cannot be recovered.
+                Protect privacy with PDF Maya’s Redact PDF tool. Permanently black out sensitive data like names, SSNs, or financial figures so they cannot be recovered.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

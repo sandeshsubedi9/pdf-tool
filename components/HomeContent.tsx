@@ -204,7 +204,7 @@ const HOW_IT_WORKS = [
 
 const FAQS = [
     {
-        q: "Is PDFTool really free?",
+        q: "Is PDF Maya really free?",
         a: "Yes. The majority of our tools - including editing, merging, splitting, compressing, and converting - are free to use without creating an account. We don't add watermarks to output files on our free tools.",
     },
     {
@@ -221,7 +221,7 @@ const FAQS = [
     },
     {
         q: "Can I sign a PDF from my phone?",
-        a: "Yes. PDFTool is fully responsive and works in any modern mobile browser. You can draw a signature with your finger, type one, or upload an existing signature image.",
+        a: "Yes. PDF Maya is fully responsive and works in any modern mobile browser. You can draw a signature with your finger, type one, or upload an existing signature image.",
     },
     {
         q: "Does converting from PDF preserve formatting?",
@@ -407,7 +407,7 @@ export default function HomeContent() {
             </section>
 
             {/* ═══════════════════════════════════════════════
-                SECTION 2 - Who uses PDFTool
+                SECTION 2 - Who uses PDF Maya
             ═══════════════════════════════════════════════ */}
             <section id="use-cases" className="py-24 px-5 md:px-8" style={{ background: "#F7F6F3" }}>
                 <div className="max-w-7xl mx-auto">
@@ -422,7 +422,7 @@ export default function HomeContent() {
                             Use cases
                         </p>
                         <h2 className="text-3xl md:text-4xl font-bold text-brand-dark">
-                            Who uses PDFTool?
+                            Who uses PDF Maya?
                         </h2>
                         <p className="mt-3 text-brand-sage text-lg max-w-xl mx-auto">
                             Real workflows for real people - no one-size-fits-all pitch.

@@ -69,7 +69,7 @@ export default function PdfToJpgPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Need to share a document as an image? SandeshPDF’s PDF to JPG tool offers a powerful two-in-one solution: instantly convert every page of your PDF into high-resolution JPG files, or extract just the embedded images and photos from inside the document without converting the text.
+                Need to share a document as an image? PDF Maya’s PDF to JPG tool offers a powerful two-in-one solution: instantly convert every page of your PDF into high-resolution JPG files, or extract just the embedded images and photos from inside the document without converting the text.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

@@ -49,7 +49,7 @@ export default function PdfToPptxPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Revitalize your presentations with SandeshPDF’s PDF to PowerPoint tool. Convert static PDF slides into editable PPTX files, allowing you to update content, add animations, and customize designs.
+                Revitalize your presentations with PDF Maya’s PDF to PowerPoint tool. Convert static PDF slides into editable PPTX files, allowing you to update content, add animations, and customize designs.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

@@ -42,7 +42,7 @@ const LANGUAGES = [
     { label: "Vietnamese", code: "vi" },
 ];
 
-export default function TranslatePdfToolPage() {
+export default function TranslatePdfMayaPage() {
     const router = useRouter();
     const hasInitialized = useRef(false);
 

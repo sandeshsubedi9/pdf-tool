@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ================================================
-echo  PDF Tools Python Microservice
+echo  PDF Maya Python Service
 echo ================================================
 echo.
 

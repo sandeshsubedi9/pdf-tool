@@ -40,13 +40,13 @@ export async function getVisitorId(): Promise<string> {
 function generateFallbackId(): string {
   // Check if we already stored a fallback in sessionStorage
   if (typeof window !== "undefined") {
-    const stored = sessionStorage.getItem("pdftool_fid");
+    const stored = sessionStorage.getItem("pdfmaya_fid");
     if (stored) return stored;
 
     const id = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    sessionStorage.setItem("pdftool_fid", id);
+    sessionStorage.setItem("pdfmaya_fid", id);
     return id;
   }
   return "fallback000000000000000000000000";

@@ -1,5 +1,5 @@
 """
-server.py — Entry point for the PDF Tools microservice.
+server.py — Entry point for the PDF Maya microservice.
 
 On Windows, asyncio defaults to SelectorEventLoop which cannot create
 subprocesses (used by Playwright to launch Chromium). We switch to

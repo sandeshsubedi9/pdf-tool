@@ -62,7 +62,7 @@ async def convert_pdf_to_epub(file: UploadFile):
             book.set_identifier(f"pdf-tool-v3-{base_name}")
             book.set_title(base_name)
             book.set_language("en")
-            book.add_author("PDF Tool")
+            book.add_author("PDF Maya")
 
             css_content = """
 body { font-family: sans-serif; line-height: 1.5; margin: 5%; }

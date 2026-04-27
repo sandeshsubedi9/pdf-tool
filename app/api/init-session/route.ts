@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const COOKIE_NAME = "pdftool_did"; // device-id
+const COOKIE_NAME = "pdfmaya_did"; // device-id
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year in seconds
 
 // Validate that the fingerprint looks like what FingerprintJS produces

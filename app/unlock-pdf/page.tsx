@@ -22,7 +22,7 @@ export default function UnlockPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Locked out of your own file? SandeshPDF’s Unlock PDF tool helps you remove password from PDF and lift restrictions on printing or editing (provided you have the owner password or permission).
+                Locked out of your own file? PDF Maya’s Unlock PDF tool helps you remove password from PDF and lift restrictions on printing or editing (provided you have the owner password or permission).
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

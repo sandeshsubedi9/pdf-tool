@@ -226,7 +226,7 @@ export default function AdminUsersPage() {
               </div>
               <h2 className="text-xl font-bold text-brand-dark">Send Promotional Email?</h2>
               <p className="text-brand-sage text-sm leading-relaxed px-2">
-                This will instantly blast a creative promotional email encouraging users to come back and use PDFTool.
+                This will instantly blast a creative promotional email encouraging users to come back and use PDF Maya.
               </p>
               
               <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-center justify-between mt-6">

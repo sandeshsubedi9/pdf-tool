@@ -4,7 +4,7 @@ const host = process.env.EMAIL_SERVER_HOST;       // e.g., smtp.gmail.com
 const port = Number(process.env.EMAIL_SERVER_PORT) || 587;
 const user = process.env.EMAIL_SERVER_USER;
 const pass = process.env.EMAIL_SERVER_PASSWORD;
-const from = process.env.EMAIL_FROM || "noreply@pdftool.app"; // Fallback if missing
+const from = process.env.EMAIL_FROM || "noreply@pdfmaya.com"; // Fallback if missing
 
 const transporter = nodemailer.createTransport({
   host,
@@ -18,13 +18,13 @@ export async function sendVerificationEmail(
   verificationCode: string
 ) {
   const mailOptions = {
-    from: `"PDFTool" <${from}>`,
+    from: `"PDF Maya" <${from}>`,
     to,
-    subject: `🎓 ${verificationCode} is your PDFTool verification code`,
+    subject: `🎓 ${verificationCode} is your PDF Maya verification code`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <h2 style="color: #f97316;">Verify your student email</h2>
-        <p>You requested to verify <strong>${to}</strong> to unlock unlimited free conversions on PDFTool.</p>
+        <p>You requested to verify <strong>${to}</strong> to unlock unlimited free conversions on PDF Maya.</p>
         <p>Your 6-digit verification code is:</p>
         <div style="margin: 20px 0;">
           <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #0f172a; background: #f1f5f9; padding: 12px 24px; border-radius: 8px;">
@@ -33,7 +33,7 @@ export async function sendVerificationEmail(
         </div>
         <p>If you didn't request this, you can safely ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #888;">&copy; ${new Date().getFullYear()} PDFTool. All rights reserved.</p>
+        <p style="font-size: 12px; color: #888;">&copy; ${new Date().getFullYear()} PDF Maya. All rights reserved.</p>
       </div>
     `,
   };
@@ -50,13 +50,13 @@ export async function sendPasswordResetEmail(
   resetCode: string
 ) {
   const mailOptions = {
-    from: `"PDFTool" <${from}>`,
+    from: `"PDF Maya" <${from}>`,
     to,
-    subject: `🔒 ${resetCode} is your PDFTool password reset code`,
+    subject: `🔒 ${resetCode} is your PDF Maya password reset code`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <h2 style="color: #0f172a;">Reset your password</h2>
-        <p>You requested to reset the password for your <strong>${to}</strong> account on PDFTool.</p>
+        <p>You requested to reset the password for your <strong>${to}</strong> account on PDF Maya.</p>
         <p>Your 6-digit verification code is:</p>
         <div style="margin: 20px 0;">
           <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #0f172a; background: #f1f5f9; padding: 12px 24px; border-radius: 8px;">
@@ -65,7 +65,7 @@ export async function sendPasswordResetEmail(
         </div>
         <p>This code will expire in 1 hour. If you didn't request this, you can safely ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #888;">&copy; ${new Date().getFullYear()} PDFTool. All rights reserved.</p>
+        <p style="font-size: 12px; color: #888;">&copy; ${new Date().getFullYear()} PDF Maya. All rights reserved.</p>
       </div>
     `,
   };
@@ -97,7 +97,7 @@ export async function sendAdminVerificationRequestEmail(opts: {
   const docLabel = DOCUMENT_TYPE_LABELS[opts.documentType] || opts.documentType;
 
   const mailOptions = {
-    from: `"PDFTool Admin" <${from}>`,
+    from: `"PDF Maya Admin" <${from}>`,
     to: "hr@fishtailinfosolutions.com",
     subject: `🎓 New Student Verification Request — ${opts.userName}`,
     html: `
@@ -127,7 +127,7 @@ export async function sendAdminVerificationRequestEmail(opts: {
           </table>
         </div>
         <div style="background: #f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0;">
-          <p style="font-size: 12px; color: #94a3b8; margin: 0;">© ${new Date().getFullYear()} PDFTool. This is an automated admin notification.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0;">© ${new Date().getFullYear()} PDF Maya. This is an automated admin notification.</p>
         </div>
       </div>
     `,
@@ -149,8 +149,8 @@ export async function sendStudentVerificationDecisionEmail(opts: {
   adminNote?: string;
 }) {
   const subject = opts.approved
-    ? "🎉 Your Student Verification is Approved — PDFTool"
-    : "📋 Update on your Student Verification — PDFTool";
+    ? "🎉 Your Student Verification is Approved — PDF Maya"
+    : "📋 Update on your Student Verification — PDF Maya";
 
   const headerBg = opts.approved
     ? "linear-gradient(135deg, #065f46 0%, #047857 100%)"
@@ -161,14 +161,14 @@ export async function sendStudentVerificationDecisionEmail(opts: {
     : `<span style="background:#fee2e2;color:#991b1b;padding:4px 12px;border-radius:20px;font-weight:700;font-size:13px;">❌ NOT APPROVED</span>`;
 
   const bodyContent = opts.approved
-    ? `<p style="color:#374151;font-size:15px;">Great news, <strong>${opts.userName}</strong>! Your student identity document has been reviewed and verified. You now have <strong style="color:#047857;">Unlimited Free Conversions</strong> on PDFTool.</p>
-       <p style="color:#374151;font-size:15px;">You can now head back to PDFTool and enjoy all tools without any limits.</p>`
+    ? `<p style="color:#374151;font-size:15px;">Great news, <strong>${opts.userName}</strong>! Your student identity document has been reviewed and verified. You now have <strong style="color:#047857;">Unlimited Free Conversions</strong> on PDF Maya.</p>
+       <p style="color:#374151;font-size:15px;">You can now head back to PDF Maya and enjoy all tools without any limits.</p>`
     : `<p style="color:#374151;font-size:15px;">Hi <strong>${opts.userName}</strong>, we reviewed your student identity document but were unable to verify it at this time.</p>
        ${opts.adminNote ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;margin:16px 0;"><p style="margin:0;font-size:14px;color:#92400e;"><strong>Reason:</strong> ${opts.adminNote}</p></div>` : ""}
        <p style="color:#374151;font-size:15px;">You can re-submit with a clearer or different document at any time from your Account Settings.</p>`;
 
   const mailOptions = {
-    from: `"PDFTool" <${from}>`,
+    from: `"PDF Maya" <${from}>`,
     to: opts.to,
     subject,
     html: `
@@ -181,7 +181,7 @@ export async function sendStudentVerificationDecisionEmail(opts: {
           ${bodyContent}
         </div>
         <div style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
-          <p style="font-size:12px;color:#94a3b8;margin:0;">© ${new Date().getFullYear()} PDFTool. All rights reserved.</p>
+          <p style="font-size:12px;color:#94a3b8;margin:0;">© ${new Date().getFullYear()} PDF Maya. All rights reserved.</p>
         </div>
       </div>
     `,
@@ -201,7 +201,7 @@ export async function sendMarketingReminderEmail(toLine: string[]) {
   if (!toLine || toLine.length === 0) return;
 
   const mailOptions = {
-    from: `"PDFTool Team" <${from}>`,
+    from: `"PDF Maya Team" <${from}>`,
     bcc: toLine, // Send to all anonymously
     subject: "Your Free PDF Toolbox is waiting for you! 🛠️",
     html: `
@@ -212,7 +212,7 @@ export async function sendMarketingReminderEmail(toLine: string[]) {
         
         <div style="padding: 32px;">
           <p style="font-size: 16px; color: #334155; margin-top: 0;">Hi there,</p>
-          <p style="font-size: 16px; color: #334155;">Just a quick reminder that PDFTool is always open and ready whenever you need to get work done!</p>
+          <p style="font-size: 16px; color: #334155;">Just a quick reminder that PDF Maya is always open and ready whenever you need to get work done!</p>
           
           <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin: 24px 0;">
             <p style="margin: 0 0 12px 0; font-weight: bold; color: #0f172a;">✨ Everything you need in one place:</p>
@@ -226,13 +226,13 @@ export async function sendMarketingReminderEmail(toLine: string[]) {
           <p style="font-size: 16px; color: #334155; margin-bottom: 32px;">Whenever you need to read, sign, or organize a document, we have you covered in seconds.</p>
           
           <div style="text-align: center;">
-            <a href="https://pdftool.com" style="display: inline-block; background: #047C58; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 16px;">Open PDFTool</a>
+            <a href="https://pdfmaya.com" style="display: inline-block; background: #047C58; color: #ffffff; padding: 14px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 16px;">Open PDF Maya</a>
           </div>
         </div>
         
         <div style="background:#f8fafc; padding:20px; border-top:1px solid #e2e8f0; text-align: center;">
-          <p style="font-size:12px;color:#94a3b8;margin:0;">You are receiving this because you registered at PDFTool.</p>
-          <p style="font-size:12px;color:#94a3b8;margin:8px 0 0 0;">© ${new Date().getFullYear()} PDFTool. All rights reserved.</p>
+          <p style="font-size:12px;color:#94a3b8;margin:0;">You are receiving this because you registered at PDF Maya.</p>
+          <p style="font-size:12px;color:#94a3b8;margin:8px 0 0 0;">© ${new Date().getFullYear()} PDF Maya. All rights reserved.</p>
         </div>
       </div>
     `,

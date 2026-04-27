@@ -22,7 +22,7 @@ export default function CropPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Focus on the content that matters with SandeshPDF’s Crop PDF tool. Remove white space, margins, or unwanted sections from your PDF pages to create cleaner, more professional documents.
+                Focus on the content that matters with PDF Maya’s Crop PDF tool. Remove white space, margins, or unwanted sections from your PDF pages to create cleaner, more professional documents.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

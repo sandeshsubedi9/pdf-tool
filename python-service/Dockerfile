@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Install system dependencies for OCR and PDF processing
+# Install system dependencies for OCR, PDF processing, and Document Conversion
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-eng \
@@ -18,6 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     python3-dev \
+    libreoffice-core \
+    libreoffice-writer \
+    libreoffice-impress \
+    libreoffice-calc \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

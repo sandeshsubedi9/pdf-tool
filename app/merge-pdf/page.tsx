@@ -27,7 +27,7 @@ export default function MergePdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                PDFTool’s Merge PDF tool allows you to combine PDF files from different sources into a single, organized document. Whether you are compiling a report, merging invoices, or creating a complete application package, our online PDF merger makes it easy to join documents in seconds.
+                PDF Maya’s Merge PDF tool allows you to combine PDF files from different sources into a single, organized document. Whether you are compiling a report, merging invoices, or creating a complete application package, our online PDF merger makes it easy to join documents in seconds.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">
@@ -64,7 +64,7 @@ export default function MergePdfPage() {
                 </li>
             </ul>
             <p className="text-sm font-medium text-brand-dark mt-2">
-                Stop emailing separate attachments. Use PDFTool to combine two PDFs or more into one professional file today.
+                Stop emailing separate attachments. Use PDF Maya to combine two PDFs or more into one professional file today.
             </p>
         </div>
     );

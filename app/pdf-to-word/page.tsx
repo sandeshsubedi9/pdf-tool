@@ -44,7 +44,7 @@ export default function PdfToWordPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Need to edit a PDF? SandeshPDF’s PDF to Word converter transforms your static files into fully editable Microsoft Word documents. Our PDF to DOCX converter online preserves formatting, tables, and images for seamless editing.
+                Need to edit a PDF? PDF Maya’s PDF to Word converter transforms your static files into fully editable Microsoft Word documents. Our PDF to DOCX converter online preserves formatting, tables, and images for seamless editing.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

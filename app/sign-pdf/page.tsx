@@ -22,7 +22,7 @@ export default function SignPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Sign documents without printing with SandeshPDF’s Sign PDF tool. Create, type, or draw your digital signature and apply it to PDFs legally and securely.
+                Sign documents without printing with PDF Maya’s Sign PDF tool. Create, type, or draw your digital signature and apply it to PDFs legally and securely.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

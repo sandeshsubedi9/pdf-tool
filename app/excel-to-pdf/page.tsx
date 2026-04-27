@@ -44,7 +44,7 @@ export default function ExcelToPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Share your data securely with SandeshPDF’s Excel to PDF tool. Convert complex Excel spreadsheets into fixed-layout PDFs, perfect for reporting and printing.
+                Share your data securely with PDF Maya’s Excel to PDF tool. Convert complex Excel spreadsheets into fixed-layout PDFs, perfect for reporting and printing.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

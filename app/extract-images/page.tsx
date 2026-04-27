@@ -20,7 +20,7 @@ export default function ExtractImagesPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Need the pictures from a PDF file? SandeshPDF’s Extract Images from PDF tool automatically finds and extracts every embedded image and photo, saving them in high quality without losing resolution.
+                Need the pictures from a PDF file? PDF Maya’s Extract Images from PDF tool automatically finds and extracts every embedded image and photo, saving them in high quality without losing resolution.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

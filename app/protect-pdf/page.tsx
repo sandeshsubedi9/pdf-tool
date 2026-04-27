@@ -22,7 +22,7 @@ export default function ProtectPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Keep your sensitive data safe with SandeshPDF’s Protect PDF tool. Password protect PDF files to prevent unauthorized viewing, printing, or editing.
+                Keep your sensitive data safe with PDF Maya’s Protect PDF tool. Password protect PDF files to prevent unauthorized viewing, printing, or editing.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

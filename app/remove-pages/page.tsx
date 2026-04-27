@@ -27,7 +27,7 @@ export default function RemovePagesPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4 text-brand-sage leading-relaxed">
             <p>
-                Sometimes you just need to clean up a document. PDFTool’s Remove Pages tool allows you to delete pages from PDF files quickly and securely. Whether it’s a blank page, a draft cover, or sensitive information, you can remove PDF pages with a single click.
+                Sometimes you just need to clean up a document. PDF Maya’s Remove Pages tool allows you to delete pages from PDF files quickly and securely. Whether it’s a blank page, a draft cover, or sensitive information, you can remove PDF pages with a single click.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

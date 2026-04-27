@@ -175,7 +175,7 @@ function PageCard({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function RotatePdfToolPage() {
+export default function RotatePdfMayaPage() {
     const router = useRouter();
     const hasInitialized = useRef(false);
 

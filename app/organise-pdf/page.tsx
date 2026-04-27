@@ -27,7 +27,7 @@ export default function OrganisePdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4 text-brand-sage leading-relaxed">
             <p>
-                Got your pages in the wrong order? PDFTool’s Organise Pages tool lets you reorder PDF pages with a simple drag-and-drop interface. Perfect for fixing scanned documents or arranging presentation decks, this PDF page organizer gives you full control over your document flow.
+                Got your pages in the wrong order? PDF Maya’s Organise Pages tool lets you reorder PDF pages with a simple drag-and-drop interface. Perfect for fixing scanned documents or arranging presentation decks, this PDF page organizer gives you full control over your document flow.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

@@ -48,7 +48,7 @@ export default function PdfToExcelPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Extract data from PDFs effortlessly with SandeshPDF’s PDF to Excel tool. Perfect for financial reports and data analysis, our PDF to XLSX converter turns static tables into editable spreadsheets.
+                Extract data from PDFs effortlessly with PDF Maya’s PDF to Excel tool. Perfect for financial reports and data analysis, our PDF to XLSX converter turns static tables into editable spreadsheets.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

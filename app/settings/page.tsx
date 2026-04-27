@@ -172,7 +172,7 @@ export default function SettingsPage() {
       return (
         <div>
           <p className="text-sm text-emerald-700 font-medium mb-4">
-            Your account is verified. You now have unlimited free conversions on PDFTool.
+            Your account is verified. You now have unlimited free conversions on PDF Maya.
           </p>
           {user.studentEmail && (
             <div className="inline-flex items-center gap-2 bg-white/60 px-3 py-2 rounded-lg border border-emerald-200">
@@ -445,7 +445,7 @@ export default function SettingsPage() {
                     {user.name ? user.name.charAt(0) : "U"}
                   </div>
                 )}
-                <h2 className="text-xl font-bold text-brand-dark text-center">{user.name || "PDFTool User"}</h2>
+                <h2 className="text-xl font-bold text-brand-dark text-center">{user.name || "PDF Maya User"}</h2>
                 <p className="text-sm text-brand-sage text-center mb-4">{user.email}</p>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-brand-teal/20 bg-brand-teal/10">
                   {isPremium ? (

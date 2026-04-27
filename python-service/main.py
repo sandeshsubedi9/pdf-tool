@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="PDF Tools Microservice",
+    title="PDF Maya Service",
     description="Backend microservice for high-fidelity PDF conversions",
     version="1.4.0",
 )
@@ -61,7 +61,7 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Simple health check endpoint."""
-    return {"status": "ok", "service": "pdf-tools-microservice"}
+    return {"status": "ok", "service": "pdf-maya-service"}
 
 @app.post("/convert/pdf-to-word")
 async def pdf_to_word(file: UploadFile = File(...)):

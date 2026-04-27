@@ -21,7 +21,7 @@ export default function PageNumberPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Professional documents need page numbers. SandeshPDF’s Page Numbers tool allows you to add page numbers to PDF files automatically, with customizable position and formatting.
+                Professional documents need page numbers. PDF Maya’s Page Numbers tool allows you to add page numbers to PDF files automatically, with customizable position and formatting.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

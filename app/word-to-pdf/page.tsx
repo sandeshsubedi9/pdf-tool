@@ -44,7 +44,7 @@ export default function WordToPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Finalize your documents with SandeshPDF’s Word to PDF tool. Convert Microsoft Word files into professional, secure PDFs that look the same on every device.
+                Finalize your documents with PDF Maya’s Word to PDF tool. Convert Microsoft Word files into professional, secure PDFs that look the same on every device.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

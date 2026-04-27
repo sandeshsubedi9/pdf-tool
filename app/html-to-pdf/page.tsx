@@ -689,7 +689,7 @@ export default function HtmlToPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Save web content for offline use with SandeshPDF’s HTML to PDF tool. Convert URLs or HTML code into clean, printable PDF documents.
+                Save web content for offline use with PDF Maya’s HTML to PDF tool. Convert URLs or HTML code into clean, printable PDF documents.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

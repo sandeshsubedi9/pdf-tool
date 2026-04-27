@@ -449,7 +449,7 @@ export default function ComparePdfPage() {
         const descriptionContent = (
             <div className="flex flex-col gap-5 mt-4">
                 <p className="text-brand-sage leading-relaxed">
-                    Spot changes instantly with SandeshPDF’s Compare PDF tool. Compare two PDF files side-by-side to highlight additions, deletions, and modifications.
+                    Spot changes instantly with PDF Maya’s Compare PDF tool. Compare two PDF files side-by-side to highlight additions, deletions, and modifications.
                 </p>
                 <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
                 <ul className="flex flex-col gap-2.5">

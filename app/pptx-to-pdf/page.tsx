@@ -44,7 +44,7 @@ export default function PptxToPdfPage() {
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
             <p className="text-brand-sage leading-relaxed">
-                Share your slides without compatibility issues using SandeshPDF’s PowerPoint to PDF tool. Convert PPTX files into universal PDFs that preserve animations as static slides and maintain design integrity.
+                Share your slides without compatibility issues using PDF Maya’s PowerPoint to PDF tool. Convert PPTX files into universal PDFs that preserve animations as static slides and maintain design integrity.
             </p>
             <h2 className="text-xl font-bold text-brand-dark mt-2">Key Features & Benefits</h2>
             <ul className="flex flex-col gap-2.5">

@@ -20,7 +20,7 @@ import { getRemainingUsage, UserTier, LIMITS } from "@/lib/rate-limiter";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-const COOKIE_NAME = "pdftool_did";
+const COOKIE_NAME = "pdfmaya_did";
 
 export async function GET(req: NextRequest) {
   const deviceId = req.cookies.get(COOKIE_NAME)?.value;
