@@ -206,8 +206,9 @@ function RedactionOverlay({
     const handlePointerDown = (e: React.PointerEvent) => {
         // Only allow left click dragging
         if (e.button !== 0) return;
-        e.stopPropagation();
-        e.target.setPointerCapture(e.pointerId);
+        if (e.target && 'setPointerCapture' in e.target) {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        }
         setIsDragging(true);
         dragStart.current = {
             x: e.clientX,
@@ -240,7 +241,9 @@ function RedactionOverlay({
     const handlePointerUp = (e: React.PointerEvent) => {
         if (!isDragging) return;
         e.stopPropagation();
-        e.target.releasePointerCapture(e.pointerId);
+        if (e.target && 'releasePointerCapture' in e.target) {
+            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+        }
         setIsDragging(false);
         dragStart.current = null;
     };
