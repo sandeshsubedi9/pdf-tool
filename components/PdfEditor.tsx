@@ -470,6 +470,9 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             sessionStorage.removeItem("edit_pdf_blank");
             startWithBlankPage();
         }
+        if (typeof window !== "undefined" && window.innerWidth < 768) {
+            setZoom(0.5);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -1560,45 +1563,49 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 )}
 
                 {/* ── SECONDARY NAVBAR ── */}
-                <div className="h-14 shrink-0 bg-white border-b border-[#E0DED9] px-4 flex items-center justify-between z-40 gap-2 shadow-sm">
+                <div className="h-auto md:h-14 shrink-0 bg-white border-b border-[#E0DED9] px-2 md:px-4 py-2 md:py-0 flex flex-col md:flex-row items-center justify-between z-40 gap-2 md:gap-2 shadow-sm">
                     {/* LEFT: Back + file info */}
-                    <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                        {/* Mobile Menu Button for Pages */}
-                        <button
-                            onClick={() => setIsPagesDrawerOpen(true)}
-                            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-brand-dark hover:bg-[#f5f4f0] transition-colors shrink-0"
-                        >
-                            <IconMenu2 size={20} />
-                        </button>
-                        <div className="pr-2 md:pr-4 border-r border-[#E0DED9] shrink-0">
+                    <div className="flex items-center justify-between w-full md:w-auto md:flex-1 min-w-0">
+                        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                            {/* Mobile Menu Button for Pages */}
                             <button
-                                onClick={() => {
-                                    setFile(null);
-                                    setIsBlankMode(false);
-                                }}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
+                                onClick={() => setIsPagesDrawerOpen(true)}
+                                className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-brand-dark hover:bg-[#f5f4f0] transition-colors shrink-0"
                             >
-                                <IconArrowLeft size={16} />
-                                Back
+                                <IconMenu2 size={20} />
                             </button>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="bg-[#f0f0f0] p-1.5 rounded-lg shrink-0">
-                                <IconFileTypePdf size={18} className="text-black" />
+                            <div className="pr-2 md:pr-4 border-r border-[#E0DED9] shrink-0">
+                                <button
+                                    onClick={() => {
+                                        setFile(null);
+                                        setIsBlankMode(false);
+                                    }}
+                                    className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
+                                >
+                                    <IconArrowLeft size={16} />
+                                    <span className="hidden sm:inline">Back</span>
+                                </button>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-bold text-brand-dark max-w-[150px] truncate leading-tight">
-                                    {file ? file.name : "Blank Document"}
-                                </span>
-                                <span className="text-[10px] text-brand-sage font-medium">
-                                    {numPages} pages {file?.size ? `· ${(file.size / 1024 / 1024).toFixed(2)} MB` : ""}
-                                </span>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="bg-[#f0f0f0] p-1.5 rounded-lg shrink-0">
+                                    <IconFileTypePdf size={18} className="text-black" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold text-brand-dark max-w-[120px] md:max-w-[150px] truncate leading-tight">
+                                        {file ? file.name : "Blank Document"}
+                                    </span>
+                                    <span className="text-[10px] text-brand-sage font-medium hidden sm:block">
+                                        {numPages} pages {file?.size ? `· ${(file.size / 1024 / 1024).toFixed(2)} MB` : ""}
+                                    </span>
+                                </div>
                             </div>
                         </div>
+
+
                     </div>
 
                     {/* CENTER: Tools + Page Nav + Zoom */}
-                    <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto hide-scrollbar flex-1 md:flex-none">
+                    <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0">
                         {/* Tool buttons */}
                         <div className="flex items-center bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-1 gap-0.5">
                             {([
@@ -1649,7 +1656,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                             <div className="bg-[#f5f4f0]/60 hover:bg-[#f5f4f0] border-2 border-transparent focus-within:border-brand-dark focus-within:bg-white rounded-xl px-2 py-1 transition-all">
                                 <input
                                     type="text"
@@ -1717,8 +1724,23 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
                     </div>
 
-                    {/* RIGHT spacer */}
-                    <div className="flex-1 hidden lg:block" />
+                    {/* RIGHT Actions (Desktop) */}
+                    <div className="flex-1 hidden md:flex justify-end pr-2 min-w-0">
+                        <AnimatePresence>
+                            {selectedId && (
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    onClick={() => deleteAnnotation(selectedId)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200"
+                                >
+                                    <IconTrash size={16} />
+                                    Delete Selected
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* ── MAIN LAYOUT ── */}
@@ -1797,11 +1819,12 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                     className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 block ${currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"}`}
                                                 >
                                                     <img src={pg.dataUrl} alt={`Page ${i + 1}`} className="w-full object-contain pointer-events-none select-none" draggable={false} />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                                                        <button onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }} className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md">
-                                                            <IconTrash size={13} />
-                                                        </button>
-                                                    </div>
+                                                    <button 
+                                                        onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }} 
+                                                        className="absolute top-1 right-1 w-6 h-6 rounded-md bg-white/90 shadow-sm flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 border border-red-100 transition-colors z-10"
+                                                    >
+                                                        <IconTrash size={14} />
+                                                    </button>
                                                 </div>
                                                 <span className={`text-xs font-bold mt-1 ${currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"}`}>Page {i + 1}</span>
                                                 <button
@@ -1871,17 +1894,14 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                 draggable={false}
                                             />
 
-                                            {/* Hover action buttons */}
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                                                {/* Delete */}
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
-                                                    className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 shadow-md transition-all"
-                                                    title="Delete page"
-                                                >
-                                                    <IconTrash size={13} />
-                                                </button>
-                                            </div>
+                                            {/* Action buttons (Top right) */}
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
+                                                className="absolute top-1 right-1 w-6 h-6 rounded-md shadow-sm flex items-center justify-center transition-all z-10 bg-white/90 text-red-500 border border-red-100 hover:text-white hover:bg-red-500 md:bg-red-500/90 md:text-white md:border-red-500 md:opacity-0 md:group-hover:opacity-100"
+                                                title="Delete page"
+                                            >
+                                                <IconTrash size={14} />
+                                            </button>
                                         </div>
 
                                         <span className={`text-[10px] font-bold mt-1 ${currentPage === i + 1 ? "text-brand-dark" : "text-brand-sage"
@@ -2071,7 +2091,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         disableDragging={tool !== "select" || ta.editing}
                                                                         enableResizing={false}
                                                                         handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
-                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-md:outline max-md:outline-dashed max-md:outline-1 max-md:outline-blue-300/70" : "")}`}
+                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-md:outline max-md:outline-dashed max-md:outline-[1.5px] max-md:outline-blue-400 max-md:bg-blue-500/5" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();

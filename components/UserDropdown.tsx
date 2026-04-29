@@ -59,7 +59,7 @@ export function UserDropdown() {
         aria-expanded={isOpen}
       >
         {user.image ? (
-          <img src={user.image} alt={user.name || "User"} className="w-full h-full rounded-full object-cover" />
+          <img src={user.image} alt={user.name || "User"} className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <span className="text-brand-dark font-bold text-sm">{initial}</span>
         )}
