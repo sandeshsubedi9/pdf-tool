@@ -263,21 +263,22 @@ function DrawCanvas({
     const isDrawing = useRef(false);
     const currentPath = useRef<{ x: number; y: number }[]>([]);
 
-    function getPos(e: MouseEvent | React.MouseEvent) {
+    function getPos(e: MouseEvent | React.MouseEvent | PointerEvent | React.PointerEvent) {
         const c = ref.current!;
         const r = c.getBoundingClientRect();
         return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
     }
 
-    function down(e: React.MouseEvent) {
+    function down(e: React.PointerEvent) {
         if (!["draw", "highlight", "whiteout"].includes(tool)) return;
         e.stopPropagation();
+        e.currentTarget.setPointerCapture(e.pointerId);
         isDrawing.current = true;
         currentPath.current = [getPos(e)];
     }
 
     useEffect(() => {
-        function handleMove(e: MouseEvent) {
+        function handleMove(e: MouseEvent | PointerEvent) {
             if (!isDrawing.current) return;
             const pos = getPos(e);
             currentPath.current.push(pos);
@@ -375,11 +376,13 @@ function DrawCanvas({
             currentPath.current = [];
         }
 
-        window.addEventListener("mousemove", handleMove);
-        window.addEventListener("mouseup", handleUp);
+        window.addEventListener("pointermove", handleMove);
+        window.addEventListener("pointerup", handleUp);
+        window.addEventListener("pointercancel", handleUp);
         return () => {
-            window.removeEventListener("mousemove", handleMove);
-            window.removeEventListener("mouseup", handleUp);
+            window.removeEventListener("pointermove", handleMove);
+            window.removeEventListener("pointerup", handleUp);
+            window.removeEventListener("pointercancel", handleUp);
         };
     }, [tool, drawColor, drawWidth, page, onDrawEnd]);
 
@@ -397,7 +400,7 @@ function DrawCanvas({
                 pointerEvents: isActive ? "auto" : "none",
                 cursor: isActive ? "crosshair" : "default",
             }}
-            onMouseDown={down}
+            onPointerDown={down}
         />
     );
 }
@@ -463,15 +466,18 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     const [isPagesDrawerOpen, setIsPagesDrawerOpen] = useState(false);
     const [isPropertiesDrawerOpen, setIsPropertiesDrawerOpen] = useState(false);
-    const [mobileScrollMode, setMobileScrollMode] = useState<"scroll" | "edit">("scroll");
 
     useEffect(() => {
         if (sessionStorage.getItem("edit_pdf_blank") === "true") {
             sessionStorage.removeItem("edit_pdf_blank");
             startWithBlankPage();
         }
-        if (typeof window !== "undefined" && window.innerWidth < 768) {
-            setZoom(0.5);
+        if (typeof window !== "undefined") {
+            if (window.innerWidth < 768) {
+                setZoom(0.5);
+            } else {
+                setZoom(1.0);
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -1563,24 +1569,24 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 )}
 
                 {/* ── SECONDARY NAVBAR ── */}
-                <div className="h-auto md:h-14 shrink-0 bg-white border-b border-[#E0DED9] px-2 md:px-4 py-2 md:py-0 flex flex-col md:flex-row items-center justify-between z-40 gap-2 md:gap-2 shadow-sm">
+                <div className="h-auto lg:h-14 shrink-0 bg-white border-b border-[#E0DED9] px-2 lg:px-4 py-2 lg:py-0 flex flex-col lg:flex-row items-center justify-between z-40 gap-2 lg:gap-2 shadow-sm">
                     {/* LEFT: Back + file info */}
-                    <div className="flex items-center justify-between w-full md:w-auto md:flex-1 min-w-0">
-                        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                    <div className="flex items-center justify-between w-full lg:w-auto lg:flex-1 min-w-0">
+                        <div className="flex items-center gap-2 lg:gap-4 min-w-0">
                             {/* Mobile Menu Button for Pages */}
                             <button
                                 onClick={() => setIsPagesDrawerOpen(true)}
-                                className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-brand-dark hover:bg-[#f5f4f0] transition-colors shrink-0"
+                                className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg text-brand-dark hover:bg-[#f5f4f0] transition-colors shrink-0"
                             >
                                 <IconMenu2 size={20} />
                             </button>
-                            <div className="pr-2 md:pr-4 border-r border-[#E0DED9] shrink-0">
+                            <div className="pr-2 lg:pr-4 border-r border-[#E0DED9] shrink-0">
                                 <button
                                     onClick={() => {
                                         setFile(null);
                                         setIsBlankMode(false);
                                     }}
-                                    className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
+                                    className="flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-bold text-brand-sage hover:bg-[#f5f4f0] hover:text-brand-dark transition-all"
                                 >
                                     <IconArrowLeft size={16} />
                                     <span className="hidden sm:inline">Back</span>
@@ -1591,7 +1597,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                     <IconFileTypePdf size={18} className="text-black" />
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-xs font-bold text-brand-dark max-w-[120px] md:max-w-[150px] truncate leading-tight">
+                                    <span className="text-xs font-bold text-brand-dark max-w-[120px] lg:max-w-[150px] truncate leading-tight">
                                         {file ? file.name : "Blank Document"}
                                     </span>
                                     <span className="text-[10px] text-brand-sage font-medium hidden sm:block">
@@ -1605,7 +1611,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                     </div>
 
                     {/* CENTER: Tools + Page Nav + Zoom */}
-                    <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0">
+                    <div className="flex items-center justify-start lg:justify-center gap-2 overflow-x-auto hide-scrollbar w-full lg:w-auto pb-1 lg:pb-0">
                         {/* Tool buttons */}
                         <div className="flex items-center bg-[#f5f4f0] border border-[#E0DED9] rounded-xl p-1 gap-0.5">
                             {([
@@ -1724,41 +1730,27 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
                     </div>
 
-                    {/* RIGHT Actions (Desktop) */}
-                    <div className="flex-1 hidden md:flex justify-end pr-2 min-w-0">
-                        <AnimatePresence>
-                            {selectedId && (
-                                <motion.button
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    onClick={() => deleteAnnotation(selectedId)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200"
-                                >
-                                    <IconTrash size={16} />
-                                    Delete Selected
-                                </motion.button>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                    {/* RIGHT spacer */}
+                    <div className="flex-1 hidden lg:block" />
                 </div>
 
                 {/* ── MAIN LAYOUT ── */}
                 <div className="flex-1 flex overflow-hidden relative">
 
                     {/* Mobile Floating Action Buttons */}
-                    <div className="md:hidden absolute bottom-6 right-4 z-40 flex flex-col gap-3">
-                        {/* Scroll/Edit Toggle */}
+                    <div className="lg:hidden absolute bottom-20 right-4 z-40 flex flex-col gap-3">
+
+                        {/* Save Button (Always visible on mobile) */}
                         <button
-                            onClick={() => setMobileScrollMode(m => m === "scroll" ? "edit" : "scroll")}
-                            className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all ${mobileScrollMode === "scroll" ? "bg-white text-brand-dark border border-[#E0DED9]" : "bg-[#047C58] text-white"}`}
-                            title={mobileScrollMode === "scroll" ? "Switch to Edit Mode" : "Switch to Scroll Mode"}
+                            onClick={savePdf}
+                            disabled={isSaving}
+                            className="w-12 h-12 rounded-full shadow-lg bg-emerald-600 text-white flex items-center justify-center transition-transform active:scale-95 disabled:opacity-50"
                         >
-                            {mobileScrollMode === "scroll" ? <IconHandStop size={22} /> : <IconEdit size={22} />}
+                            {isSaving ? <IconLoader2 size={22} className="animate-spin" /> : <IconDownload size={22} />}
                         </button>
 
-                        {/* Settings Button (Only shows if a tool with settings is active or text is selected) */}
-                        {(tool === "text" || tool === "draw" || tool === "highlight" || tool === "whiteout" || selectedAnn?.type === "text") && (
+                        {/* Settings Button (Shows if a tool is active or ANY annotation is selected) */}
+                        {(tool !== "select" || selectedId) && (
                             <button
                                 onClick={() => setIsPropertiesDrawerOpen(true)}
                                 className="w-12 h-12 rounded-full shadow-lg bg-black text-white flex items-center justify-center transition-transform active:scale-95"
@@ -1777,14 +1769,14 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     onClick={() => setIsPagesDrawerOpen(false)}
-                                    className="fixed inset-0 bg-black/50 z-[100] md:hidden backdrop-blur-sm"
+                                    className="fixed inset-0 bg-black/50 z-[100] lg:hidden backdrop-blur-sm"
                                 />
                                 <motion.div
                                     initial={{ x: "-100%" }}
                                     animate={{ x: 0 }}
                                     exit={{ x: "-100%" }}
                                     transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                                    className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-2xl z-[101] md:hidden flex flex-col"
+                                    className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-2xl z-[101] lg:hidden flex flex-col"
                                 >
                                     <div className="flex items-center justify-between p-4 border-b border-[#E0DED9]">
                                         <h3 className="font-bold text-brand-dark">Pages</h3>
@@ -1843,7 +1835,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
                     {/* Left: Thumbnails with page management */}
                     {pages.length > 0 && (
-                        <div className="hidden md:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[152px]">
+                        <div className="hidden lg:flex flex-col bg-white border-r border-[#E0DED9] shrink-0 w-[152px]">
                             <div
                                 ref={sidebarScrollRef}
                                 className="flex-1 overflow-y-auto custom-scrollbar py-3 bg-[#fdfdfb]"
@@ -1897,7 +1889,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                             {/* Action buttons (Top right) */}
                                             <button
                                                 onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
-                                                className="absolute top-1 right-1 w-6 h-6 rounded-md shadow-sm flex items-center justify-center transition-all z-10 bg-white/90 text-red-500 border border-red-100 hover:text-white hover:bg-red-500 md:bg-red-500/90 md:text-white md:border-red-500 md:opacity-0 md:group-hover:opacity-100"
+                                                className="absolute top-1 right-1 w-6 h-6 rounded-md shadow-sm flex items-center justify-center transition-all z-10 bg-white/90 text-red-500 border border-red-100 hover:text-white hover:bg-red-500 lg:bg-red-500/90 lg:text-white lg:border-red-500 lg:opacity-0 lg:group-hover:opacity-100"
                                                 title="Delete page"
                                             >
                                                 <IconTrash size={14} />
@@ -1954,12 +1946,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
                     )}
 
-                    {/* Center: All pages scrollable */}
                     <div
                         ref={scrollContainerRef}
                         className="flex-1 bg-[#E8E6E3] overflow-auto custom-scrollbar"
                         onScroll={handleScroll}
-                        style={{ touchAction: mobileScrollMode === "scroll" ? "pan-x pan-y" : "none" }}
+                        style={{ touchAction: ["draw", "highlight", "whiteout"].includes(tool) ? "none" : "pan-x pan-y" }}
                     >
                         <div className="py-8 flex flex-col items-center gap-8 pb-20">
                             <div
@@ -2050,6 +2041,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                     <Rnd
                                                                         key={`${ta.id}-${zoom}`}
                                                                         data-annotation="true"
+                                                                        cancel=".no-drag"
                                                                         bounds={`#edit-page-${i}`}
                                                                         // Let the text box expand dynamically based on content.
                                                                         // "auto" ensures that as text is typed, the bounds widen rather than force-wrapping.
@@ -2091,7 +2083,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         disableDragging={tool !== "select" || ta.editing}
                                                                         enableResizing={false}
                                                                         handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
-                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-md:outline max-md:outline-dashed max-md:outline-[1.5px] max-md:outline-blue-400 max-md:bg-blue-500/5" : "")}`}
+                                                                        className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onClick={(e: any) => {
                                                                             e.stopPropagation();
@@ -2181,7 +2173,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 </div>
                                                                             )}
                                                                             {selectedId === ta.id && (
-                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40 no-drag">
                                                                                     <button onClick={() => duplicateAnnotation(ta.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
                                                                                         <IconCopy size={12} />
                                                                                     </button>
@@ -2214,6 +2206,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                     <Rnd
                                                                         key={`${ia.id}-${zoom}`}
                                                                         data-annotation="true"
+                                                                        cancel=".no-drag"
                                                                         bounds={`#edit-page-${i}`}
                                                                         size={{ width: (ia.w / 100) * pagePxW, height: (ia.h / 100) * pagePxH }}
                                                                         position={{ x: 0, y: 0 }}
@@ -2225,6 +2218,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                             } as any);
                                                                             if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
+                                                                        onResizeStart={() => setSelectedId(ia.id)}
                                                                         onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
                                                                             updateAnnotation(ia.id, {
                                                                                 w: (parseInt(ref.style.width) / pagePxW) * 100,
@@ -2237,9 +2231,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         disableDragging={tool !== "select"}
                                                                         enableResizing={tool === "select"}
                                                                         handleStyles={selectedId === ia.id ? HANDLE_STYLES : {}}
-                                                                        className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "image" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onDragStart={() => {
+                                                                            setSelectedId(ia.id);
                                                                             if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
                                                                         }}
                                                                         onClick={(e: any) => {
@@ -2251,7 +2246,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         <div className="w-full h-full relative group">
                                                                             <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" style={{ opacity: (!isRedactedId && ia.isExisting) ? 0 : 1 }} alt="" />
                                                                             {selectedId === ia.id && (
-                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40 no-drag">
                                                                                     <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
                                                                                         <IconCopy size={12} />
                                                                                     </button>
@@ -2282,6 +2277,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                     <Rnd
                                                                         key={`${da.id}-${zoom}`}
                                                                         data-annotation="true"
+                                                                        cancel=".no-drag"
                                                                         bounds={`#edit-page-${i}`}
                                                                         size={{ width: (da.w / 100) * pagePxW, height: (da.h / 100) * pagePxH }}
                                                                         position={{ x: 0, y: 0 }}
@@ -2292,6 +2288,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 y: da.y + (d.y / pagePxH) * 100,
                                                                             } as any);
                                                                         }}
+                                                                        onResizeStart={() => setSelectedId(da.id)}
                                                                         onResizeStop={(_: any, __: any, ref: any, ___: any, pos: any) => {
                                                                             updateAnnotation(da.id, {
                                                                                 w: (parseInt(ref.style.width) / pagePxW) * 100,
@@ -2303,8 +2300,11 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         disableDragging={tool !== "select"}
                                                                         enableResizing={tool === "select"}
                                                                         handleStyles={selectedId === da.id ? HANDLE_STYLES : {}}
-                                                                        className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40"}`}
+                                                                        className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "draw" || tool === "highlight" || tool === "whiteout" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
+                                                                        onDragStart={() => {
+                                                                            setSelectedId(da.id);
+                                                                        }}
                                                                         onClick={(e: any) => { e.stopPropagation(); setSelectedId(da.id); }}
                                                                     >
                                                                         <div className="w-full h-full relative group">
@@ -2327,7 +2327,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 })}
                                                                             </svg>
                                                                             {selectedId === da.id && (
-                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40">
+                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40 no-drag">
                                                                                     <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
                                                                                         <IconCopy size={12} />
                                                                                     </button>
