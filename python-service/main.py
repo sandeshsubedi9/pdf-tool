@@ -3,7 +3,17 @@ import asyncio
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
+    
+    # Uvicorn on Windows defaults to WindowsSelectorEventLoopPolicy, which doesn't support subprocesses.
+    # When using reload=True, Uvicorn workers import main:app and set their own loop policy.
+    # We monkey-patch Uvicorn here to prevent it from changing the policy back to Selector.
+    try:
+        from uvicorn.loops import asyncio as uvicorn_asyncio
+        def custom_asyncio_setup(*args, **kwargs):
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        uvicorn_asyncio.asyncio_setup = custom_asyncio_setup
+    except Exception:
+        pass
 import io
 import json
 import base64
@@ -652,7 +662,6 @@ async def url_to_pdf_endpoint(
     margin: str = Form("none"),
     one_long_page: str = Form("false"),
     hide_cookie: str = Form("true"),
-    block_ad: str = Form("false"),
     viewport_width: str = Form("1280"),
 ):
     """
@@ -667,7 +676,6 @@ async def url_to_pdf_endpoint(
             margin=margin,
             one_long_page=(one_long_page.lower() == "true"),
             hide_cookie=(hide_cookie.lower() == "true"),
-            block_ad=(block_ad.lower() == "true"),
             viewport_width=int(viewport_width) if viewport_width and viewport_width.isdigit() else 1280
         )
 

@@ -394,24 +394,27 @@ export default function Navbar() {
                     ))}
                 </ul>
 
-                {/* User Dropdown / CTA */}
-                <UserDropdown />
+                {/* Right side: auth buttons + mobile burger — always grouped together */}
+                <div className="flex items-center gap-2">
+                    <UserDropdown />
 
-                {/* Mobile burger */}
-                <button
-                    id="nav-mobile-toggle"
-                    className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-brand-dark hover:bg-brand-light transition-colors"
-                    onClick={() => setMobileOpen((v) => !v)}
-                    aria-label="Toggle menu"
-                >
-                    {mobileOpen ? <IconX size={20} /> : <IconMenu2 size={20} />}
-                </button>
+                    {/* Mobile burger */}
+                    <button
+                        id="nav-mobile-toggle"
+                        className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-brand-dark hover:bg-brand-light transition-colors"
+                        onClick={() => setMobileOpen((v) => !v)}
+                        aria-label="Toggle menu"
+                    >
+                        {mobileOpen ? <IconX size={20} /> : <IconMenu2 size={20} />}
+                    </button>
+                </div>
             </nav>
 
             {/* Mobile menu */}
             <div
-                className={`md:hidden fixed inset-x-0 top-16 h-[calc(100vh-64px)] bg-white border-t border-border transition-all duration-300 z-50 flex flex-col ${mobileOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0 pointer-events-none"
+                className={`md:hidden fixed inset-x-0 top-16 bg-white border-t border-border transition-all duration-300 z-50 flex flex-col ${mobileOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0 pointer-events-none"
                     }`}
+                style={{ height: "calc(100dvh - 64px)" }}
             >
                 {/* Scrollable area */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
@@ -480,18 +483,21 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Sticky Bottom Buttons */}
-                <div className="p-6 border-t border-border bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+                {/* Sticky Bottom Buttons — padded for OS gesture bar */}
+                <div
+                    className="border-t border-border bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.04)]"
+                    style={{ padding: "1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom))" }}
+                >
                     <div className="flex gap-3">
                         <a
-                            href="#login"
+                            href="/login"
                             className="flex-1 py-3.5 text-center text-sm font-bold border border-slate-200 rounded-xl text-brand-dark hover:bg-slate-50 transition-all active:scale-[0.98]"
                             onClick={() => setMobileOpen(false)}
                         >
                             Log in
                         </a>
                         <a
-                            href="#signup"
+                            href="/signup"
                             className="flex-1 py-3.5 text-center text-sm font-bold rounded-xl bg-brand-teal text-white hover:bg-[#036649] transition-all active:scale-[0.98] shadow-md shadow-brand-teal/10"
                             onClick={() => setMobileOpen(false)}
                         >

@@ -196,7 +196,6 @@ export default function HtmlToPdfPage() {
     const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
     const [margin, setMargin] = useState<string>("none");
     const [hideCookie, setHideCookie] = useState(true);
-    const [blockAd, setBlockAd] = useState(false);
 
     // Tracking if options changed
     const [settingsChanged, setSettingsChanged] = useState(false);
@@ -264,7 +263,6 @@ export default function HtmlToPdfPage() {
                 margin,
                 oneLongPage,
                 hideCookie,
-                blockAd,
                 viewportWidth: resolvedViewportWidth,
             });
             const blobUrl = URL.createObjectURL(pdfBlob);
@@ -301,7 +299,6 @@ export default function HtmlToPdfPage() {
                     margin,
                     oneLongPage,
                     hideCookie,
-                    blockAd,
                     viewportWidth: resolvedViewportWidth,
                 });
                 setPreviewPdfUrl(URL.createObjectURL(pdfBlob));
@@ -316,7 +313,7 @@ export default function HtmlToPdfPage() {
         setIsGeneratingPreview(true);
         reader.readAsText(file);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageSize, orientation, margin, oneLongPage, hideCookie, blockAd, resolvedViewportWidth]);
+    }, [pageSize, orientation, margin, oneLongPage, hideCookie, resolvedViewportWidth]);
 
     // ── Code: Generate preview PDF ────────────────────────────────────────────
     const handleCodePreview = async () => {
@@ -334,7 +331,6 @@ export default function HtmlToPdfPage() {
                 margin,
                 oneLongPage,
                 hideCookie,
-                blockAd,
                 viewportWidth: resolvedViewportWidth,
             });
             setPreviewPdfUrl(URL.createObjectURL(pdfBlob));
@@ -371,7 +367,6 @@ export default function HtmlToPdfPage() {
                     margin,
                     oneLongPage,
                     hideCookie,
-                    blockAd,
                     viewportWidth: resolvedViewportWidth,
                 });
 
@@ -589,17 +584,6 @@ export default function HtmlToPdfPage() {
                                                 <span className={`absolute top-px w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${hideCookie ? "translate-x-4" : "translate-x-0.5"}`} />
                                             </div>
                                             <span className="text-sm font-semibold text-brand-dark">Hide cookie dialog</span>
-                                        </label>
-
-                                        <label className="flex flex-row items-center gap-3 cursor-pointer">
-                                            <div
-                                                className={`relative rounded-full transition-colors duration-200 border-2 mt-0.5 ${blockAd ? "bg-[#F97316] border-[#F97316]" : "bg-slate-200 border-slate-200"}`}
-                                                onClick={() => { setBlockAd(!blockAd); setSettingsChanged(true); }}
-                                                style={{ height: "22px", width: "40px", flexShrink: 0 }}
-                                            >
-                                                <span className={`absolute top-px w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${blockAd ? "translate-x-4" : "translate-x-0.5"}`} />
-                                            </div>
-                                            <span className="text-sm font-semibold text-brand-dark">Try to block ads</span>
                                         </label>
                                     </div>
 

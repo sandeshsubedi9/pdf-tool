@@ -23,22 +23,30 @@ export function UserDropdown() {
 
   if (status === "loading") {
     // Show a skeleton while auth is loading
-    return <div className="w-9 h-9 bg-slate-200 animate-pulse rounded-full hidden md:block"></div>;
+    return <div className="w-9 h-9 bg-slate-200 animate-pulse rounded-full"></div>;
   }
 
   // If no session, show the standard Log In / Sign Up buttons
   if (!session?.user) {
     return (
-      <div className="hidden md:flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        {/* Desktop: full Log in text link */}
         <Link
           href="/login"
-          className="px-4 py-2 text-sm font-medium text-brand-dark hover:text-brand-teal transition-colors"
+          className="hidden md:inline-flex px-4 py-2 text-sm font-medium text-brand-dark hover:text-brand-teal transition-colors"
+        >
+          Log in
+        </Link>
+        {/* Mobile: compact "Log in" button  |  Desktop: full "Get Started" CTA */}
+        <Link
+          href="/login"
+          className="md:hidden px-4 py-2 text-sm font-semibold rounded-xl bg-brand-teal text-white hover:bg-[#036649] transition-all shadow-md active:scale-[0.98]"
         >
           Log in
         </Link>
         <Link
           href="/signup"
-          className="px-6 py-2.5 text-sm font-semibold rounded-xl bg-brand-teal text-white hover:bg-[#036649] transition-all shadow-md active:scale-[0.98]"
+          className="hidden md:inline-flex px-6 py-2.5 text-sm font-semibold rounded-xl bg-brand-teal text-white hover:bg-[#036649] transition-all shadow-md active:scale-[0.98]"
         >
           Get Started
         </Link>
@@ -51,7 +59,7 @@ export function UserDropdown() {
   const isPremium = !!user.isStudent;
 
   return (
-    <div className="hidden md:block relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       {/* Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

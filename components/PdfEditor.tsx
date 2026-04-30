@@ -43,14 +43,17 @@ import {
     IconHandStop,
     IconEdit,
     IconCheck,
+    IconInfoCircle,
 } from "@tabler/icons-react";
 import ToolLayout from "@/components/ToolLayout";
 import Navbar from "@/components/Navbar";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Rnd } from "react-rnd";
 import { motion, AnimatePresence } from "motion/react";
+import { useSession } from "next-auth/react";
 import { useRateLimitedAction } from "@/lib/use-rate-limited-action";
 import { RateLimitModal } from "./RateLimitModal";
+import { useRateLimit } from "@/components/FingerprintProvider";
 
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -506,6 +509,29 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
         setSelectedId(null);
     };
     const { execute, limitResult, clearLimitResult } = useRateLimitedAction();
+    const { status: rateLimitStatus } = useRateLimit();
+    const { data: session } = useSession();
+
+    const user = session?.user as any;
+    const isPremium = !!user?.isStudent;
+    const isLoggedIn = !!session;
+
+    let bannerTitle = "No Login: 3 saves per hour";
+    let bannerSubtext = "Limit resets 1 hour after your last save.";
+
+    if (isLoggedIn) {
+        if (isPremium) {
+            bannerTitle = "Unlimited Access";
+            bannerSubtext = "You have no hourly limits on your account. Enjoy!";
+        } else {
+            bannerTitle = "Logged In: 10 saves per hour";
+            bannerSubtext = "Limit resets 1 hour after your last save.";
+        }
+    }
+
+    const displaySubtext = rateLimitStatus && !isPremium ? (
+        <>You have <strong className={rateLimitStatus.remaining === 0 ? "text-red-600" : "text-amber-900"}>{rateLimitStatus.remaining} saves</strong> remaining this hour. {bannerSubtext}</>
+    ) : bannerSubtext;
 
     // ─── In-editor toast (replaces browser alert()) ──────────────────────────
     const [editorToast, setEditorToast] = useState<{ msg: string; type: "success" | "error" | "info"; id: number } | null>(null);
@@ -1236,7 +1262,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
 
     // ─── Save PDF ─────────────────────────────────────────────────────────────
     const savePdf = () => execute(async () => {
-        if (!file) return;
+        if (!file && !isBlankMode) return;
         setIsSaving(true);
         try {
             // Classify annotations into modified, deleted, and added
@@ -1483,6 +1509,27 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                 }
                             }}
                         />
+                    </div>
+
+                    {/* ── Rate-limit info banner ── */}
+                    <div className="mx-8 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/50 px-5 py-4 transition-all hover:bg-amber-50">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 shadow-sm">
+                                <IconInfoCircle size={20} stroke={2} />
+                            </div>
+                            <div className="flex flex-col">
+                                <p className="text-sm font-bold text-amber-900 leading-tight">{bannerTitle}</p>
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                    {displaySubtext}
+                                </p>
+                            </div>
+                        </div>
+                        <a 
+                            href="/#usage-plans" 
+                            className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-lg bg-white border border-amber-200 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-all shadow-sm active:scale-[0.98] text-center"
+                        >
+                            Learn More
+                        </a>
                     </div>
 
                     {/* Card Footer for Blank Page */}
@@ -1811,8 +1858,8 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                     className={`relative w-full rounded-md border-2 transition-all cursor-pointer overflow-hidden mt-1 block ${currentPage === i + 1 ? "border-brand-dark shadow-md" : "border-[#E0DED9] bg-white"}`}
                                                 >
                                                     <img src={pg.dataUrl} alt={`Page ${i + 1}`} className="w-full object-contain pointer-events-none select-none" draggable={false} />
-                                                    <button 
-                                                        onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }} 
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); setDeleteConfirmPage(i); }}
                                                         className="absolute top-1 right-1 w-6 h-6 rounded-md bg-white/90 shadow-sm flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 border border-red-100 transition-colors z-10"
                                                     >
                                                         <IconTrash size={14} />

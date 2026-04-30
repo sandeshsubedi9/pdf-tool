@@ -12,7 +12,7 @@ except ImportError:
     PLAYWRIGHT_AVAILABLE = False
     logger.warning("Playwright is not installed. URL-to-PDF conversion will fall back to basic fetch.")
 
-async def convert_url_to_pdf(
+async def _async_convert_url_to_pdf(
     url: str = "",
     html: str = "",
     page_size: str = "A4",
@@ -20,7 +20,6 @@ async def convert_url_to_pdf(
     margin: str = "none",
     one_long_page: bool = False,
     hide_cookie: bool = True,
-    block_ad: bool = False,
     viewport_width: int = 1280
 ) -> Tuple[bytes, str]:
     """
@@ -78,11 +77,6 @@ async def convert_url_to_pdf(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             viewport={"width": viewport_width, "height": 900}
         )
-        
-        if block_ad:
-            # very basic block ad resources
-            await context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media"] and ("ad" in route.request.url.lower() or "ads" in route.request.url.lower()) else route.continue_())
-
         page = await context.new_page()
         
         # Force "screen" media so the PDF renders the full desktop layout
@@ -176,7 +170,35 @@ async def convert_url_to_pdf(
         
     return pdf_bytes, output_filename
 
-async def get_rendered_html(url: str) -> Tuple[str, str]:
+async def convert_url_to_pdf(
+    url: str = "",
+    html: str = "",
+    page_size: str = "A4",
+    orientation: str = "portrait",
+    margin: str = "none",
+    one_long_page: bool = False,
+    hide_cookie: bool = True,
+    viewport_width: int = 1280
+) -> Tuple[bytes, str]:
+    import sys
+    import asyncio
+    
+    if sys.platform != "win32":
+        return await _async_convert_url_to_pdf(url, html, page_size, orientation, margin, one_long_page, hide_cookie, viewport_width)
+        
+    def _run_in_proactor():
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(_async_convert_url_to_pdf(
+                url, html, page_size, orientation, margin, one_long_page, hide_cookie, viewport_width
+            ))
+        finally:
+            loop.close()
+            
+    return await asyncio.to_thread(_run_in_proactor)
+
+async def _async_get_rendered_html(url: str) -> Tuple[str, str]:
     """
     Fetch the fully rendered HTML of a URL using Playwright.
     Returns (html_content, title).
@@ -209,4 +231,25 @@ async def get_rendered_html(url: str) -> Tuple[str, str]:
         await browser.close()
         
     return html_content, title
+
+async def get_rendered_html(url: str) -> Tuple[str, str]:
+    """
+    Fetch the fully rendered HTML of a URL using Playwright.
+    Returns (html_content, title).
+    """
+    import sys
+    import asyncio
+    
+    if sys.platform != "win32":
+        return await _async_get_rendered_html(url)
+        
+    def _run_in_proactor():
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(_async_get_rendered_html(url))
+        finally:
+            loop.close()
+            
+    return await asyncio.to_thread(_run_in_proactor)
 

@@ -108,11 +108,11 @@ export default function UsagePlans() {
 
                         <div className="grid grid-cols-2 gap-3 mb-5">
                             <div className="bg-[#faf9f7] rounded-xl p-3.5 flex flex-col border border-[#E0DED9]">
-                                <p className="text-[10px] font-bold text-brand-sage uppercase tracking-wider mb-1">Guest</p>
+                                <p className="text-[10px] font-bold text-brand-sage uppercase tracking-wider mb-1">No Login</p>
                                 <p className="text-2xl font-black text-brand-dark leading-none">3 <span className="text-xs font-medium text-brand-sage">/ hr</span></p>
                             </div>
                             <div className="bg-[#e6f4ef] rounded-xl p-3.5 flex flex-col border border-[#a3d9c5]">
-                                <p className="text-[10px] font-bold text-brand-teal uppercase tracking-wider mb-1">Signed In</p>
+                                <p className="text-[10px] font-bold text-brand-teal uppercase tracking-wider mb-1">Logged In</p>
                                 <p className="text-2xl font-black text-[#047C58] leading-none">10 <span className="text-xs font-medium">/ hr</span></p>
                             </div>
                         </div>
@@ -124,16 +124,16 @@ export default function UsagePlans() {
                             </li>
                             <li className="flex items-start gap-2 text-sm text-brand-sage leading-relaxed">
                                 <IconCheck size={14} className="text-[#047C58] shrink-0 mt-0.5" />
-                                <span>Sign in to triple your hourly allowance.</span>
+                                <span>Login to triple your hourly allowance.</span>
                             </li>
                         </ul>
 
                         <div className="pt-5 mt-5 border-t border-[#E0DED9]">
                             <a
-                                href="/signup"
+                                href="/login"
                                 className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-[#047C58] text-[#047C58] font-bold text-sm hover:bg-[#e6f4ef] transition-colors active:scale-[0.98]"
                             >
-                                Create a Free Account
+                                Login to Free Account
                             </a>
                         </div>
                     </motion.div>
@@ -184,10 +184,10 @@ export default function UsagePlans() {
 
                             <div className="pt-5 mt-5 border-t border-[#4a3010]">
                                 <a
-                                    href="/signup"
+                                    href="/login"
                                     className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-teal text-white font-bold text-sm hover:bg-[#036649] transition-colors shadow-lg active:scale-[0.98]"
                                 >
-                                    Sign Up with .edu Email
+                                    Login with .edu Email
                                 </a>
                             </div>
                         </div>

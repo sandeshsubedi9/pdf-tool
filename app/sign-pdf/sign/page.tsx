@@ -787,22 +787,26 @@ function PlacedSigOverlay({
         }
     };
 
-    const handleMouseDown = (e: React.MouseEvent) => {
+    const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
         if (isEditing) return;
         e.stopPropagation();
-        const startX = e.clientX;
-        const startY = e.clientY;
+        const isTouch = "touches" in e;
+        const startX = isTouch ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const startY = isTouch ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
         dragStart.current = { x: startX, y: startY };
         let moved = false;
 
-        const onMove_ = (ev: MouseEvent) => {
+        const onMove_ = (ev: MouseEvent | TouchEvent) => {
             if (!dragStart.current) return;
-            const dx = ev.clientX - dragStart.current.x;
-            const dy = ev.clientY - dragStart.current.y;
-            if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
+            if (ev.cancelable) ev.preventDefault();
+            const clientX = "touches" in ev ? ev.touches[0].clientX : (ev as MouseEvent).clientX;
+            const clientY = "touches" in ev ? ev.touches[0].clientY : (ev as MouseEvent).clientY;
+            const dx = clientX - dragStart.current.x;
+            const dy = clientY - dragStart.current.y;
+            if (Math.abs(clientX - startX) > 3 || Math.abs(clientY - startY) > 3) {
                 moved = true;
             }
-            dragStart.current = { x: ev.clientX, y: ev.clientY };
+            dragStart.current = { x: clientX, y: clientY };
             onMove(dx, dy);
         };
         const onUp = () => {
@@ -810,30 +814,48 @@ function PlacedSigOverlay({
                 setIsEditing(true);
             }
             dragStart.current = null;
-            window.removeEventListener("mousemove", onMove_);
+            window.removeEventListener("mousemove", onMove_ as EventListener);
             window.removeEventListener("mouseup", onUp);
+            window.removeEventListener("touchmove", onMove_ as EventListener);
+            window.removeEventListener("touchend", onUp);
+            window.removeEventListener("touchcancel", onUp);
         };
-        window.addEventListener("mousemove", onMove_);
+        window.addEventListener("mousemove", onMove_ as EventListener);
         window.addEventListener("mouseup", onUp);
+        window.addEventListener("touchmove", onMove_ as EventListener, { passive: false });
+        window.addEventListener("touchend", onUp);
+        window.addEventListener("touchcancel", onUp);
     };
 
-    const handleResizeDown = (e: React.MouseEvent) => {
+    const handleResizeDown = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        resizeStart.current = { x: e.clientX, y: e.clientY };
-        const onResize_ = (ev: MouseEvent) => {
+        const isTouch = "touches" in e;
+        const startX = isTouch ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const startY = isTouch ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        resizeStart.current = { x: startX, y: startY };
+        const onResize_ = (ev: MouseEvent | TouchEvent) => {
             if (!resizeStart.current) return;
-            const dx = ev.clientX - resizeStart.current.x;
-            const dy = ev.clientY - resizeStart.current.y;
-            resizeStart.current = { x: ev.clientX, y: ev.clientY };
+            if (ev.cancelable) ev.preventDefault();
+            const clientX = "touches" in ev ? ev.touches[0].clientX : (ev as MouseEvent).clientX;
+            const clientY = "touches" in ev ? ev.touches[0].clientY : (ev as MouseEvent).clientY;
+            const dx = clientX - resizeStart.current.x;
+            const dy = clientY - resizeStart.current.y;
+            resizeStart.current = { x: clientX, y: clientY };
             onResize(dx, dy);
         };
         const onUp = () => {
             resizeStart.current = null;
-            window.removeEventListener("mousemove", onResize_);
+            window.removeEventListener("mousemove", onResize_ as EventListener);
             window.removeEventListener("mouseup", onUp);
+            window.removeEventListener("touchmove", onResize_ as EventListener);
+            window.removeEventListener("touchend", onUp);
+            window.removeEventListener("touchcancel", onUp);
         };
-        window.addEventListener("mousemove", onResize_);
+        window.addEventListener("mousemove", onResize_ as EventListener);
         window.addEventListener("mouseup", onUp);
+        window.addEventListener("touchmove", onResize_ as EventListener, { passive: false });
+        window.addEventListener("touchend", onUp);
+        window.addEventListener("touchcancel", onUp);
     };
 
     return (
@@ -841,20 +863,22 @@ function PlacedSigOverlay({
             initial={{ scale: 1.2, opacity: 0, boxShadow: "0 0 20px rgba(4, 124, 88, 0.3)" }}
             animate={{ scale: 1, opacity: 1, boxShadow: "0 0 0px rgba(4, 124, 88, 0)" }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className={`absolute ${isEditing ? "" : "select-none"} ${placed.isField && hovered ? "cursor-pointer" : "cursor-move"}`}
+            className={`absolute group ${isEditing ? "" : "select-none"} ${placed.isField && hovered ? "cursor-pointer" : "cursor-move"}`}
             style={{
                 left: `${placed.x}%`,
                 top: `${placed.y}%`,
                 width: `${placed.width}%`,
                 height: `${placed.height}%`,
                 cursor: "move",
+                touchAction: "none",
             }}
-            onMouseDown={handleMouseDown}
+            onMouseDown={handlePointerDown}
+            onTouchStart={handlePointerDown}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             <div
-                className={`w-full h-full border-2 border-dashed rounded-lg transition-colors overflow-hidden ${isEditing ? "border-blue-500 bg-blue-50/30" : hovered ? "border-[#047C58] bg-[#047C58]/5" : "border-transparent"}`}
+                className={`w-full h-full border-2 border-dashed rounded-lg transition-colors overflow-hidden ${isEditing ? "border-blue-500 bg-blue-50/30" : hovered ? "border-[#047C58] bg-[#047C58]/5" : "border-transparent lg:border-transparent max-lg:border-[#047C58] max-lg:bg-[#047C58]/5"}`}
             >
                 {isEditing ? (
                     <input
@@ -880,45 +904,34 @@ function PlacedSigOverlay({
             </div>
 
             {/* Action Buttons at Top-Right */}
-            <AnimatePresence>
-                {hovered && (
-                    <div className="absolute -top-3 -right-3 flex gap-1 z-50">
-                        {placed.isField && (
-                            <motion.button
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsEditing(true);
-                                }}
-                                className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer hover:bg-blue-600 transition-colors"
-                                title="Edit text"
-                            >
-                                <IconPencil size={12} stroke={3} />
-                            </motion.button>
-                        )}
-                        <motion.button
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                            className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer hover:bg-red-600 transition-colors"
-                            title="Remove"
-                        >
-                            <IconX size={12} stroke={3} />
-                        </motion.button>
-                    </div>
+            <div className={`absolute -top-3 -right-3 flex gap-1 z-50 transition-opacity duration-200 ${hovered ? "opacity-100 pointer-events-auto" : "opacity-100 pointer-events-auto lg:opacity-0 lg:pointer-events-none max-lg:opacity-100 max-lg:pointer-events-auto"}`}>
+                {placed.isField && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditing(true);
+                        }}
+                        className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer hover:bg-blue-600 transition-colors"
+                        title="Edit text"
+                    >
+                        <IconPencil size={12} stroke={3} />
+                    </button>
                 )}
-            </AnimatePresence>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg cursor-pointer hover:bg-red-600 transition-colors"
+                    title="Remove"
+                >
+                    <IconX size={12} stroke={3} />
+                </button>
+            </div>
 
             {/* Single Resize handle (Professional circular look) */}
-            {hovered && (
-                <div
-                    className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-[#047C58] rounded-full cursor-se-resize z-40 shadow-sm"
-                    onMouseDown={handleResizeDown}
-                />
-            )}
+            <div
+                className={`absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-[#047C58] rounded-full cursor-se-resize z-40 shadow-sm transition-opacity duration-200 ${hovered ? "opacity-100 pointer-events-auto" : "opacity-100 pointer-events-auto lg:opacity-0 lg:pointer-events-none max-lg:opacity-100 max-lg:pointer-events-auto"}`}
+                onMouseDown={handleResizeDown}
+                onTouchStart={handleResizeDown}
+            />
         </motion.div>
     );
 }

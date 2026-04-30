@@ -466,7 +466,6 @@ export async function urlToPdf(options: {
     margin?: string;
     oneLongPage?: boolean;
     hideCookie?: boolean;
-    blockAd?: boolean;
     viewportWidth?: number;
     fileName?: string;
 }): Promise<Blob> {
@@ -478,7 +477,6 @@ export async function urlToPdf(options: {
     formData.append("margin", options.margin || "none");
     formData.append("one_long_page", options.oneLongPage ? "true" : "false");
     formData.append("hide_cookie", options.hideCookie ? "true" : "false");
-    formData.append("block_ad", options.blockAd ? "true" : "false");
     if (options.viewportWidth) formData.append("viewport_width", String(options.viewportWidth));
 
     const response = await fetch("/api/convert-url-to-pdf", {
