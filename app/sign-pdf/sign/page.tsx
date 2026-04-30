@@ -1423,14 +1423,14 @@ export default function SignPdfSignPage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsMobileDrawerOpen(false)}
-                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+                            className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[55]"
                         />
                     )}
                 </AnimatePresence>
 
                 {/* ── Right Options Sidebar (Desktop) & Bottom Drawer (Mobile) ── */}
                 <div className={`
-                    fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
                     lg:static lg:bg-white lg:border-l lg:border-[#E0DED9] lg:shadow-none lg:rounded-none lg:translate-y-0 lg:z-auto lg:shrink-0 lg:flex lg:overflow-y-auto lg:pr-0 lg:pb-0 custom-scrollbar
                     w-full lg:w-[320px] lg:min-w-[300px] lg:max-w-[360px]
                     ${isMobileDrawerOpen ? "translate-y-0 max-h-[85vh]" : "translate-y-full lg:max-h-full"}

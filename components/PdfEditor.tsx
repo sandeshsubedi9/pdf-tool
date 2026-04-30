@@ -146,23 +146,113 @@ const GOOGLE_FONTS = [
 
 const POPULAR_FONT_SIZES = [8, 12, 14, 16, 18, 20, 24, 28, 36, 48, 64, 72];
 
-const HANDLE_STYLE: React.CSSProperties = {
-    width: 10, height: 10,
-    background: "#2563eb",
-    border: "2px solid white",
-    borderRadius: "50%",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-};
-const HANDLE_STYLES = {
-    topLeft: { ...HANDLE_STYLE, cursor: "nw-resize" },
-    top: { ...HANDLE_STYLE, cursor: "n-resize" },
-    topRight: { ...HANDLE_STYLE, cursor: "ne-resize" },
-    right: { ...HANDLE_STYLE, cursor: "e-resize" },
-    bottomRight: { ...HANDLE_STYLE, cursor: "se-resize" },
-    bottom: { ...HANDLE_STYLE, cursor: "s-resize" },
-    bottomLeft: { ...HANDLE_STYLE, cursor: "sw-resize" },
-    left: { ...HANDLE_STYLE, cursor: "w-resize" },
-};
+// ─── ResizeHandles: Custom 8-dot resize handle overlay ──────────────────────
+// Renders 8 blue handles around an annotation. Works on both desktop (mouse)
+// and mobile (touch). Bypasses react-rnd's internal handles which get clipped
+// by the page's overflow:clip container.
+
+type ResizeDirection = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+
+const RESIZE_HANDLE_DEFS: { dir: ResizeDirection; style: React.CSSProperties }[] = [
+    { dir: "nw", style: { top: -6, left: -6, cursor: "nw-resize" } },
+    { dir: "n",  style: { top: -6, left: "calc(50% - 5px)", cursor: "n-resize" } },
+    { dir: "ne", style: { top: -6, right: -6, cursor: "ne-resize" } },
+    { dir: "e",  style: { top: "calc(50% - 5px)", right: -6, cursor: "e-resize" } },
+    { dir: "se", style: { bottom: -6, right: -6, cursor: "se-resize" } },
+    { dir: "s",  style: { bottom: -6, left: "calc(50% - 5px)", cursor: "s-resize" } },
+    { dir: "sw", style: { bottom: -6, left: -6, cursor: "sw-resize" } },
+    { dir: "w",  style: { top: "calc(50% - 5px)", left: -6, cursor: "w-resize" } },
+];
+
+function ResizeHandles({
+    annX, annY, annW, annH, pagePxW, pagePxH,
+    onResizeDone,
+}: {
+    annX: number; annY: number; annW: number; annH: number;
+    pagePxW: number; pagePxH: number;
+    onResizeDone: (newX: number, newY: number, newW: number, newH: number) => void;
+}) {
+    const handlePointerDown = React.useCallback((
+        e: React.MouseEvent | React.TouchEvent,
+        dir: ResizeDirection,
+    ) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const isTouch = "touches" in e;
+        const startClientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+        const startClientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+
+        // snapshot at drag start (in px)
+        let curX = (annX / 100) * pagePxW;
+        let curY = (annY / 100) * pagePxH;
+        let curW = (annW / 100) * pagePxW;
+        let curH = (annH / 100) * pagePxH;
+        let prevClientX = startClientX;
+        let prevClientY = startClientY;
+
+        const onMove = (ev: MouseEvent | TouchEvent) => {
+            if (ev.cancelable) ev.preventDefault();
+            const clientX = "touches" in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX;
+            const clientY = "touches" in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY;
+            const dx = clientX - prevClientX;
+            const dy = clientY - prevClientY;
+            prevClientX = clientX;
+            prevClientY = clientY;
+
+            // Apply delta per direction
+            if (dir === "e" || dir === "ne" || dir === "se") { curW = Math.max(20, curW + dx); }
+            if (dir === "w" || dir === "nw" || dir === "sw") { curX += dx; curW = Math.max(20, curW - dx); }
+            if (dir === "s" || dir === "se" || dir === "sw") { curH = Math.max(20, curH + dy); }
+            if (dir === "n" || dir === "ne" || dir === "nw") { curY += dy; curH = Math.max(20, curH - dy); }
+        };
+
+        const onUp = () => {
+            window.removeEventListener("mousemove", onMove as EventListener);
+            window.removeEventListener("mouseup", onUp);
+            window.removeEventListener("touchmove", onMove as EventListener);
+            window.removeEventListener("touchend", onUp);
+            window.removeEventListener("touchcancel", onUp);
+            // Convert back to %
+            onResizeDone(
+                (curX / pagePxW) * 100,
+                (curY / pagePxH) * 100,
+                (curW / pagePxW) * 100,
+                (curH / pagePxH) * 100,
+            );
+        };
+
+        window.addEventListener("mousemove", onMove as EventListener);
+        window.addEventListener("mouseup", onUp);
+        window.addEventListener("touchmove", onMove as EventListener, { passive: false });
+        window.addEventListener("touchend", onUp);
+        window.addEventListener("touchcancel", onUp);
+    }, [annX, annY, annW, annH, pagePxW, pagePxH, onResizeDone]);
+
+    return (
+        <>
+            {RESIZE_HANDLE_DEFS.map(({ dir, style }) => (
+                <div
+                    key={dir}
+                    className="no-drag"
+                    style={{
+                        position: "absolute",
+                        width: 12,
+                        height: 12,
+                        background: "#2563eb",
+                        border: "2.5px solid white",
+                        borderRadius: "50%",
+                        boxShadow: "0 1px 5px rgba(0,0,0,0.35)",
+                        zIndex: 50,
+                        touchAction: "none",
+                        ...style,
+                    }}
+                    onMouseDown={(e) => handlePointerDown(e, dir)}
+                    onTouchStart={(e) => handlePointerDown(e, dir)}
+                />
+            ))}
+        </>
+    );
+}
 
 function getVisibleColor(hexColor: string | undefined): string {
     if (!hexColor || hexColor === "transparent") return "#000000";
@@ -2129,7 +2219,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         }}
                                                                         disableDragging={tool !== "select" || ta.editing}
                                                                         enableResizing={false}
-                                                                        handleStyles={selectedId === ta.id && !ta.editing ? HANDLE_STYLES : {}}
+                                                                        handleStyles={{}}
                                                                         className={`z-20 ${selectedId === ta.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "text" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onClick={(e: any) => {
@@ -2277,7 +2367,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         }}
                                                                         disableDragging={tool !== "select"}
                                                                         enableResizing={tool === "select"}
-                                                                        handleStyles={selectedId === ia.id ? HANDLE_STYLES : {}}
+                                                                        handleStyles={{}}  
                                                                         className={`z-20 ${selectedId === ia.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "image" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onDragStart={() => {
@@ -2293,14 +2383,27 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         <div className="w-full h-full relative group">
                                                                             <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" style={{ opacity: (!isRedactedId && ia.isExisting) ? 0 : 1 }} alt="" />
                                                                             {selectedId === ia.id && (
-                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40 no-drag">
-                                                                                    <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                        <IconCopy size={12} />
-                                                                                    </button>
-                                                                                    <button onClick={() => deleteAnnotation(ia.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                        <IconX size={12} />
-                                                                                    </button>
-                                                                                </div>
+                                                                                <>
+                                                                                    <div className="absolute -top-7 right-0 flex items-center gap-1.5 z-40 no-drag">
+                                                                                        <button onClick={() => duplicateAnnotation(ia.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                            <IconCopy size={12} />
+                                                                                        </button>
+                                                                                        <button onClick={() => deleteAnnotation(ia.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                            <IconX size={12} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    {tool === "select" && (
+                                                                                        <ResizeHandles
+                                                                                            annX={ia.x} annY={ia.y}
+                                                                                            annW={ia.w} annH={ia.h}
+                                                                                            pagePxW={pagePxW} pagePxH={pagePxH}
+                                                                                            onResizeDone={(newX, newY, newW, newH) => {
+                                                                                                updateAnnotation(ia.id, { x: newX, y: newY, w: newW, h: newH } as any);
+                                                                                                if (ia.isExisting) requestRedactOriginal(ia.id, ia.page);
+                                                                                            }}
+                                                                                        />
+                                                                                    )}
+                                                                                </>
                                                                             )}
                                                                         </div>
                                                                     </Rnd>
@@ -2346,7 +2449,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         }}
                                                                         disableDragging={tool !== "select"}
                                                                         enableResizing={tool === "select"}
-                                                                        handleStyles={selectedId === da.id ? HANDLE_STYLES : {}}
+                                                                        handleStyles={{}}  
                                                                         className={`z-20 ${selectedId === da.id ? "outline-2 outline-[#2563eb]" : "hover:outline-2 hover:outline-[#2563eb]/40 " + ((tool === "draw" || tool === "highlight" || tool === "whiteout" || tool === "select") ? "max-lg:outline max-lg:outline-dashed max-lg:outline-1 max-lg:outline-blue-400/80" : "")}`}
                                                                         style={{ position: "relative" }}
                                                                         onDragStart={() => {
@@ -2374,14 +2477,26 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                                 })}
                                                                             </svg>
                                                                             {selectedId === da.id && (
-                                                                                <div className="absolute -top-6 right-0 flex items-center gap-1.5 z-40 no-drag">
-                                                                                    <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
-                                                                                        <IconCopy size={12} />
-                                                                                    </button>
-                                                                                    <button onClick={() => deleteAnnotation(da.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
-                                                                                        <IconX size={12} />
-                                                                                    </button>
-                                                                                </div>
+                                                                                <>
+                                                                                    <div className="absolute -top-7 right-0 flex items-center gap-1.5 z-40 no-drag">
+                                                                                        <button onClick={() => duplicateAnnotation(da.id)} className="bg-[#2563eb] text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-blue-700 transition-colors" title="Duplicate">
+                                                                                            <IconCopy size={12} />
+                                                                                        </button>
+                                                                                        <button onClick={() => deleteAnnotation(da.id)} className="bg-red-500 text-white rounded-md px-2 py-1 text-[11px] font-bold flex items-center gap-1 shadow-lg hover:bg-red-600 transition-colors" title="Delete">
+                                                                                            <IconX size={12} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    {tool === "select" && (
+                                                                                        <ResizeHandles
+                                                                                            annX={da.x} annY={da.y}
+                                                                                            annW={da.w} annH={da.h}
+                                                                                            pagePxW={pagePxW} pagePxH={pagePxH}
+                                                                                            onResizeDone={(newX, newY, newW, newH) => {
+                                                                                                updateAnnotation(da.id, { x: newX, y: newY, w: newW, h: newH } as any);
+                                                                                            }}
+                                                                                        />
+                                                                                    )}
+                                                                                </>
                                                                             )}
                                                                         </div>
                                                                     </Rnd>
