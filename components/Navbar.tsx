@@ -232,7 +232,7 @@ export default function Navbar() {
 
     return (
         <header
-            className={`fixed top-0 inset-x-0 z-50 transition-[background-color,box-shadow] duration-300 ${scrolled || mobileOpen
+            className={`fixed top-0 inset-x-0 z-[70] transition-[background-color,box-shadow] duration-300 ${scrolled || mobileOpen
                 ? "bg-white shadow-[0_1px_16px_rgba(30,23,2,0.08)]"
                 : "bg-transparent"
                 }`}
@@ -412,7 +412,7 @@ export default function Navbar() {
 
             {/* Mobile menu */}
             <div
-                className={`md:hidden fixed inset-x-0 top-16 bg-white border-t border-border transition-all duration-300 z-50 flex flex-col ${mobileOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0 pointer-events-none"
+                className={`md:hidden fixed inset-x-0 top-16 bg-white border-t border-border transition-all duration-300 z-[70] flex flex-col ${mobileOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0 pointer-events-none"
                     }`}
                 style={{ height: "calc(100dvh - 64px)" }}
             >
