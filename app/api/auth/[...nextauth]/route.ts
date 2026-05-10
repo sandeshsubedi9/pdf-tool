@@ -26,9 +26,13 @@ export const authOptions: NextAuthOptions = {
         await connectToDatabase();
         const user = await User.findOne({ email: credentials.email.toLowerCase() });
 
-        if (!user || (!user.password && user.email)) {
+        if (!user) {
+          throw new Error("Invalid email or password");
+        }
+
+        if (!user.password) {
           // If the user signed up with Google originally, they won't have a password.
-          throw new Error("Invalid password or user signed up via Google.");
+          throw new Error("This account was created with Google. Please sign in with Google.");
         }
 
         const isMatch = await bcrypt.compare(credentials.password, user.password);
@@ -90,6 +94,18 @@ export const authOptions: NextAuthOptions = {
             token.id = dbUser._id.toString();
             token.verificationStatus = dbUser.verificationStatus || "none";
             token.image = dbUser.image || token.image || (token as any).picture;
+
+            if (dbUser.verificationStatus === "rejected") {
+              const { StudentVerification } = await import("@/lib/models/StudentVerification");
+              const verification = await StudentVerification.findOne({ userId: dbUser._id }).sort({ submittedAt: -1 });
+              if (verification && verification.adminNote) {
+                token.rejectionReason = verification.adminNote;
+              } else {
+                token.rejectionReason = null;
+              }
+            } else {
+              token.rejectionReason = null;
+            }
           }
         } catch (e) {
           console.error("JWT Session Callback Error:", e);
@@ -104,6 +120,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isStudent = token.isStudent;
         (session.user as any).studentEmail = token.studentEmail;
         (session.user as any).verificationStatus = token.verificationStatus || "none";
+        (session.user as any).rejectionReason = token.rejectionReason || null;
         (session.user as any).image = token.image || (token as any).picture || null;
       }
       return session;

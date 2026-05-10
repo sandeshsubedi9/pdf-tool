@@ -211,7 +211,14 @@ export default function SettingsPage() {
             <div>
               <div className="font-bold text-red-700 text-sm">Verification Not Approved</div>
               <p className="text-red-600 text-sm mt-0.5">
-                Your previous submission was not approved. Please re-submit with a clearer document.
+                {user.rejectionReason ? (
+                  <>
+                    <span className="block mb-1"><strong>Reason:</strong> {user.rejectionReason}</span>
+                    <span>Please re-submit with a valid document.</span>
+                  </>
+                ) : (
+                  "Your previous submission was not approved. Please re-submit with a clearer document."
+                )}
               </p>
             </div>
           </div>
