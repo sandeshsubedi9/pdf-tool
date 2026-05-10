@@ -6,14 +6,20 @@ export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File;
-        const edits = formData.get("edits") as string;
+        const edits = formData.get("edits") as string | null;
+        const editsFile = formData.get("edits_file") as File | null;
 
         if (!file) return NextResponse.json({ error: "Missing file" }, { status: 400 });
-        if (!edits) return NextResponse.json({ error: "Missing edits" }, { status: 400 });
+        if (!edits && !editsFile) return NextResponse.json({ error: "Missing edits payload" }, { status: 400 });
 
         const forwardForm = new FormData();
         forwardForm.append("file", file, file.name);
-        forwardForm.append("edits", edits);
+        
+        if (editsFile) {
+            forwardForm.append("edits_file", editsFile, "edits.json");
+        } else if (edits) {
+            forwardForm.append("edits", edits);
+        }
 
         let pythonResponse: Response;
         try {

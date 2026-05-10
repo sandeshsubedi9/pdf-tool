@@ -775,13 +775,21 @@ async def extract_content_endpoint(file: UploadFile = File(...)):
 @app.post("/edit/apply-edits")
 async def apply_edits_endpoint(
     file: UploadFile = File(...),
-    edits: str = Form(...),
+    edits: str = Form(None),
+    edits_file: UploadFile = File(None),
 ):
     """
     Apply edits to a PDF: whiteout deleted/modified areas, draw new/modified content.
     edits: JSON string with { modified: [...], deleted: [...], added: [...] }
+    edits_file: The same JSON, but uploaded as a file to bypass size limits.
     """
     try:
+        if edits_file:
+            edits_bytes = await edits_file.read()
+            edits = edits_bytes.decode('utf-8')
+        elif not edits:
+            raise ValueError("Missing edits payload")
+
         edited_bytes, output_filename = await apply_pdf_edits(file, edits)
 
         logger.info(f"Applied edits to '{file.filename}' → '{output_filename}'")

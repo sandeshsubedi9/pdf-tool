@@ -4,6 +4,7 @@ import logging
 import zipfile
 from fastapi import HTTPException, UploadFile
 import fitz  # PyMuPDF
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,22 @@ async def extract_images_from_pdf(file: UploadFile):
                     base_image = doc.extract_image(xref)
                     image_bytes = base_image["image"]
                     image_ext = base_image["ext"]  # e.g. 'jpeg', 'png', 'jp2'
+
+                    # Apply SMask for transparency using Pillow
+                    if "smask" in base_image and base_image["smask"] > 0:
+                        try:
+                            mask_info = doc.extract_image(base_image["smask"])
+                            if mask_info:
+                                base_pil = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+                                mask_pil = Image.open(io.BytesIO(mask_info["image"])).convert("L")
+                                if base_pil.size == mask_pil.size:
+                                    base_pil.putalpha(mask_pil)
+                                    out_io = io.BytesIO()
+                                    base_pil.save(out_io, format="PNG")
+                                    image_bytes = out_io.getvalue()
+                                    image_ext = "png"
+                        except Exception as mask_e:
+                            logger.warning(f"Failed to apply SMask with PIL for xref={xref}: {mask_e}")
 
                     # Normalise extension
                     if image_ext in ("jpeg", "jpg"):

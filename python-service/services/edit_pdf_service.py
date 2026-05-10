@@ -216,6 +216,23 @@ async def extract_pdf_content(file: UploadFile) -> dict:
 
                     img_bytes = base_image["image"]
                     img_ext = base_image.get("ext", "png")
+
+                    # Apply SMask for transparency using Pillow
+                    if "smask" in base_image and base_image["smask"] > 0:
+                        try:
+                            mask_info = doc.extract_image(base_image["smask"])
+                            if mask_info:
+                                base_pil = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+                                mask_pil = Image.open(io.BytesIO(mask_info["image"])).convert("L")
+                                if base_pil.size == mask_pil.size:
+                                    base_pil.putalpha(mask_pil)
+                                    out_io = io.BytesIO()
+                                    base_pil.save(out_io, format="PNG")
+                                    img_bytes = out_io.getvalue()
+                                    img_ext = "png"
+                        except Exception as mask_e:
+                            logger.warning(f"Failed to apply SMask with PIL for xref={xref}: {mask_e}")
+
                     mime = f"image/{img_ext}" if img_ext != "jpg" else "image/jpeg"
 
                     # Convert to base64 data URL
@@ -226,6 +243,7 @@ async def extract_pdf_content(file: UploadFile) -> dict:
 
                     page_data["images"].append({
                         "id": f"ext_i_{page_idx}_{img_index}_{rect_idx}",
+                        "page": page_idx + 1,
                         "dataUrl": data_url,
                         "x_pct": (x0 / pw) * 100,
                         "y_pct": (y0 / ph) * 100,
@@ -305,9 +323,11 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
         if page_idx < 0 or page_idx >= len(doc):
             continue
         page = doc[page_idx]
+        # Expand the redaction rect by 1 point to account for float rounding
+        # This ensures the rectangle fully intersects the target image
         rect = fitz.Rect(
-            item.get("orig_x0", 0), item.get("orig_y0", 0),
-            item.get("orig_x1", 0), item.get("orig_y1", 0)
+            item.get("orig_x0", 0) - 1, item.get("orig_y0", 0) - 1,
+            item.get("orig_x1", 0) + 1, item.get("orig_y1", 0) + 1
         )
         # Add redaction annotation (removes text/images without white fill)
         page.add_redact_annot(rect)
@@ -321,15 +341,23 @@ async def apply_pdf_edits(file: UploadFile, edits_json: str) -> tuple[bytes, str
 
         # Redact original position
         rect = fitz.Rect(
-            item.get("orig_x0", 0), item.get("orig_y0", 0),
-            item.get("orig_x1", 0), item.get("orig_y1", 0)
+            item.get("orig_x0", 0) - 1, item.get("orig_y0", 0) - 1,
+            item.get("orig_x1", 0) + 1, item.get("orig_y1", 0) + 1
         )
         page.add_redact_annot(rect)
 
-    # Apply all redactions (deletions and modifications only — whiteout is paint-over, not redaction)
-    for page_idx in range(len(doc)):
+    # Track which pages actually received redactions so we don't unnecessarily process untouched pages
+    pages_to_redact = set()
+    for item in deleted + modified:
+        page_idx = item["page"] - 1
+        if 0 <= page_idx < len(doc):
+            pages_to_redact.add(page_idx)
+
+    # Apply all redactions (deletions and modifications only)
+    for page_idx in pages_to_redact:
         page = doc[page_idx]
-        page.apply_redactions()
+        # images=1 removes all overlapping images entirely, guaranteeing they don't linger
+        page.apply_redactions(images=1)
 
     # ── Now draw modified items at their new positions ────────────────────
     for item in modified:
@@ -448,8 +476,20 @@ def _draw_image_block(page, item: dict, pw: float, ph: float):
             b64_data = data_url
 
         img_bytes = base64.b64decode(b64_data)
+
+        # Convert image to PNG using Pillow to support WebP and other formats not natively supported by PyMuPDF
+        import io
+        from PIL import Image
+        try:
+            pil_img = Image.open(io.BytesIO(img_bytes))
+            out_io = io.BytesIO()
+            pil_img.save(out_io, format="PNG")
+            img_bytes = out_io.getvalue()
+        except Exception as pil_err:
+            logger.warning(f"PIL conversion failed, attempting raw insertion: {pil_err}")
+
         img_rect = fitz.Rect(x, y, x + w, y + h)
-        page.insert_image(img_rect, stream=img_bytes)
+        page.insert_image(img_rect, stream=img_bytes, keep_proportion=False)
     except Exception as e:
         logger.error(f"Image insertion failed: {e}")
 

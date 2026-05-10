@@ -1500,7 +1500,10 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
             const editsPayload = JSON.stringify({ modified, deleted, added });
             const formData = new FormData();
             formData.append("file", targetFile, targetName);
-            formData.append("edits", editsPayload);
+            
+            // Send large JSON payload as a file to avoid string truncation limits in Next.js/FastAPI
+            const editsBlob = new Blob([editsPayload], { type: "application/json" });
+            formData.append("edits_file", editsBlob, "edits.json");
 
             const res = await fetch("/api/edit-pdf/apply", { method: "POST", body: formData });
             if (!res.ok) {
@@ -1875,16 +1878,23 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                 <div className="flex-1 flex overflow-hidden relative">
 
                     {/* Mobile Floating Action Buttons */}
-                    <div className="lg:hidden absolute bottom-20 right-4 z-40 flex flex-col gap-3">
+                    <div className="lg:hidden absolute bottom-20 right-4 z-40 flex flex-col items-end gap-3">
 
                         {/* Save Button (Always visible on mobile) */}
-                        <button
-                            onClick={savePdf}
-                            disabled={isSaving}
-                            className="w-12 h-12 rounded-full shadow-lg bg-emerald-600 text-white flex items-center justify-center transition-transform active:scale-95 disabled:opacity-50"
-                        >
-                            {isSaving ? <IconLoader2 size={22} className="animate-spin" /> : <IconDownload size={22} />}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {isSaving && (
+                                <div className="bg-black/80 backdrop-blur-sm text-white text-[11px] font-medium py-1.5 px-3 rounded-xl shadow-lg whitespace-nowrap animate-pulse">
+                                    Processing... this may take a moment
+                                </div>
+                            )}
+                            <button
+                                onClick={savePdf}
+                                disabled={isSaving}
+                                className="w-12 h-12 shrink-0 rounded-full shadow-lg bg-emerald-600 text-white flex items-center justify-center transition-transform active:scale-95 disabled:opacity-50"
+                            >
+                                {isSaving ? <IconLoader2 size={22} className="animate-spin" /> : <IconDownload size={22} />}
+                            </button>
+                        </div>
 
                         {/* Settings Button (Shows if a tool is active or ANY annotation is selected) */}
                         {(tool !== "select" || selectedId) && (
@@ -2381,7 +2391,7 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                                                                         }}
                                                                     >
                                                                         <div className="w-full h-full relative group">
-                                                                            <img src={ia.dataUrl} className="w-full h-full object-contain pointer-events-none" style={{ opacity: (!isRedactedId && ia.isExisting) ? 0 : 1 }} alt="" />
+                                                                            <img src={ia.dataUrl} className="w-full h-full object-fill pointer-events-none" style={{ opacity: (!isRedactedId && ia.isExisting) ? 0 : 1 }} alt="" />
                                                                             {selectedId === ia.id && (
                                                                                 <>
                                                                                     <div className="absolute -top-7 right-0 flex items-center gap-1.5 z-40 no-drag">
@@ -2841,15 +2851,20 @@ export default function PdfEditor({ file, setFile }: { file: File; setFile: (f: 
                         </div>
 
                         {/* Save button pinned to bottom */}
-                        <div className="p-4 border-t border-[#E0DED9] bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+                        <div className="p-4 border-t border-[#E0DED9] bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.03)] flex flex-col gap-2">
                             <button
                                 onClick={savePdf}
                                 disabled={isSaving}
                                 className="w-full py-3.5 rounded-xl bg-black text-white text-sm font-bold hover:bg-[#222] disabled:opacity-50 flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-black/15 active:scale-[0.98]"
                             >
                                 {isSaving ? <IconLoader2 size={18} className="animate-spin" /> : <IconDownload size={18} />}
-                                {isSaving ? "Saving…" : "Save Changes"}
+                                {isSaving ? "Saving..." : "Save Changes"}
                             </button>
+                            {isSaving && (
+                                <p className="text-center text-[11px] text-brand-sage font-medium animate-pulse">
+                                    This may take a few moments
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
