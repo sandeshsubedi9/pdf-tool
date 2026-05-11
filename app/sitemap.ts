@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next'
+import { BASE_URL } from '@/lib/schema'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://pdfmaya.com'
+  const baseUrl = BASE_URL
 
   // Define main application routes (PDF tools and key pages)
   const routes = [
