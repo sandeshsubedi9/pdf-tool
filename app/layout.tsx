@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/components/AuthProvider";
 import { FingerprintProvider } from "@/components/FingerprintProvider";
-import { getOrganizationSchema, getWebSiteSchema, BASE_URL } from "@/lib/schem";
+import { getOrganizationSchema, getWebSiteSchema, BASE_URL } from "@/lib/schema";
 
 const inter = Inter({
   variable: "--font-inter",

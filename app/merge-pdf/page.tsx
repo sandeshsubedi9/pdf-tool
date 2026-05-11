@@ -6,7 +6,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { IconArrowsJoin2 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 
-import { getSoftwareAppSchema } from "@/lib/schem";
+import { getSoftwareAppSchema } from "@/lib/schema";
 import StructuredData from "@/components/StructuredData";
 
 export default function MergePdfPage() {
