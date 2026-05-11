@@ -6,9 +6,18 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { IconArrowsJoin2 } from "@tabler/icons-react";
 import FileStore from "@/lib/file-store";
 
+import { getSoftwareAppSchema } from "@/lib/schem";
+import StructuredData from "@/components/StructuredData";
+
 export default function MergePdfPage() {
     const router = useRouter();
     const [files, setFiles] = useState<File[]>([]);
+
+    const toolSchema = getSoftwareAppSchema(
+        "Merge PDF",
+        "Combine multiple PDF files into one document easily with our online tool.",
+        "/merge-pdf"
+    );
 
     const handleFileSelection = (newFiles: File[]) => {
         if (newFiles.length === 0) return;
@@ -26,6 +35,7 @@ export default function MergePdfPage() {
 
     const descriptionContent = (
         <div className="flex flex-col gap-5 mt-4">
+            <StructuredData data={toolSchema} />
             <p className="text-brand-sage leading-relaxed">
                 PDF Maya’s Merge PDF tool allows you to combine PDF files from different sources into a single, organized document. Whether you are compiling a report, merging invoices, or creating a complete application package, our online PDF merger makes it easy to join documents in seconds.
             </p>

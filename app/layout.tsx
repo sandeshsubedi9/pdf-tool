@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/components/AuthProvider";
 import { FingerprintProvider } from "@/components/FingerprintProvider";
+import { getOrganizationSchema, getWebSiteSchema, BASE_URL } from "@/lib/schem";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -12,10 +13,50 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PDF Maya – Every PDF Tool in One Place",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "PDF Maya – Every PDF Tool in One Place",
+    template: "%s | PDF Maya",
+  },
   description:
     "Edit, Merge, split, compress, convert, sign and do much more with PDFs. Free, fast, and easy to use – PDF Maya has every PDF tool at your fingertips.",
   keywords: "PDF editor, merge PDF, split PDF, compress PDF, convert PDF, PDF tools, crop PDF, watermark PDF, OCR PDF, redact PDF, sign PDF, extract images, protect PDF, translate PDF, repair PDF, PDF to Word, Word to PDF, Excel to PDF",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: BASE_URL,
+    siteName: "PDF Maya",
+    title: "PDF Maya – Every PDF Tool in One Place",
+    description: "The ultimate collection of PDF tools. Edit, convert, merge and more for free.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "PDF Maya - All Your PDF Tools",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PDF Maya – Every PDF Tool in One Place",
+    description: "The ultimate collection of PDF tools. Edit, convert, merge and more for free.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -23,15 +64,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const orgSchema = getOrganizationSchema();
+  const siteSchema = getWebSiteSchema();
+
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
+        />
+      </head>
       <body className={`${inter.variable} antialiased`}>
-        {/*
-          FingerprintProvider runs silently on every page load:
-          1. Calls FingerprintJS to get a stable device ID
-          2. POSTs it to /api/init-session → sets a secure HttpOnly cookie
-          3. Exposes enforceLimit() and status via useRateLimit() hook
-        */}
         <AuthProvider>
           <FingerprintProvider>
             {children}
