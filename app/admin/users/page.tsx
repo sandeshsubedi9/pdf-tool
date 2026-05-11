@@ -95,19 +95,19 @@ export default function AdminUsersPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-brand-dark flex items-center gap-3">
-            <IconUsers size={32} className="text-brand-teal" />
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-dark flex items-center gap-3">
+            <IconUsers size={32} className="text-brand-teal shrink-0" />
             Platform Users
           </h1>
           <p className="text-brand-sage mt-1 text-sm">View all registered accounts and dispatch mass communications</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={fetchUsers}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
           >
             <IconLoader2 size={16} className={loading && !users.length ? "animate-spin" : ""} />
             Refresh
@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
           <button
             onClick={() => setBlastModalOpen(true)}
             disabled={users.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-teal border border-brand-teal rounded-xl text-sm font-bold text-white hover:bg-[#036649] transition-colors shadow-md disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal border border-brand-teal rounded-xl text-sm font-bold text-white hover:bg-[#036649] transition-colors shadow-md disabled:opacity-50"
           >
             <IconMail size={16} />
             Mass Mail Blast
@@ -138,7 +138,7 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80">
                   <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-brand-sage">User Account</th>
@@ -151,11 +151,11 @@ export default function AdminUsersPage() {
                 {displayUsers.map((u) => {
                   return (
                     <tr key={u._id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <div className="font-semibold text-brand-dark">{u.name || "Unknown User"}</div>
                         <div className="text-xs text-brand-sage mt-0.5">{u.email}</div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         {u.authProvider === "google" ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-medium border border-red-100">
                             <IconBrandGoogleFilled size={12} /> Google Login
@@ -166,7 +166,7 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         {u.isStudent ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-emerald-100 text-emerald-700 border-emerald-200">
                             <IconShieldCheck size={14} /> Full Access (Student)
@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-brand-sage text-xs">
+                      <td className="px-5 py-4 text-brand-sage text-xs whitespace-nowrap">
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-GB", {
                           day: "numeric", month: "short", year: "numeric"
                         }) : "—"}
@@ -190,22 +190,22 @@ export default function AdminUsersPage() {
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
-                <div className="text-sm text-brand-sage">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-white">
+                <div className="text-sm text-brand-sage text-center sm:text-left">
                   Showing <span className="font-semibold text-brand-dark">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-semibold text-brand-dark">{Math.min(currentPage * ITEMS_PER_PAGE, users.length)}</span> of <span className="font-semibold text-brand-dark">{users.length}</span> users
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors text-center"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors text-center"
                   >
                     Next
                   </button>

@@ -155,10 +155,10 @@ export default function AdminVerificationsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-brand-dark flex items-center gap-3">
-            <IconSchool size={32} className="text-brand-teal" />
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-dark flex items-center gap-3">
+            <IconSchool size={32} className="text-brand-teal shrink-0" />
             Student Verifications
           </h1>
           <p className="text-brand-sage mt-1 text-sm">Review and manage student document submissions</p>
@@ -166,7 +166,7 @@ export default function AdminVerificationsPage() {
         <div className="flex gap-3">
           <button
             onClick={fetchVerifications}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-brand-dark hover:bg-slate-50 transition-colors shadow-sm"
           >
             <IconLoader2 size={16} className={loading ? "animate-spin" : ""} />
             Refresh
@@ -211,7 +211,7 @@ export default function AdminVerificationsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/80">
                     <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-brand-sage">Student</th>
@@ -227,31 +227,31 @@ export default function AdminVerificationsPage() {
                     const sc = STATUS_CONFIG[v.status];
                     return (
                       <tr key={v._id} className="hover:bg-slate-50/60 transition-colors group">
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <div className="font-semibold text-brand-dark">{v.userName || "—"}</div>
                           <div className="text-xs text-brand-sage">{v.userEmail}</div>
                         </td>
                         <td className="px-5 py-4">
                           <div className="font-medium text-brand-dark max-w-[160px] truncate">{v.institutionName}</div>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
                             <IconFileDescription size={12} />
                             {DOC_TYPE_LABELS[v.documentType] || v.documentType}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-brand-sage text-xs">
+                        <td className="px-5 py-4 text-brand-sage text-xs whitespace-nowrap">
                           {new Date(v.submittedAt).toLocaleDateString("en-GB", {
                             day: "numeric", month: "short", year: "numeric"
                           })}
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${sc.color}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                             {sc.label}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <button
                             onClick={() => { setSelected(v); setAdminNote(v.adminNote || ""); setPreviewOpen(false); }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-dark text-white text-xs font-bold rounded-lg hover:bg-brand-teal transition-colors"
@@ -268,22 +268,22 @@ export default function AdminVerificationsPage() {
               
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
-                  <div className="text-sm text-brand-sage">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-white">
+                  <div className="text-sm text-brand-sage text-center sm:text-left">
                     Showing <span className="font-semibold text-brand-dark">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="font-semibold text-brand-dark">{Math.min(currentPage * ITEMS_PER_PAGE, filteredVerifications.length)}</span> of <span className="font-semibold text-brand-dark">{filteredVerifications.length}</span> results
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors text-center"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-brand-dark hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors text-center"
                     >
                       Next
                     </button>
@@ -311,30 +311,30 @@ export default function AdminVerificationsPage() {
 
             <div className="p-6 space-y-5">
               {/* Student Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-sage mb-1">
                     <IconUser size={12} /> Student
                   </div>
-                  <div className="font-bold text-brand-dark">{selected.userName || "—"}</div>
+                  <div className="font-bold text-brand-dark truncate">{selected.userName || "—"}</div>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-sage mb-1">
                     <IconMail size={12} /> Email
                   </div>
-                  <div className="font-medium text-brand-dark text-sm break-all">{selected.userEmail}</div>
+                  <div className="font-medium text-brand-dark text-sm break-all truncate">{selected.userEmail}</div>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-sage mb-1">
                     <IconBuildingBank size={12} /> Institution
                   </div>
-                  <div className="font-bold text-brand-dark">{selected.institutionName}</div>
+                  <div className="font-bold text-brand-dark truncate">{selected.institutionName}</div>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-sage mb-1">
                     <IconFileDescription size={12} /> Document Type
                   </div>
-                  <div className="font-medium text-brand-dark">{DOC_TYPE_LABELS[selected.documentType]}</div>
+                  <div className="font-medium text-brand-dark truncate">{DOC_TYPE_LABELS[selected.documentType]}</div>
                 </div>
               </div>
 
