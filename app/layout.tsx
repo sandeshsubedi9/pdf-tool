@@ -22,7 +22,16 @@ export const metadata: Metadata = {
     "Edit, Merge, split, compress, convert, sign and do much more with PDFs. Free, fast, and easy to use – PDF Maya has every PDF tool at your fingertips.",
   keywords: "PDF editor, merge PDF, split PDF, compress PDF, convert PDF, PDF tools, crop PDF, watermark PDF, OCR PDF, redact PDF, sign PDF, extract images, protect PDF, translate PDF, repair PDF, PDF to Word, Word to PDF, Excel to PDF",
   alternates: {
-    canonical: "/",
+    canonical: "https://www.pdfmaya.com",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=2" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico?v=2",
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
@@ -57,6 +66,9 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  other: {
+    "title": "PDF Maya – Every PDF Tool in One Place",
+  }
 };
 
 export default function RootLayout({
@@ -69,7 +81,8 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <head>
+      <body className={`${inter.variable} antialiased`}>
+        {/* JSON-LD Structured Data - Visible in View Source */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
@@ -78,8 +91,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />
-      </head>
-      <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
           <FingerprintProvider>
             {children}

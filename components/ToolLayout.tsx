@@ -2,6 +2,8 @@
 import React from "react";
 import Navbar from "@/components/Navbar";
 import { motion } from "motion/react";
+import { getSoftwareAppSchema } from "@/lib/schema";
+import { usePathname } from "next/navigation";
 
 interface ToolLayoutProps {
     title: string;
@@ -18,9 +20,24 @@ export default function ToolLayout({
     accentColor = "#047C58",
     children,
 }: ToolLayoutProps) {
+    const pathname = usePathname();
+
+    // Generate software application schema for this tool
+    const softwareSchema = getSoftwareAppSchema(
+        title.split(" - ")[0],
+        typeof description === 'string' ? description : "Free online PDF tool from PDF Maya",
+        pathname
+    );
+
     return (
         <div className="min-h-screen flex flex-col relative" style={{ background: "var(--brand-white)" }}>
             <Navbar />
+
+            {/* JSON-LD Structured Data for the specific tool - Visible in View Source */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+            />
 
             {/* Subtle geometric background accent */}
             <div
