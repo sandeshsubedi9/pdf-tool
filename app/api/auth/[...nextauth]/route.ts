@@ -24,14 +24,15 @@ export const authOptions: NextAuthOptions = {
         }
 
         await connectToDatabase();
-        const user = await User.findOne({ email: credentials.email.toLowerCase() });
+        const email = credentials.email.toLowerCase().trim();
+        const user = await User.findOne({ email });
 
         if (!user) {
           throw new Error("Invalid email or password");
         }
 
+        // Check if user has a password. Google-only accounts won't have one.
         if (!user.password) {
-          // If the user signed up with Google originally, they won't have a password.
           throw new Error("This account was created with Google. Please sign in with Google.");
         }
 
@@ -44,6 +45,7 @@ export const authOptions: NextAuthOptions = {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
+          image: user.image,
         };
       },
     }),
