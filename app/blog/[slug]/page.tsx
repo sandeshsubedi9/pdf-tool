@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import blogs from "@/data/blogs.json";
+import { getBlogSchema, BASE_URL } from "@/lib/schema";
 
 export async function generateStaticParams() {
   return blogs.map((blog) => ({
@@ -35,8 +36,21 @@ export default async function BlogPost(props: Props) {
     notFound();
   }
 
+  const blogSchema = getBlogSchema({
+    title: blog.title,
+    description: blog.summary,
+    image: `${BASE_URL}${blog.coverImage || "/og-image.png"}`,
+    datePublished: blog.date,
+    authorName: "PDF Maya Team",
+    url: `${BASE_URL}/blog/${blog.slug}`,
+  });
+
   return (
     <div className="min-h-screen bg-[#FAFAF9]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogSchema) }}
+      />
       <Navbar />
       <main className="max-w-4xl mx-auto px-6 pt-32 pb-20">
         <Link

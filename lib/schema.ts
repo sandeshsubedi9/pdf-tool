@@ -102,3 +102,53 @@ export function getBreadcrumbSchema(items: { name: string; item: string }[]) {
     })),
   };
 }
+
+/**
+ * Generates FAQ Schema
+ */
+export function getFAQSchema(questions: { q: string; a: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: questions.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.a,
+      },
+    })),
+  };
+}
+
+/**
+ * Generates Blog/Article Schema
+ */
+export function getBlogSchema(post: {
+  title: string;
+  description: string;
+  image: string;
+  datePublished: string;
+  authorName: string;
+  url: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.description,
+    image: post.image,
+    datePublished: post.datePublished,
+    author: {
+      '@type': 'Person',
+      name: post.authorName,
+    },
+    publisher: {
+      '@id': `${BASE_URL}/#organization`,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': post.url,
+    },
+  };
+}
