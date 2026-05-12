@@ -34,14 +34,8 @@ COPY requirements.txt .
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
-COPY . .
-
-# Expose the port the app runs on (Default 8001)
+# Expose the port the app runs on
 EXPOSE 8001
 
-# Set the PORT environment variable if not provided
-ENV PORT=8001
-
-# Command to run the application using the dynamic PORT variable
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# Command to run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
