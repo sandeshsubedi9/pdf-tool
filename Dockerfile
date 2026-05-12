@@ -21,7 +21,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Note: In a real production environment, you might want to point this to the service name
 # defined in docker-compose.yml, but since we are calling it from the server-side API routes,
 # we need to ensure the Next.js server can reach the python-service.
-ENV PYTHON_SERVICE_URL=http://python-service:8000
+ENV PYTHON_SERVICE_URL=http://python-service:8001
 
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
@@ -44,9 +44,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 3008
 
-ENV PORT=3000
+ENV PORT=3008
 # set hostname to localhost
 ENV HOSTNAME="0.0.0.0"
 
