@@ -42,6 +42,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Ensure the storage directory exists and is writable by the nextjs user
+RUN mkdir -p storage/verifications && chown -R nextjs:nodejs storage
+
 USER nextjs
 
 EXPOSE 3008
