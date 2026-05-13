@@ -5,6 +5,8 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/components/AuthProvider";
 import { FingerprintProvider } from "@/components/FingerprintProvider";
 import { getOrganizationSchema, getWebSiteSchema, BASE_URL } from "@/lib/schema";
+import Analytics from "@/components/Analytics";
+
 
 const inter = Inter({
   variable: "--font-inter",
@@ -82,6 +84,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
+        <Analytics />
         {/* JSON-LD Structured Data - Visible in View Source */}
         <script
           type="application/ld+json"
