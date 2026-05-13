@@ -133,6 +133,27 @@ export default function AdminVerificationsPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selected) return;
+    if (!confirm("Are you sure you want to permanently delete this record and its document? This cannot be undone.")) return;
+    
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/admin/verifications?id=${selected._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Verification and file deleted successfully.");
+      setSelected(null);
+      fetchVerifications();
+    } catch (err: any) {
+      toast.error(err.message || "Deletion failed.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading && allVerifications.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -411,6 +432,18 @@ export default function AdminVerificationsPage() {
                 >
                   {processing ? <IconLoader2 size={18} className="animate-spin" /> : <IconCheck size={18} />}
                   Approve
+                </button>
+              </div>
+
+              {/* Delete Button (Secondary) */}
+              <div className="pt-4 mt-4 border-t border-slate-100">
+                <button
+                  onClick={handleDelete}
+                  disabled={processing}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-red-500 font-bold border border-red-100 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <IconX size={18} />
+                  Delete Request & File
                 </button>
               </div>
             </div>

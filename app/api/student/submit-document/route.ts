@@ -5,7 +5,7 @@ import connectToDatabase from "@/lib/db";
 import { User } from "@/lib/models/User";
 import { StudentVerification } from "@/lib/models/StudentVerification";
 import { sendAdminVerificationRequestEmail } from "@/lib/mail";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 
@@ -60,12 +60,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
+    // If user has a previous verification, we might want to clean up the old file
+    const existingVerification = await StudentVerification.findOne({ userId: user._id });
+
     // Prevent duplicate pending submissions
     if (user.verificationStatus === "pending") {
       return NextResponse.json(
         { error: "You already have a pending verification request. Please wait for admin review." },
         { status: 400 }
       );
+    }
+
+    // If they already have a record (rejected), delete the old file to save space
+    if (existingVerification) {
+      try {
+        const oldFilename = existingVerification.documentUrl.split("file=")[1];
+        if (oldFilename) {
+          const oldPath = path.join(process.cwd(), "storage", "verifications", oldFilename);
+          if (existsSync(oldPath)) {
+            await unlink(oldPath);
+          }
+        }
+        // Delete the old DB record so we create a fresh one
+        await StudentVerification.findByIdAndDelete(existingVerification._id);
+      } catch (err) {
+        console.error("Failed to clean up old verification file:", err);
+        // We continue anyway so the new submission isn't blocked
+      }
     }
 
     // Save file securely to a private disk path (NOT public!)
