@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectToDatabase from "@/lib/db";
 import { StudentVerification } from "@/lib/models/StudentVerification";
 import { User } from "@/lib/models/User";
@@ -9,7 +7,6 @@ import path from "path";
 import { existsSync } from "fs";
 import { unlink } from "fs/promises";
 
-const ADMIN_EMAILS = ["sandeshsubedi2020@gmail.com"]; // Add your admin emails here
 
 // GET: List all verification requests
 export async function GET(req: NextRequest) {

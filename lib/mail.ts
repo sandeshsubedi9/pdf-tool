@@ -4,7 +4,8 @@ const host = process.env.EMAIL_SERVER_HOST;       // e.g., smtp.gmail.com
 const port = Number(process.env.EMAIL_SERVER_PORT) || 587;
 const user = process.env.EMAIL_SERVER_USER;
 const pass = process.env.EMAIL_SERVER_PASSWORD;
-const from = process.env.EMAIL_FROM || "noreply@pdfmaya.com"; // Fallback if missing
+const from = process.env.EMAIL_FROM || user || "noreply@pdfmaya.com";
+const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "hr@fishtailinfosolutions.com";
 
 const transporter = nodemailer.createTransport({
   host,
@@ -98,7 +99,7 @@ export async function sendAdminVerificationRequestEmail(opts: {
 
   const mailOptions = {
     from: `"PDF Maya Admin" <${from}>`,
-    to: "hr@fishtailinfosolutions.com",
+    to: adminEmail,
     subject: `🎓 New Student Verification Request — ${opts.userName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; color: #1e293b; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
