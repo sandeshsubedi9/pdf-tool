@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: pdf-python-service
     ports:
-      - "8001:8001"
+      - "${HOST_PYTHON_PORT:-8001}:8001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile
     container_name: pdf-nextjs-app
     ports:
-      - "3008:3008"
+      - "${HOST_APP_PORT:-3008}:3008"
     environment:
       - PYTHON_SERVICE_URL=http://python-service:8001
     depends_on:
